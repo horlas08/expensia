@@ -1,0 +1,57 @@
+name: expensia
+description: "A visually elegant financial application using Riverpod, GoRouter, and custom animations."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management & DI
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.3.5
+  
+  # Routing
+  go_router: ^14.6.2
+  
+  # UI & Animations
+  animations: ^2.0.11
+  smooth_sheets: ^0.17.0
+  animated_theme_switcher: ^2.0.10
+  animated_emoji: ^3.2.1
+  animate_do: ^3.3.4
+  flutter_screenutil: ^5.9.3
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.1.0
+  fl_chart: ^0.70.2
+  cupertino_icons: ^1.0.8
+
+  # Localization & Utils
+  easy_localization: ^3.0.7
+  intl: ^0.20.2
+  shared_preferences: ^2.4.0
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  file_picker: ^8.1.7
+  flutter_file_dialog: ^3.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.4.3
+  custom_lint: ^0.7.0
+  riverpod_lint: ^2.3.13
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/svg/
+    - assets/lang/
