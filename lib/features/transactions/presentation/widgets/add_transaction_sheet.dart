@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/providers/currency_provider.dart';
 
-class AddTransactionSheet extends StatefulWidget {
+class AddTransactionSheet extends ConsumerStatefulWidget {
   const AddTransactionSheet({super.key});
 
   @override
-  State<AddTransactionSheet> createState() => _AddTransactionSheetState();
+  ConsumerState<AddTransactionSheet> createState() => _AddTransactionSheetState();
 }
 
-class _AddTransactionSheetState extends State<AddTransactionSheet> {
+class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final _amountController = TextEditingController();
 
   @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Static currency symbol from global provider — never translated
+    final sym = ref.watch(currencySymbolProvider);
+
     return Container(
       clipBehavior: Clip.antiAlias,
       padding: EdgeInsets.only(
@@ -50,8 +61,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      hintText: '\$0.00',
+                    decoration: InputDecoration(
+                      hintText: '${sym}0.00',
                       border: InputBorder.none,
                     ),
                   ),

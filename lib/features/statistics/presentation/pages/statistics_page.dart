@@ -171,99 +171,102 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                     child: _ChartCard(
                       title: 'Income vs Expense',
                       subtitle: 'Tap bars to inspect',
-                      child: AnimatedBuilder(
-                        animation: _progressAnim,
-                        builder: (_, __) => BarChart(
-                          BarChartData(
-                            maxY: _maxY,
-                            alignment: BarChartAlignment.spaceAround,
-                            barTouchData: BarTouchData(
-                              enabled: true,
-                              touchCallback: (event, response) {
-                                setState(() {
-                                  if (response?.spot?.touchedBarGroupIndex != null) {
-                                    _touchedIndex = response!.spot!.touchedBarGroupIndex;
-                                  } else {
-                                    _touchedIndex = -1;
-                                  }
-                                });
-                              },
-                              touchTooltipData: BarTouchTooltipData(
-                                getTooltipColor: (_) => Colors.black87,
-                                tooltipRoundedRadius: 8,
-                                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                  return BarTooltipItem(
-                                    rodIndex == 0 ? 'Inc\n' : 'Exp\n',
-                                    const TextStyle(color: Colors.white70, fontSize: 10),
-                                    children: [
-                                      TextSpan(
-                                        text: '\$${rod.toY.toStringAsFixed(0)}',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                                      ),
-                                    ],
-                                  );
+                      child: SizedBox(
+                        height: 200, // Explicit height for the Bar Chart
+                        child: AnimatedBuilder(
+                          animation: _progressAnim,
+                          builder: (_, __) => BarChart(
+                            BarChartData(
+                              maxY: _maxY,
+                              alignment: BarChartAlignment.spaceAround,
+                              barTouchData: BarTouchData(
+                                enabled: true,
+                                touchCallback: (event, response) {
+                                  setState(() {
+                                    if (response?.spot?.touchedBarGroupIndex != null) {
+                                      _touchedIndex = response!.spot!.touchedBarGroupIndex;
+                                    } else {
+                                      _touchedIndex = -1;
+                                    }
+                                  });
                                 },
-                              ),
-                            ),
-                            titlesData: FlTitlesData(
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  getTitlesWidget: (val, meta) {
-                                    final labels = _xLabels;
-                                    final i = val.toInt();
-                                    if (i >= labels.length) return const SizedBox();
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 6),
-                                      child: Text(labels[i], style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+                                touchTooltipData: BarTouchTooltipData(
+                                  getTooltipColor: (_) => Colors.black87,
+                                  tooltipRoundedRadius: 8,
+                                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                    return BarTooltipItem(
+                                      rodIndex == 0 ? 'Inc\n' : 'Exp\n',
+                                      const TextStyle(color: Colors.white70, fontSize: 10),
+                                      children: [
+                                        TextSpan(
+                                          text: '\$${rod.toY.toStringAsFixed(0)}',
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                        ),
+                                      ],
                                     );
                                   },
                                 ),
                               ),
-                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            ),
-                            gridData: FlGridData(
-                              show: true,
-                              drawVerticalLine: false,
-                              getDrawingHorizontalLine: (_) => FlLine(
-                                color: cs.outlineVariant.withValues(alpha: 0.2),
-                                strokeWidth: 1,
+                              titlesData: FlTitlesData(
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (val, meta) {
+                                      final labels = _xLabels;
+                                      final i = val.toInt();
+                                      if (i >= labels.length) return const SizedBox();
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Text(labels[i], style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                               ),
+                              gridData: FlGridData(
+                                show: true,
+                                drawVerticalLine: false,
+                                getDrawingHorizontalLine: (_) => FlLine(
+                                  color: cs.outlineVariant.withValues(alpha: 0.2),
+                                  strokeWidth: 1,
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              barGroups: List.generate(_incomeData.length, (i) {
+                                final isTouched = i == _touchedIndex;
+                                return BarChartGroupData(
+                                  x: i,
+                                  groupVertically: false,
+                                  barsSpace: 4,
+                                  barRods: [
+                                    BarChartRodData(
+                                      toY: _incomeData[i] * _progressAnim.value,
+                                      gradient: LinearGradient(
+                                        colors: [const Color(0xFF00C853), const Color(0xFF64DD17)],
+                                        begin: Alignment.bottomCenter,
+                                        end: Alignment.topCenter,
+                                      ),
+                                      width: isTouched ? 14 : 10,
+                                      borderRadius: BorderRadius.circular(6),
+                                      rodStackItems: [],
+                                    ),
+                                    BarChartRodData(
+                                      toY: _expenseData[i] * _progressAnim.value,
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF1744), Color(0xFFFF6D00)],
+                                        begin: Alignment.bottomCenter,
+                                        end: Alignment.topCenter,
+                                      ),
+                                      width: isTouched ? 14 : 10,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ],
+                                );
+                              }),
                             ),
-                            borderData: FlBorderData(show: false),
-                            barGroups: List.generate(_incomeData.length, (i) {
-                              final isTouched = i == _touchedIndex;
-                              return BarChartGroupData(
-                                x: i,
-                                groupVertically: false,
-                                barsSpace: 4,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: _incomeData[i] * _progressAnim.value,
-                                    gradient: LinearGradient(
-                                      colors: [const Color(0xFF00C853), const Color(0xFF64DD17)],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                    width: isTouched ? 14 : 10,
-                                    borderRadius: BorderRadius.circular(6),
-                                    rodStackItems: [],
-                                  ),
-                                  BarChartRodData(
-                                    toY: _expenseData[i] * _progressAnim.value,
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFFF1744), Color(0xFFFF6D00)],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                    width: isTouched ? 14 : 10,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ],
-                              );
-                            }),
                           ),
                         ),
                       ),
@@ -458,7 +461,7 @@ class _ChartCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
           const SizedBox(height: 20),
-          SizedBox(height: 220, child: child),
+          child,
         ],
       ),
     );

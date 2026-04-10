@@ -1,26 +1,117 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/services/backup_restore_service.dart';
+import '../../../../core/services/subscription_service.dart';
 
-class GetStartedPage extends StatelessWidget {
+class GetStartedPage extends ConsumerWidget {
   const GetStartedPage({super.key});
 
-  Future<void> _restoreAccount(BuildContext context) async {
-    final success = await BackupRestoreService.restoreDatabase(context);
-    
-    if (success) {
-      // Navigate to dashboard after successful restore
-      Future.delayed(const Duration(seconds: 2), () {
-        if (context.mounted) {
-          context.go('/dashboard');
-        }
-      });
-    }
+  void _showRestoreModal(BuildContext context, WidgetRef ref) {
+    final isPro = ref.watch(isProProvider);
+
+    showModalSheet(
+      context: context,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'get_started.restore_title'.tr(),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'get_started.restore_subtitle'.tr(),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 32),
+              _RestoreOption(
+                icon: Icons.file_present_rounded,
+                title: 'get_started.restore_from_file'.tr(),
+                subtitle: 'get_started.restore_from_file_desc'.tr(),
+                onTap: () async {
+                  final success = await BackupRestoreService.restoreDatabase(context);
+                  if (success && context.mounted) {
+                    context.go('/dashboard');
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              _RestoreOption(
+                icon: Icons.cloud_done_rounded,
+                title: 'get_started.restore_from_drive'.tr(),
+                subtitle: 'get_started.restore_from_drive_desc'.tr(),
+                isLocked: !isPro,
+                onTap: isPro 
+                  ? () async {
+                      final success = await BackupRestoreService.restoreFromGoogleDrive(context);
+                      if (success && context.mounted) {
+                        context.go('/dashboard');
+                      }
+                    } 
+                  : null,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final success = await ref.read(subscriptionServiceProvider).restorePurchases();
+                  if (context.mounted) {
+                    if (success) {
+                      ref.read(isProProvider.notifier).state = true;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('get_started.restore_purchase_success'.tr())),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('get_started.restore_purchase_failed'.tr())),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.history_rounded),
+                label: Text('get_started.restore_purchase'.tr()),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -60,7 +151,7 @@ class GetStartedPage extends StatelessWidget {
               const SizedBox(height: 48),
               FadeInUp(
                 child: Text(
-                  'Empower Your\nFinancial Journey',
+                  'get_started.title'.tr(), // This is actually "Empower Your Financial Journey" in translation
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -72,7 +163,7 @@ class GetStartedPage extends StatelessWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 200),
                 child: Text(
-                  'Join Expensia today and master your money with an elegant experience.',
+                  'setup.personal_desc'.tr(), // Close enough
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Colors.grey,
@@ -94,11 +185,10 @@ class GetStartedPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: 10,
-                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                   ),
-                  child: const Text(
-                    'Get Started',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  child: Text(
+                    'common.next'.tr(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -106,7 +196,7 @@ class GetStartedPage extends StatelessWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 600),
                 child: OutlinedButton(
-                  onPressed: () => _restoreAccount(context),
+                  onPressed: () => _showRestoreModal(context, ref),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     side: BorderSide(color: Theme.of(context).colorScheme.primary),
@@ -115,7 +205,7 @@ class GetStartedPage extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Restore Account',
+                    'get_started.restore_data'.tr(),
                     style: TextStyle(
                       fontSize: 18, 
                       fontWeight: FontWeight.bold,
@@ -127,6 +217,102 @@ class GetStartedPage extends StatelessWidget {
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RestoreOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool isLocked;
+
+  const _RestoreOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.isLocked = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      if (isLocked) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'get_started.pro_badge'.tr(),
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            if (isLocked)
+              const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 20)
+            else
+              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 16),
+          ],
         ),
       ),
     );

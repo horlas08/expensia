@@ -23,6 +23,7 @@ class SharedPreferencesService {
   static const String _isOpenFirstPage = 'is_open_first_page';
   static const String _userName = "user_name";
   static const String _userSetup = "user_setup";
+  static const String _isDarkMode = "is_dark_mode";
 
   // String operations
   Future<void> setString(String key, String value) async {
@@ -125,5 +126,14 @@ class SharedPreferencesService {
 
   bool isFirstPageCompleted() {
     return getBoolean(_isOpenFirstPage) ?? false;
+  }
+
+  // Theme persistence
+  Future<void> setDarkMode(bool isDark) async {
+    await setBoolean(_isDarkMode, isDark);
+  }
+
+  bool isDarkMode() {
+    return getBoolean(_isDarkMode) ?? false;
   }
 }

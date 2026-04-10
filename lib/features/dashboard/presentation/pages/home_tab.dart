@@ -1,22 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:animated_emoji/animated_emoji.dart';
 import 'package:animations/animations.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../../../../core/services/database_service.dart';
 import '../../../../features/transactions/presentation/widgets/add_transaction_sheet.dart';
+import '../../../../core/services/shared_preferences_service.dart';
+import '../../../../core/providers/currency_provider.dart';
+import '../../../transactions/presentation/widgets/transaction_type_sheet.dart';
+import '../../../wallet/presentation/providers/wallet_provider.dart';
+import '../providers/dashboard_provider.dart';
 
-class HomeTab extends StatefulWidget {
+class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
 
   @override
-  State<HomeTab> createState() => _HomeTabState();
+  ConsumerState<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> {
+class _HomeTabState extends ConsumerState<HomeTab> {
   bool _balanceVisible = true;
+  String _userName = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferencesService.getInstance();
+    setState(() {
+      _userName = prefs.getUserName() ?? 'User';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final totalBalance = ref.watch(totalBalanceProvider);
+    final metricsAsync = ref.watch(dashboardMetricsProvider);
+    final transactionsAsync = ref.watch(recentTransactionsProvider);
+
+    // Use global currency provider — static symbol, never translated
+    final currencySymbol = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -25,17 +53,17 @@ class _HomeTabState extends State<HomeTab> {
           children: [
             Row(
               children: [
-                const Text(
-                  'Welcome again',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                Text(
+                  'dashboard.welcome'.tr(),
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 const SizedBox(width: 4),
                 const AnimatedEmoji(AnimatedEmojis.wave, size: 16),
               ],
             ),
-            const Text(
-              'John Doe',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              _userName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -45,7 +73,7 @@ class _HomeTabState extends State<HomeTab> {
               Container(
                 margin: const EdgeInsets.only(top: 8, bottom: 8),
                 decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: cs.surfaceContainerHighest.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -93,7 +121,7 @@ class _HomeTabState extends State<HomeTab> {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.35),
+                      color: cs.primary.withOpacity(0.35),
                       blurRadius: 24,
                       offset: const Offset(0, 12),
                     ),
@@ -102,35 +130,29 @@ class _HomeTabState extends State<HomeTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── top row: label + hide toggle ───────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Total Balance',
-                          style: TextStyle(
+                        Text(
+                          'dashboard.total_balance'.tr(),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
                             letterSpacing: 0.5,
                           ),
                         ),
                         GestureDetector(
-                          onTap:
-                              () => setState(
-                                () => _balanceVisible = !_balanceVisible,
-                              ),
+                          onTap: () => setState(() => _balanceVisible = !_balanceVisible),
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
+                              color: Colors.white.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 250),
                               child: Icon(
-                                _balanceVisible
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
+                                _balanceVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                                 key: ValueKey(_balanceVisible),
                                 color: Colors.white,
                                 size: 18,
@@ -141,23 +163,10 @@ class _HomeTabState extends State<HomeTab> {
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // ── balance amount ─────────────────────────────────────
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      transitionBuilder:
-                          (child, anim) => FadeTransition(
-                            opacity: anim,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 0.15),
-                                end: Offset.zero,
-                              ).animate(anim),
-                              child: child,
-                            ),
-                          ),
                       child: Text(
-                        _balanceVisible ? '\$12,450.00' : '••••••',
+                        _balanceVisible ? '$currencySymbol${totalBalance.toStringAsFixed(2)}' : '••••••',
                         key: ValueKey(_balanceVisible),
                         style: const TextStyle(
                           color: Colors.white,
@@ -168,110 +177,116 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // ── bottom row: income/expense mini stats ──────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _MiniBalanceStat(
-                            label: 'Income',
-                            value: '\$4,200',
-                            icon: Icons.arrow_downward_rounded,
-                            color: const Color(0xFF69F0AE),
-                            visible: _balanceVisible,
+                    metricsAsync.when(
+                      data: (metrics) => Row(
+                        children: [
+                          Expanded(
+                            child: _MiniBalanceStat(
+                              label: 'dashboard.income'.tr(),
+                              value: '$currencySymbol${metrics['monthly_income']}',
+                              icon: Icons.arrow_downward_rounded,
+                              color: const Color(0xFF69F0AE),
+                              visible: _balanceVisible,
+                            ),
                           ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 36,
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                        Expanded(
-                          child: _MiniBalanceStat(
-                            label: 'Expenses',
-                            value: '\$1,100',
-                            icon: Icons.arrow_upward_rounded,
-                            color: const Color(0xFFFF6E6E),
-                            visible: _balanceVisible,
+                          Container(
+                            width: 1,
+                            height: 36,
+                            color: Colors.white.withOpacity(0.2),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: _MiniBalanceStat(
+                              label: 'dashboard.expenses'.tr(),
+                              value: '$currencySymbol${metrics['monthly_expense']}',
+                              icon: Icons.arrow_upward_rounded,
+                              color: const Color(0xFFFF6E6E),
+                              visible: _balanceVisible,
+                            ),
+                          ),
+                        ],
+                      ),
+                      loading: () => const Center(child: LinearProgressIndicator()),
+                      error: (e, _) => Text('Error: $e'),
                     ),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
 
             // ── 4 UNIQUE ANIMATED SUMMARY CARDS ───────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: FadeInLeft(
-                    delay: const Duration(milliseconds: 100),
-                    child: _GlowingMetricCard(
-                      label: 'Income',
-                      amount: '\$4,200',
-                      gradient: const [
-                        Color(0xFF1A1A2E),
-                        Color(0xFF23233E),
-                      ], // dark/black
-                      icon: Icons.south_west_rounded,
-                      trend: '+12%',
-                      trendUp: true,
-                    ),
+            metricsAsync.when(
+              data: (metrics) => Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FadeInLeft(
+                          delay: const Duration(milliseconds: 100),
+                          child: _GlowingMetricCard(
+                            label: 'dashboard.income'.tr(),
+                            amount: '$currencySymbol${metrics['monthly_income']}',
+                            gradient: const [Color(0xFF1A1A2E), Color(0xFF23233E)],
+                            icon: Icons.south_west_rounded,
+                            trend: '+12%',
+                            trendUp: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FadeInRight(
+                          delay: const Duration(milliseconds: 100),
+                          child: _GlowingMetricCard(
+                            label: 'dashboard.expenses'.tr(),
+                            amount: '$currencySymbol${metrics['monthly_expense']}',
+                            gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
+                            icon: Icons.north_east_rounded,
+                            trend: '-5%',
+                            trendUp: false,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FadeInRight(
-                    delay: const Duration(milliseconds: 100),
-                    child: _GlowingMetricCard(
-                      label: 'Expenses',
-                      amount: '\$1,100',
-                      gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
-                      icon: Icons.north_east_rounded,
-                      trend: '-5%',
-                      trendUp: false,
-                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FadeInLeft(
+                          delay: const Duration(milliseconds: 200),
+                          child: _FlipMetricCard(
+                            label: 'dashboard.installment'.tr(),
+                            amount: '$currencySymbol${metrics['installment_total']}',
+                            onYouAmount: '$currencySymbol${metrics['installment_total']}',
+                            forYouAmount: '${currencySymbol}0',
+                            accentColor: const Color(0xFFAA00FF),
+                            gradient: const [Color(0xFF8E24AA), Color(0xFFAB47BC)],
+                            onDetails: () => _showInstallmentsSheet(context, currencySymbol),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FadeInRight(
+                          delay: const Duration(milliseconds: 200),
+                          child: _FlipMetricCard(
+                            label: 'dashboard.debt'.tr(),
+                            amount: '$currencySymbol${metrics['debt_on_you'] + metrics['debt_for_you']}',
+                            onYouAmount: '$currencySymbol${metrics['debt_on_you']}',
+                            forYouAmount: '$currencySymbol${metrics['debt_for_you']}',
+                            accentColor: const Color(0xFF0091EA),
+                            gradient: const [Color(0xFF01579B), Color(0xFF0288D1)],
+                            onDetails: () => _showDebtsSheet(context, currencySymbol),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: FadeInLeft(
-                    delay: const Duration(milliseconds: 200),
-                    child: const _FlipMetricCard(
-                      label: 'Installment',
-                      amount: '\$500',
-                      onYouAmount: '\$300',
-                      forYouAmount: '\$200',
-                      accentColor: Color(0xFFAA00FF),
-                      gradient: [Color(0xFF8E24AA), Color(0xFFAB47BC)],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FadeInRight(
-                    delay: const Duration(milliseconds: 200),
-                    child: const _FlipMetricCard(
-                      label: 'Debt',
-                      amount: '\$200',
-                      onYouAmount: '\$120',
-                      forYouAmount: '\$80',
-                      accentColor: Color(0xFF0091EA),
-                      gradient: [Color(0xFF01579B), Color(0xFF0288D1)],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
+              loading: () => const SizedBox(height: 200),
+              error: (e, _) => const SizedBox(),
             ),
 
             const SizedBox(height: 32),
@@ -282,117 +297,181 @@ class _HomeTabState extends State<HomeTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Recent Transactions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    'dashboard.recent_transactions'.tr(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: const Text(
-                      'View All ›',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      '${'dashboard.view_all'.tr()} ›',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-            ...List.generate(3, (index) {
-              final icons = [
-                Icons.shopping_bag,
-                Icons.restaurant,
-                Icons.directions_car,
-              ];
-              final names = ['Shopping', 'Dining', 'Transport'];
-              final amounts = ['-\$120.00', '-\$45.00', '-\$30.00'];
-              final colors = [Colors.purple, Colors.orange, Colors.blue];
-              return FadeInUp(
-                delay: Duration(milliseconds: 350 + (index * 80)),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: colors[index].withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          icons[index],
-                          color: colors[index],
-                          size: 20,
-                        ),
+            transactionsAsync.when(
+              data: (transactions) => Column(
+                children: transactions.map((tx) {
+                  final isIncome = tx['type'] == 'income';
+                  return FadeInUp(
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              names[index],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: (isIncome ? Colors.green : Colors.red).withOpacity(0.12),
+                              shape: BoxShape.circle,
                             ),
-                            const Text(
-                              'Today',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
+                            child: Icon(
+                              isIncome ? Icons.add_rounded : Icons.remove_rounded,
+                              color: isIncome ? Colors.green : Colors.red,
+                              size: 20,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tx['category_name'] ?? 'General',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                                Text(
+                                  DateFormat.yMMMd().format(DateTime.parse(tx['date'])),
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${tx['direction'] == 'plus' ? '+' : '-'}$currencySymbol${tx['amount']}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: isIncome ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        amounts[index],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                    ),
+                  );
+                }).toList(),
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Text('Error: $e'),
+            ),
           ],
         ),
       ),
-      floatingActionButton: OpenContainer(
-        transitionType: ContainerTransitionType.fade,
-        openBuilder: (context, _) => const AddTransactionSheet(),
-        closedElevation: 6.0,
-        closedShape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(56 / 2)),
+    );
+  }
+
+  void _showDebtsSheet(BuildContext context, String sym) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Text('Active Debts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _fetchList('debts'),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  if (snap.hasError) return Text('Err: ${snap.error}');
+                  final data = snap.data ?? [];
+                  if (data.isEmpty) return const Center(child: Text('No active debts.'));
+                  return ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, i) {
+                      final item = data[i];
+                      final isForYou = item['income'] > 0;
+                      return ListTile(
+                        leading: CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(item['person_name'] ?? 'Unknown'),
+                        subtitle: Text(isForYou ? 'For you' : 'On you'),
+                        trailing: Text(
+                          '$sym${isForYou ? item['income'] : item['expense']}',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: isForYou ? Colors.green : Colors.red),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        closedColor: cs.primary,
-        closedBuilder: (context, openContainer) {
-          return SizedBox(
-            height: 56,
-            width: 56,
-            child: Center(child: Icon(Icons.add, color: cs.onPrimary)),
-          );
-        },
       ),
     );
   }
+
+  void _showInstallmentsSheet(BuildContext context, String sym) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Text('Active Installments', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _fetchList('installments'),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  if (snap.hasError) return Text('Err: ${snap.error}');
+                  final data = snap.data ?? [];
+                  if (data.isEmpty) return const Center(child: Text('No active installments.'));
+                  return ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, i) {
+                      final item = data[i];
+                      return ListTile(
+                        leading: CircleAvatar(child: Icon(Icons.business_rounded)),
+                        title: Text(item['person_name'] ?? 'Unknown'),
+                        subtitle: Text('Remaining Months: ${item['remaining_months']}'),
+                        trailing: Text(
+                          '$sym${item['remaining_price']}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchList(String table) async {
+    final db = await DatabaseService().database;
+    return db.rawQuery('SELECT t.*, p.name as person_name FROM $table t LEFT JOIN persons p ON t.person_id = p.id WHERE t.status = "active" ORDER BY t.id DESC');
+  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mini income/expense stat inside the balance card
-// ─────────────────────────────────────────────────────────────────────────────
 class _MiniBalanceStat extends StatelessWidget {
   const _MiniBalanceStat({
     required this.label,
@@ -417,7 +496,7 @@ class _MiniBalanceStat extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
+              color: color.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 14),
@@ -450,9 +529,6 @@ class _MiniBalanceStat extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Glowing gradient metric card (Income / Expense)
-// ─────────────────────────────────────────────────────────────────────────────
 class _GlowingMetricCard extends StatelessWidget {
   const _GlowingMetricCard({
     required this.label,
@@ -483,7 +559,7 @@ class _GlowingMetricCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: gradient[0].withValues(alpha: 0.3),
+            color: gradient[0].withOpacity(0.3),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -498,7 +574,7 @@ class _GlowingMetricCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: Colors.white, size: 16),
@@ -506,7 +582,7 @@ class _GlowingMetricCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -533,7 +609,7 @@ class _GlowingMetricCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
+              color: Colors.white.withOpacity(0.75),
               fontSize: 12,
             ),
           ),
@@ -543,9 +619,6 @@ class _GlowingMetricCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Flip-style card for Installment / Debt
-// ─────────────────────────────────────────────────────────────────────────────
 class _FlipMetricCard extends StatefulWidget {
   const _FlipMetricCard({
     required this.label,
@@ -554,6 +627,7 @@ class _FlipMetricCard extends StatefulWidget {
     required this.forYouAmount,
     required this.accentColor,
     this.gradient,
+    this.onDetails,
   });
 
   final String label;
@@ -562,6 +636,7 @@ class _FlipMetricCard extends StatefulWidget {
   final String forYouAmount;
   final Color accentColor;
   final List<Color>? gradient;
+  final VoidCallback? onDetails;
 
   @override
   State<_FlipMetricCard> createState() => _FlipMetricCardState();
@@ -598,100 +673,113 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
 
   @override
   Widget build(BuildContext context) {
-    final label = _showOnYou ? 'On You' : 'For You';
+    final labelText = _showOnYou ? 'dashboard.on_you'.tr() : 'dashboard.for_you'.tr();
     final displayAmount = _showOnYou ? widget.onYouAmount : widget.forYouAmount;
 
-    return GestureDetector(
-      onTap: _toggle,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: widget.gradient != null
-              ? LinearGradient(
-                  colors: widget.gradient!,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: widget.gradient == null
-              ? widget.accentColor.withValues(alpha: 0.08)
-              : null,
-          borderRadius: BorderRadius.circular(20),
-          border: widget.gradient == null
-              ? Border.all(color: widget.accentColor.withValues(alpha: 0.2))
-              : null,
-          boxShadow: widget.gradient != null
-              ? [
-                  BoxShadow(
-                    color: widget.gradient![0].withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: widget.gradient != null ? Colors.white : widget.accentColor,
-                  ),
-                ),
-                Icon(
-                  Icons.swap_horiz_rounded,
-                  color: widget.gradient != null ? Colors.white : widget.accentColor,
-                  size: 16,
-                ),
-              ],
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: widget.onDetails ?? _toggle,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: widget.gradient != null
+                  ? LinearGradient(
+                      colors: widget.gradient!,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: widget.gradient == null ? widget.accentColor.withOpacity(0.08) : null,
+              borderRadius: BorderRadius.circular(20),
+              border: widget.gradient == null ? Border.all(color: widget.accentColor.withOpacity(0.2)) : null,
+              boxShadow: widget.gradient != null
+                  ? [
+                      BoxShadow(
+                        color: widget.gradient![0].withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
-            const SizedBox(height: 10),
-            FadeTransition(
-              opacity: _fade,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayAmount,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: widget.gradient != null ? Colors.white : widget.accentColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.gradient != null
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : widget.accentColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      label,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      widget.label,
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                         color: widget.gradient != null ? Colors.white : widget.accentColor,
                       ),
                     ),
+                    const SizedBox(width: 32),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                FadeTransition(
+                  opacity: _fade,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayAmount,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: widget.gradient != null ? Colors.white : widget.accentColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: widget.gradient != null
+                              ? Colors.white.withOpacity(0.2)
+                              : widget.accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          labelText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: widget.gradient != null ? Colors.white : widget.accentColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _toggle,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(
+                  Icons.swap_horiz_rounded,
+                  color: widget.gradient != null ? Colors.white : widget.accentColor,
+                  size: 18,
+                ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

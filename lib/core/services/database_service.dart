@@ -41,6 +41,7 @@ class DatabaseService {
       _sqlSettings,
       _sqlTransactions,
       _sqlTransfers,
+      _sqlInstallmentDetails,
       _sqlInsertCurrencies,
       _sqlInsertCategories,
     ]);
@@ -54,6 +55,58 @@ class DatabaseService {
       }
     }
     await batch.commit();
+  }
+
+  // --- WALLET METHODS ---
+
+  Future<int> addWallet(Map<String, dynamic> wallet) async {
+    final db = await database;
+    return await db.insert('wallets', wallet);
+  }
+
+  Future<int> updateWallet(int id, Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.update('wallets', data, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> transferBalance({
+    required int fromId,
+    required int toId,
+    required double amount,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE wallets SET balance = balance - ? WHERE id = ?',
+        [amount, fromId],
+      );
+      await txn.rawUpdate(
+        'UPDATE wallets SET balance = balance + ? WHERE id = ?',
+        [amount, toId],
+      );
+      
+      // Record the transfer in transfers table
+      await txn.insert('transfers', {
+        'from_wallet_id': fromId,
+        'to_wallet_id': toId,
+        'amount': amount,
+        'date': DateTime.now().toIso8601String(),
+        'notes': 'Wallet Transfer',
+      });
+    });
+  }
+
+  Future<void> transferTransactions({
+    required int fromId,
+    required int toId,
+  }) async {
+    final db = await database;
+    await db.update(
+      'transactions',
+      {'wallet_id': toId},
+      where: 'wallet_id = ?',
+      whereArgs: [fromId],
+    );
   }
 
   Future<void> initializeSetup({
@@ -161,6 +214,116 @@ class DatabaseService {
     });
   }
 
+  // --- DATA RETRIEVAL METHODS ---
+
+  Future<List<Map<String, dynamic>>> getWallets() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT w.*, c.currency_code, c.currency_symbol, c.currency_name_en, c.rate_to_usd
+      FROM wallets w
+      LEFT JOIN all_currencies c ON w.currency_id = c.id
+      WHERE w.is_visible = 1
+    ''');
+  }
+
+  Future<Map<String, dynamic>> getDashboardMetrics() async {
+    final db = await database;
+    
+    // Get total income and expense for the current month
+    final now = DateTime.now();
+    final firstDayOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+    
+    final incomeResult = await db.rawQuery('''
+      SELECT SUM(amount) as total FROM transactions 
+      WHERE type = 'income' AND date >= ?
+    ''', [firstDayOfMonth]);
+
+    final expenseResult = await db.rawQuery('''
+      SELECT SUM(amount) as total FROM transactions 
+      WHERE type = 'expense' AND date >= ?
+    ''', [firstDayOfMonth]);
+
+    final debtResult = await db.rawQuery('''
+      SELECT SUM(income) as for_you, SUM(expense) as on_you FROM debts
+    ''');
+
+    final installmentResult = await db.rawQuery('''
+      SELECT SUM(deposit) as total FROM installments
+    ''');
+
+    return {
+      'monthly_income': incomeResult.first['total'] ?? 0.0,
+      'monthly_expense': expenseResult.first['total'] ?? 0.0,
+      'debt_on_you': debtResult.first['on_you'] ?? 0.0,
+      'debt_for_you': debtResult.first['for_you'] ?? 0.0,
+      'installment_total': installmentResult.first['total'] ?? 0.0,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentTransactions({int limit = 5}) async {
+    final db = await database;
+    // Union across multiple tables to get a unified view of all activities
+    final sql = '''
+      SELECT t.id, 'transaction' as type, t.amount, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN wallets w ON t.wallet_id = w.id
+      UNION ALL
+      SELECT tr.id, 'transfer' as type, tr.amount, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name
+      FROM transfers tr
+      LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
+      LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
+      UNION ALL
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, d.person_name
+      FROM debts d
+      LEFT JOIN wallets w ON d.wallet_id = w.id
+      UNION ALL
+      SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      FROM installments i
+      LEFT JOIN wallets w ON i.wallet_id = w.id
+      LEFT JOIN persons p ON i.person_id = p.id
+      ORDER BY date DESC
+      LIMIT ?
+    ''';
+    return await db.rawQuery(sql, [limit]);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllTransactions() async {
+    final db = await database;
+    final sql = '''
+      SELECT t.id, 'transaction' as type, t.amount, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN wallets w ON t.wallet_id = w.id
+      UNION ALL
+      SELECT tr.id, 'transfer' as type, tr.amount, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name
+      FROM transfers tr
+      LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
+      LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
+      UNION ALL
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, d.person_name
+      FROM debts d
+      LEFT JOIN wallets w ON d.wallet_id = w.id
+      UNION ALL
+      SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      FROM installments i
+      LEFT JOIN wallets w ON i.wallet_id = w.id
+      LEFT JOIN persons p ON i.person_id = p.id
+      ORDER BY date DESC
+    ''';
+    return await db.rawQuery(sql);
+  }
+
+  Future<List<Map<String, dynamic>>> getInstallmentDetails(int installmentId) async {
+    final db = await database;
+    return await db.query('installment_details', where: 'installment_id = ?', whereArgs: [installmentId], orderBy: 'due_date ASC');
+  }
+
+  Future<int> insertInstallmentDetail(Map<String, dynamic> detail) async {
+    final db = await database;
+    return await db.insert('installment_details', detail);
+  }
+
   DateTime _calculateNextSalaryDate(int day) {
     final now = DateTime.now();
     var month = now.month;
@@ -181,6 +344,40 @@ class DatabaseService {
       // If day 31 doesn't exist, use last day of month
       return DateTime(year, month + 1, 0);
     }
+  }
+
+  // --- CATEGORY METHODS ---
+
+  Future<List<Map<String, dynamic>>> getCategoriesByType(String type) async {
+    final db = await database;
+    return await db.query(
+      'categories',
+      where: 'type = ?',
+      whereArgs: [type],
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<int> addCategory({
+    required String nameEn,
+    required String nameAr,
+    required String type,
+    String iconKey = 'other',
+    int? parentId,
+  }) async {
+    final db = await database;
+    return await db.insert('categories', {
+      'name_en': nameEn,
+      'name_ar': nameAr,
+      'type': type,
+      'image_name': iconKey, // store icon key here
+      if (parentId != null) 'parent_id': parentId,
+    });
+  }
+
+  Future<int> deleteCategory(int id) async {
+    final db = await database;
+    return await db.delete('categories', where: 'id = ?', whereArgs: [id]);
   }
 
   // --- SQL SCRIPTS ---
@@ -357,6 +554,18 @@ class DatabaseService {
       FOREIGN KEY (debt_id) REFERENCES debts(id) ON DELETE CASCADE,
       FOREIGN KEY (installment_id) REFERENCES installments(id) ON DELETE CASCADE,
       FOREIGN KEY (recurring_id) REFERENCES recurring_transactions(id) ON DELETE SET NULL
+    );
+  ''';
+
+  static const _sqlInstallmentDetails = '''
+    CREATE TABLE IF NOT EXISTS installment_details (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      installment_id INTEGER NOT NULL,
+      due_date TEXT NOT NULL,
+      amount REAL NOT NULL,
+      is_paid INTEGER DEFAULT 0,
+      paid_at TEXT,
+      FOREIGN KEY (installment_id) REFERENCES installments(id) ON DELETE CASCADE
     );
   ''';
 

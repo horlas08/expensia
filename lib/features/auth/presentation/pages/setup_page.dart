@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'dart:ui';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/services/shared_preferences_service.dart';
+import '../../../../core/services/database_service.dart';
 import '../../../../core/models/user_setup_model.dart' as models;
 
 class SetupPage extends StatefulWidget {
@@ -188,14 +191,12 @@ class _SetupPageState extends State<SetupPage> {
                 padding: EdgeInsets.all(24.w),
                 child: Row(
                   children: [
-                    if (_currentPage < 2)
+                    // Only show Skip on Step 2 (Salary Information)
+                    if (_currentPage == 2)
                       Expanded(
                         child: TextButton(
                           onPressed: () {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
+                            _completeSetup();
                           },
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -204,7 +205,7 @@ class _SetupPageState extends State<SetupPage> {
                             ),
                           ),
                           child: Text(
-                            'Skip',
+                            'common.skip'.tr(),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                               fontSize: 16.sp,
@@ -213,42 +214,53 @@ class _SetupPageState extends State<SetupPage> {
                           ),
                         ),
                       ),
-                    if (_currentPage > 0) SizedBox(width: 16.w),
-                    if (_currentPage > 0)
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (_currentPage < 2) {
-                              _pageController.nextPage(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            } else {
-                              _completeSetup();
+                    if (_currentPage == 2) SizedBox(width: 16.w),
+                    
+                    // Always show Next/Complete button
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_currentPage == 0) {
+                            if (_nameController.text.trim().isEmpty) {
+                              _showErrorSnackBar('setup.error_name'.tr());
+                              return;
                             }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            elevation: 8,
-                            shadowColor: Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.4),
+                          } else if (_currentPage == 1) {
+                            if (_selectedCurrencyModel == null) {
+                              _showErrorSnackBar('setup.error_currency'.tr());
+                              return;
+                            }
+                          }
+
+                          if (_currentPage < 2) {
+                            _pageController.nextPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          } else {
+                            _completeSetup();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.r),
                           ),
-                          child: Text(
-                            _currentPage == 2 ? 'Complete Setup' : 'Next',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          elevation: 8,
+                          shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                        ),
+                        child: Text(
+                          _currentPage == 2 ? 'common.complete'.tr() : 'common.next'.tr(),
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -266,28 +278,72 @@ class _SetupPageState extends State<SetupPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FadeInDown(
-            child: Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person_outline_rounded,
-                size: 48.w,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+            duration: const Duration(milliseconds: 800),
+            child: Stack(
+              children: [
+                Container(
+                  width: 80.w,
+                  height: 80.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24.r),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 70.w,
+                      height: 70.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.15),
+                            Colors.white.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.person_outline_rounded,
+                        size: 36.w,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 24.h),
           FadeInUp(
-            child: Text(
-              'Let\'s Get Personal',
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            duration: const Duration(milliseconds: 800),
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFF6A11CB), Color(0xFF2575FC), Color(0xFFE91E63)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                'setup.personal_title'.tr(),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                ),
               ),
             ),
           ),
@@ -295,10 +351,11 @@ class _SetupPageState extends State<SetupPage> {
           FadeInUp(
             delay: const Duration(milliseconds: 200),
             child: Text(
-              'Tell us a bit about yourself to personalize your experience.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+              'setup.personal_desc'.tr(),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           SizedBox(height: 32.h),
@@ -308,7 +365,7 @@ class _SetupPageState extends State<SetupPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your Name',
+                  'setup.name_label'.tr(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -317,7 +374,7 @@ class _SetupPageState extends State<SetupPage> {
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    hintText: 'Enter your name',
+                    hintText: 'setup.name_label'.tr(),
                     filled: true,
                     fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
@@ -351,7 +408,7 @@ class _SetupPageState extends State<SetupPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Initial Cash',
+                  'setup.initial_cash'.tr(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -383,7 +440,7 @@ class _SetupPageState extends State<SetupPage> {
                         width: 2,
                       ),
                     ),
-                    prefixText: '\$ ',
+                    prefixText: '${_selectedCurrencyModel?.currencySymbol ?? r'$'} ',
                     prefixStyle: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -402,28 +459,72 @@ class _SetupPageState extends State<SetupPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FadeInDown(
-            child: Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 48.w,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+            duration: const Duration(milliseconds: 800),
+            child: Stack(
+              children: [
+                Container(
+                  width: 80.w,
+                  height: 80.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24.r),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 70.w,
+                      height: 70.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.15),
+                            Colors.white.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_wallet_rounded,
+                        size: 36.w,
+                        color: Colors.amber[700],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 24.h),
           FadeInUp(
-            child: Text(
-              'Choose Your Currency',
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            duration: const Duration(milliseconds: 800),
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFFF2994A), Color(0xFFF2C94C)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                'setup.currency_title'.tr(),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                ),
               ),
             ),
           ),
@@ -431,10 +532,11 @@ class _SetupPageState extends State<SetupPage> {
           FadeInUp(
             delay: const Duration(milliseconds: 200),
             child: Text(
-              'Select your preferred currency for all transactions.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+              'setup.currency_desc'.tr(),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           SizedBox(height: 32.h),
@@ -535,28 +637,72 @@ class _SetupPageState extends State<SetupPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FadeInDown(
-            child: Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.work_outline_rounded,
-                size: 48.w,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+            duration: const Duration(milliseconds: 800),
+            child: Stack(
+              children: [
+                Container(
+                  width: 80.w,
+                  height: 80.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24.r),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 70.w,
+                      height: 70.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.15),
+                            Colors.white.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.work_outline_rounded,
+                        size: 36.w,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 24.h),
           FadeInUp(
-            child: Text(
-              'Salary Information',
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            duration: const Duration(milliseconds: 800),
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                'setup.salary_title'.tr(),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                ),
               ),
             ),
           ),
@@ -564,10 +710,11 @@ class _SetupPageState extends State<SetupPage> {
           FadeInUp(
             delay: const Duration(milliseconds: 200),
             child: Text(
-              'Help us track your income automatically (optional).',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+              'setup.salary_desc'.tr(),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           SizedBox(height: 32.h),
@@ -591,13 +738,13 @@ class _SetupPageState extends State<SetupPage> {
                   });
                 },
                 title: Text(
-                  'I have a regular salary',
+                  'setup.has_salary'.tr(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 subtitle: Text(
-                  'Enable automatic salary tracking',
+                  'setup.auto_add'.tr(),
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -615,7 +762,7 @@ class _SetupPageState extends State<SetupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Monthly Salary',
+                    'setup.salary_amount'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -647,7 +794,7 @@ class _SetupPageState extends State<SetupPage> {
                           width: 2,
                         ),
                       ),
-                      prefixText: '\$ ',
+                      prefixText: '${_selectedCurrencyModel?.currencySymbol ?? r'$'} ',
                       prefixStyle: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -793,6 +940,17 @@ class _SetupPageState extends State<SetupPage> {
 
       // Save user setup
       await prefsService.setUserSetup(userSetup.toMap());
+
+      // Initialize database with initial categories and wallet
+      await DatabaseService().initializeSetup(
+        name: userSetup.name,
+        defaultCurrencyId: userSetup.defaultCurrency,
+        cashBalance: userSetup.cash,
+        salaryAmount: userSetup.salary,
+        salaryDay: userSetup.dayOfSalary,
+        hasSalary: userSetup.isOptions,
+        autoAddSalary: userSetup.autoAddSalary,
+      );
 
       // Save user name separately
       await prefsService.setUserName(userSetup.name);
