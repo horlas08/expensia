@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/shared_preferences_service.dart';
 import '../../../../core/services/app_lock_service.dart';
 import '../../../../core/services/subscription_service.dart';
-
+import '../../../../core/services/notification_service.dart';
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
@@ -29,6 +29,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       await ref.read(subscriptionServiceProvider).init();
       final prefs = await SharedPreferencesService.getInstance();
       final appLock = ref.read(appLockServiceProvider);
+      await NotificationService().init();
 
       // 2. Wait for animation
       await Future.delayed(const Duration(seconds: 2));

@@ -42,6 +42,7 @@ class DatabaseService {
       _sqlTransactions,
       _sqlTransfers,
       _sqlInstallmentDetails,
+      _sqlScheduledNotifications,
       _sqlInsertCurrencies,
       _sqlInsertCategories,
     ]);
@@ -581,6 +582,20 @@ class DatabaseService {
       notes TEXT,
       FOREIGN KEY (from_wallet_id) REFERENCES wallets(id),
       FOREIGN KEY (to_wallet_id) REFERENCES wallets(id)
+    );
+  ''';
+
+  static const _sqlScheduledNotifications = '''
+    CREATE TABLE IF NOT EXISTS scheduled_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      notification_id INTEGER UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      payload TEXT,
+      scheduled_time TEXT NOT NULL,
+      repeat_interval TEXT,
+      is_active INTEGER DEFAULT 1,
+      transaction_id INTEGER
     );
   ''';
 

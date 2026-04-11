@@ -14,6 +14,7 @@ import '../widgets/edit_profile_sheet.dart';
 import '../widgets/language_sheet.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/app_lock_sheet.dart';
+import 'notification_settings_page.dart';
 
 // Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
@@ -174,7 +175,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.notifications_outlined,
                           label: 'profile.notifications'.tr(),
-                          onTap: () => _showNotificationInfo(context),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsPage())),
                         ),
                       ]),
                     ),
@@ -251,16 +252,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       ),
     );
   }
-
-  void _showNotificationInfo(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _NotificationInfoSheet(),
-    );
-  }
-
   void _showBackupConfirm(BuildContext context) {
     BackupRestoreSheet.showLocal(context, isBackup: true);
   }
@@ -459,108 +450,7 @@ class _PremiumBanner extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Notification Info Sheet
-// ---------------------------------------------------------------------------
-class _NotificationInfoSheet extends StatelessWidget {
-  const _NotificationInfoSheet();
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          FadeInDown(
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [cs.primary, Colors.deepPurple]),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Text(
-                  'profile.notif_title'.tr(),
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.onSurface),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          FadeInUp(
-            delay: const Duration(milliseconds: 100),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: cs.primary.withValues(alpha: 0.15)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.hourglass_top_rounded, color: cs.primary, size: 28),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'profile.notif_coming_soon'.tr(),
-                          style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'profile.notif_desc'.tr(),
-                          style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          FadeInUp(
-            delay: const Duration(milliseconds: 200),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text('common.close'.tr()),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Section Label
