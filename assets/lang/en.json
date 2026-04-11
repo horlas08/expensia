@@ -18,6 +18,13 @@
   },
   "setup": {
     "personal_identity": "Personal Identity",
+    "personal_title": "Personal Info",
+    "name_label": "Your Name",
+    "currency_title": "Currency Choice",
+    "salary_title": "Salary Information",
+    "has_salary": "I receive a regular salary",
+    "error_name": "Please enter your name",
+    "error_currency": "Please select a currency",
     "personal_info": "Personal Info",
     "personal_desc": "Tell us a bit about yourself to personalize your experience",
     "full_name": "Full Name",

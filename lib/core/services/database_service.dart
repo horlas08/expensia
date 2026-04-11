@@ -274,9 +274,10 @@ class DatabaseService {
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
       UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, d.person_name
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
       FROM debts d
       LEFT JOIN wallets w ON d.wallet_id = w.id
+      LEFT JOIN persons p ON d.person_id = p.id
       UNION ALL
       SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
       FROM installments i
@@ -301,9 +302,10 @@ class DatabaseService {
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
       UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, d.person_name
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
       FROM debts d
       LEFT JOIN wallets w ON d.wallet_id = w.id
+      LEFT JOIN persons p ON d.person_id = p.id
       UNION ALL
       SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
       FROM installments i

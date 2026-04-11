@@ -69,29 +69,66 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Theme.of(context).colorScheme.primary, Colors.deepPurple.shade900],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ZoomIn(
-              duration: const Duration(seconds: 1),
-              child: const AnimatedEmoji(
-                AnimatedEmojis.rocket,
-                size: 100,
+            Pulse(
+              infinite: true,
+              duration: const Duration(seconds: 2),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.1),
+                      blurRadius: 30,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 80,
+                  color: Colors.white,
+                ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             FadeInUp(
-              delay: const Duration(milliseconds: 500),
+              delay: const Duration(milliseconds: 300),
               child: Text(
                 'Expensia',
-                style: GoogleFonts.poppins(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.outfit(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
                   letterSpacing: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            FadeInUp(
+              delay: const Duration(milliseconds: 600),
+              child: Text(
+                'Master Your Finances',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white70,
+                  letterSpacing: 1.5,
                 ),
               ),
             ),

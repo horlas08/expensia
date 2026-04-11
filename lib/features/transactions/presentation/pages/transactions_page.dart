@@ -142,7 +142,7 @@ class _TransactionListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                NumberFormat.currency(symbol: '$').format(amount),
+                NumberFormat.currency(symbol: '\$').format(amount),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -201,7 +201,7 @@ class TransactionDetailPage extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              NumberFormat.currency(symbol: '$').format(tx['amount']),
+              NumberFormat.currency(symbol: '\$').format(tx['amount']),
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -263,7 +263,7 @@ class TransactionDetailPage extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(child: Text(DateFormat('MMM dd, yyyy').format(dDate))),
                             Text(
-                              NumberFormat.currency(symbol: '$').format(d['amount']),
+                              NumberFormat.currency(symbol: '\$').format(d['amount']),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ],

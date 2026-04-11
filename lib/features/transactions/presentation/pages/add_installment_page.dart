@@ -259,7 +259,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     ),
                     subtitle: Text(DateFormat('MMMM dd, yyyy').format(date)),
                     trailing: Text(
-                      NumberFormat.currency(symbol: '$').format(item['amount']),
+                      NumberFormat.currency(symbol: '\$').format(item['amount']),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   );

@@ -18,6 +18,13 @@
   },
   "setup": {
     "personal_identity": "الهوية الشخصية",
+    "personal_title": "المعلومات الشخصية",
+    "name_label": "الاسم الكامل",
+    "currency_title": "اختيار العملة",
+    "salary_title": "معلومات الراتب",
+    "has_salary": "أستلم راتباً منتظماً",
+    "error_name": "يرجى إدخال اسمك",
+    "error_currency": "يرجى اختيار عملة",
     "personal_info": "المعلومات الشخصية",
     "personal_desc": "أخبرنا قليلاً عن نفسك لتخصيص تجربتك",
     "full_name": "الاسم الكامل",

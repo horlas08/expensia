@@ -11,7 +11,7 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../transactions/presentation/widgets/transaction_type_sheet.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/dashboard_provider.dart';
-
+import '../../../../core/constants/category_icons.dart';
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
 
@@ -315,7 +315,33 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             transactionsAsync.when(
               data: (transactions) => Column(
                 children: transactions.map((tx) {
-                  final isIncome = tx['type'] == 'income';
+                  final type = tx['type'] as String;
+                  final categoryName = tx['category_name'] as String? ?? 'Other';
+                  IconData iconData;
+                  Color iconColor;
+                  
+                  switch (type) {
+                    case 'transfer':
+                      iconData = Icons.swap_horiz_rounded;
+                      iconColor = Colors.blue;
+                      break;
+                    case 'debt':
+                      iconData = Icons.handshake_rounded;
+                      iconColor = Colors.orange;
+                      break;
+                    case 'installment':
+                      iconData = Icons.credit_card_rounded;
+                      iconColor = Colors.purple;
+                      break;
+                    case 'income':
+                      iconData = CategoryIcons.getIcon(categoryName);
+                      iconColor = Colors.green;
+                      break;
+                    default:
+                      iconData = CategoryIcons.getIcon(categoryName);
+                      iconColor = CategoryIcons.getColor(categoryName);
+                  }
+
                   return FadeInUp(
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -329,12 +355,12 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: (isIncome ? Colors.green : Colors.red).withOpacity(0.12),
+                              color: iconColor.withOpacity(0.12),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isIncome ? Icons.add_rounded : Icons.remove_rounded,
-                              color: isIncome ? Colors.green : Colors.red,
+                              iconData,
+                              color: iconColor,
                               size: 20,
                             ),
                           ),
@@ -761,20 +787,17 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
           ),
         ),
         Positioned(
-          top: 8,
-          right: 8,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _toggle,
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(
-                  Icons.swap_horiz_rounded,
-                  color: widget.gradient != null ? Colors.white : widget.accentColor,
-                  size: 18,
-                ),
+          top: 0,
+          right: 0,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggle,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Icon(
+                Icons.swap_horiz_rounded,
+                color: widget.gradient != null ? Colors.white : widget.accentColor,
+                size: 20,
               ),
             ),
           ),
