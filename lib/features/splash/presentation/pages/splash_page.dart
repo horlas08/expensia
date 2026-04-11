@@ -69,6 +69,8 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
         width: double.infinity,

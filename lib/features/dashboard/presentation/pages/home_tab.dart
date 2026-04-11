@@ -385,7 +385,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
-                              color: isIncome ? Colors.green : Colors.redAccent,
+                              color: tx['direction'] == 'plus' ? Colors.green : Colors.redAccent,
                             ),
                           ),
                         ],
