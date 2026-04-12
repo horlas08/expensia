@@ -34,7 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
           duration: const Duration(milliseconds: 300),
           child: _pages[_currentIndex],
         ),
-        floatingActionButton: _currentIndex < 3
+        floatingActionButton: _currentIndex == 0
             ?
 
         FloatingActionButton(

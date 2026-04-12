@@ -218,37 +218,37 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             metricsAsync.when(
               data: (metrics) => Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FadeInLeft(
-                          delay: const Duration(milliseconds: 100),
-                          child: _GlowingMetricCard(
-                            label: 'dashboard.income'.tr(),
-                            amount: '$currencySymbol${metrics['monthly_income']}',
-                            gradient: const [Color(0xFF1A1A2E), Color(0xFF23233E)],
-                            icon: Icons.south_west_rounded,
-                            trend: '+12%',
-                            trendUp: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FadeInRight(
-                          delay: const Duration(milliseconds: 100),
-                          child: _GlowingMetricCard(
-                            label: 'dashboard.expenses'.tr(),
-                            amount: '$currencySymbol${metrics['monthly_expense']}',
-                            gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
-                            icon: Icons.north_east_rounded,
-                            trend: '-5%',
-                            trendUp: false,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   children: [
+                  //     Expanded(
+                  //       child: FadeInLeft(
+                  //         delay: const Duration(milliseconds: 100),
+                  //         child: _GlowingMetricCard(
+                  //           label: 'dashboard.income'.tr(),
+                  //           amount: '$currencySymbol${metrics['monthly_income']}',
+                  //           gradient: const [Color(0xFF1A1A2E), Color(0xFF23233E)],
+                  //           icon: Icons.south_west_rounded,
+                  //           trend: '+12%',
+                  //           trendUp: true,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     const SizedBox(width: 12),
+                  //     Expanded(
+                  //       child: FadeInRight(
+                  //         delay: const Duration(milliseconds: 100),
+                  //         child: _GlowingMetricCard(
+                  //           label: 'dashboard.expenses'.tr(),
+                  //           amount: '$currencySymbol${metrics['monthly_expense']}',
+                  //           gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
+                  //           icon: Icons.north_east_rounded,
+                  //           trend: '-5%',
+                  //           trendUp: false,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
