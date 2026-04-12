@@ -21,12 +21,7 @@ class TransactionsPage extends ConsumerWidget {
       appBar: AppBar(
         title: Text('history.title'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () => ref.invalidate(allTransactionsProvider),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+        actions: [],
       ),
       body: transactionsAsync.when(
         data: (transactions) {
