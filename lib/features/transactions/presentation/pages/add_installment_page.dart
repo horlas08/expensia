@@ -145,6 +145,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       if (!mounted) return;
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
+      ref.invalidate(allTransactionsProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

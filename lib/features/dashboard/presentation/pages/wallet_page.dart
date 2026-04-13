@@ -46,9 +46,18 @@ class _WalletPageState extends ConsumerState<WalletPage> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
+          TextButton(
             onPressed: () => _showAddWalletSheet(context),
+            child: Row(
+              children: const [
+                Text(
+                  'Add Wallet',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(width: 4),
+                Icon(Icons.add, size: 20),
+              ],
+            ),
           ),
         ],
       ),
@@ -359,10 +368,16 @@ class _EmptyWallets extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          FilledButton.icon(
+          FilledButton(
             onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Wallet'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text('Add Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(width: 8),
+                Icon(Icons.add, size: 18),
+              ],
+            ),
           ),
         ],
       ),

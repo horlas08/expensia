@@ -136,4 +136,13 @@ class SharedPreferencesService {
   bool isDarkMode() {
     return getBoolean(_isDarkMode) ?? false;
   }
+
+  Future<void> clearAppSetup() async {
+    await remove(_isOpenFirstPage);
+    await remove(_userSetup);
+    await remove(_userName);
+    await remove(_defaultCurrency);
+    await remove(_defaultCurrencyId);
+    await remove(_defaultCurrencyCode);
+  }
 }

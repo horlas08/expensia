@@ -10,9 +10,20 @@ class DatabaseService {
   Database? _db;
 
   Future<Database> get database async {
-    if (_db != null) return _db!;
+    if (_db != null && _db!.isOpen) return _db!;
     _db = await _initDatabase();
     return _db!;
+  }
+
+  Future<void> closeConnection() async {
+    if (_db != null && _db!.isOpen) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
+  void resetInstance() {
+    _db = null;
   }
 
   Future<Database> _initDatabase() async {
@@ -21,9 +32,28 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Check if 'type' column exists in installments
+      final result = await db.rawQuery('PRAGMA table_info(installments)');
+      final hasTypeColumn = result.any((column) => column['name'] == 'type');
+      
+      if (!hasTypeColumn) {
+        await db.execute('ALTER TABLE installments ADD COLUMN type TEXT');
+      }
+    }
+    if (oldVersion < 3) {
+      // Ensure recently added tables exist for users upgrading from older versions
+      await db.execute(_sqlTransfers);
+      await db.execute(_sqlInstallmentDetails);
+      await db.execute(_sqlScheduledNotifications);
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -108,6 +138,23 @@ class DatabaseService {
       where: 'wallet_id = ?',
       whereArgs: [fromId],
     );
+  }
+
+  Future<void> deleteAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('recurring_transactions');
+      await txn.delete('wallets');
+      await txn.delete('transactions');
+      await txn.delete('persons');
+      await txn.delete('debts');
+      await txn.delete('installments');
+      await txn.delete('installment_details');
+      await txn.delete('transfers');
+      await txn.delete('reminders');
+      await txn.delete('settings');
+      await txn.delete('scheduled_notifications');
+    });
   }
 
   Future<void> initializeSetup({
@@ -215,6 +262,12 @@ class DatabaseService {
     });
   }
 
+  Future<Map<String, dynamic>?> getSettings() async {
+    final db = await database;
+    final results = await db.query('settings', limit: 1);
+    return results.isNotEmpty ? results.first : null;
+  }
+
   // --- DATA RETRIEVAL METHODS ---
 
   Future<List<Map<String, dynamic>>> getWallets() async {
@@ -249,15 +302,19 @@ class DatabaseService {
     ''');
 
     final installmentResult = await db.rawQuery('''
-      SELECT SUM(deposit) as total FROM installments
+      SELECT 
+        COALESCE(SUM(CASE WHEN type = 'on_you' OR type IS NULL THEN deposit ELSE 0 END), 0) as on_you,
+        COALESCE(SUM(CASE WHEN type = 'for_you' THEN deposit ELSE 0 END), 0) as for_you
+      FROM installments
     ''');
 
     return {
-      'monthly_income': incomeResult.first['total'] ?? 0.0,
-      'monthly_expense': expenseResult.first['total'] ?? 0.0,
-      'debt_on_you': debtResult.first['on_you'] ?? 0.0,
-      'debt_for_you': debtResult.first['for_you'] ?? 0.0,
-      'installment_total': installmentResult.first['total'] ?? 0.0,
+      'monthly_income': (incomeResult.first['total'] as num?)?.toDouble() ?? 0.0,
+      'monthly_expense': (expenseResult.first['total'] as num?)?.toDouble() ?? 0.0,
+      'debt_on_you': (debtResult.first['on_you'] as num?)?.toDouble() ?? 0.0,
+      'debt_for_you': (debtResult.first['for_you'] as num?)?.toDouble() ?? 0.0,
+      'installment_on_you': (installmentResult.first['on_you'] as num?)?.toDouble() ?? 0.0,
+      'installment_for_you': (installmentResult.first['for_you'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
@@ -265,22 +322,22 @@ class DatabaseService {
     final db = await database;
     // Union across multiple tables to get a unified view of all activities
     final sql = '''
-      SELECT t.id, 'transaction' as type, t.amount, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name
+      SELECT t.id, 'transaction' as type, t.amount, t.direction, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name, NULL as person_phone
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       UNION ALL
-      SELECT tr.id, 'transfer' as type, tr.amount, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name
+      SELECT tr.id, 'transfer' as type, tr.amount, 'neutral' as direction, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name, NULL as person_phone
       FROM transfers tr
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
       UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, (CASE WHEN d.income > 0 THEN 'plus' ELSE 'min' END) as direction, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone
       FROM debts d
       LEFT JOIN wallets w ON d.wallet_id = w.id
       LEFT JOIN persons p ON d.person_id = p.id
       UNION ALL
-      SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      SELECT i.id, 'installment' as type, i.deposit as amount, 'min' as direction, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone
       FROM installments i
       LEFT JOIN wallets w ON i.wallet_id = w.id
       LEFT JOIN persons p ON i.person_id = p.id
@@ -293,22 +350,22 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getAllTransactions() async {
     final db = await database;
     final sql = '''
-      SELECT t.id, 'transaction' as type, t.amount, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name
+      SELECT t.id, 'transaction' as type, t.amount, t.direction, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name, NULL as person_phone, t.category_id, t.wallet_id, NULL as person_id
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       UNION ALL
-      SELECT tr.id, 'transfer' as type, tr.amount, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name
+      SELECT tr.id, 'transfer' as type, tr.amount, 'neutral' as direction, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name, NULL as person_phone, NULL as category_id, tr.from_wallet_id as wallet_id, NULL as person_id
       FROM transfers tr
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
       UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, (CASE WHEN d.income > 0 THEN 'plus' ELSE 'min' END) as direction, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone, NULL as category_id, d.wallet_id, d.person_id
       FROM debts d
       LEFT JOIN wallets w ON d.wallet_id = w.id
       LEFT JOIN persons p ON d.person_id = p.id
       UNION ALL
-      SELECT i.id, 'installment' as type, i.deposit as amount, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name
+      SELECT i.id, 'installment' as type, i.deposit as amount, 'min' as direction, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone, NULL as category_id, i.wallet_id, i.person_id
       FROM installments i
       LEFT JOIN wallets w ON i.wallet_id = w.id
       LEFT JOIN persons p ON i.person_id = p.id
@@ -317,10 +374,36 @@ class DatabaseService {
     return await db.rawQuery(sql);
   }
 
-  Future<List<Map<String, dynamic>>> getInstallmentDetails(int installmentId) async {
-    final db = await database;
-    return await db.query('installment_details', where: 'installment_id = ?', whereArgs: [installmentId], orderBy: 'due_date ASC');
+  /// Returns filtered transactions based on a filter object.
+  Future<List<Map<String, dynamic>>> getFilteredTransactions({
+    String? type,
+    String? direction,
+    int? categoryId,
+    int? walletId,
+    int? personId,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    // Fetch all first, then filter in memory (avoids complex UNION ALL WHERE clauses)
+    final all = await getAllTransactions();
+    return all.where((tx) {
+      if (type != null && tx['type'] != type) return false;
+      if (direction != null && tx['direction'] != direction) return false;
+      if (categoryId != null && tx['category_id'] != categoryId) return false;
+      if (walletId != null && tx['wallet_id'] != walletId) return false;
+      if (personId != null && tx['person_id'] != personId) return false;
+      if (fromDate != null) {
+        final txDate = DateTime.tryParse(tx['date'] as String? ?? '');
+        if (txDate == null || txDate.isBefore(fromDate)) return false;
+      }
+      if (toDate != null) {
+        final txDate = DateTime.tryParse(tx['date'] as String? ?? '');
+        if (txDate == null || txDate.isAfter(toDate.add(const Duration(days: 1)))) return false;
+      }
+      return true;
+    }).toList();
   }
+
 
   Future<int> insertInstallmentDetail(Map<String, dynamic> detail) async {
     final db = await database;
@@ -376,6 +459,169 @@ class DatabaseService {
       'image_name': iconKey, // store icon key here
       if (parentId != null) 'parent_id': parentId,
     });
+  }
+
+  Future<void> updateCategory(int id, String nameEn, String nameAr, String type, String iconKey) async {
+    final db = await database;
+    await db.update('categories', {
+      'name_en': nameEn,
+      'name_ar': nameAr,
+      'type': type,
+      'image_name': iconKey,
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteAnyTransaction(int id, String type) async {
+    final db = await database;
+    String table;
+    switch (type) {
+      case 'transfer': table = 'transfers'; break;
+      case 'debt': table = 'debts'; break;
+      case 'installment': table = 'installments'; break;
+      default: table = 'transactions';
+    }
+    await db.delete(table, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<Map<String, dynamic>>> getDebtTransactions(int debtId) async {
+    final db = await database;
+    return await db.rawQuery(
+      'SELECT * FROM transactions WHERE debt_id = ? ORDER BY date DESC', [debtId]
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getInstallmentDetails(int installmentId) async {
+    final db = await database;
+    return await db.rawQuery(
+      'SELECT * FROM installment_details WHERE installment_id = ? ORDER BY due_date ASC', [installmentId]
+    );
+  }
+
+  // --- PERSON METHODS ---
+
+  Future<List<Map<String, dynamic>>> getPersons() async {
+    final db = await database;
+    return await db.query('persons', orderBy: 'name ASC');
+  }
+
+  Future<int> addPerson(String name, String? phone) async {
+    final db = await database;
+    return await db.insert('persons', {
+      'name': name,
+      'phone': phone,
+    });
+  }
+
+  Future<int> updatePerson(int id, String name, String? phone) async {
+    final db = await database;
+    return await db.update(
+      'persons',
+      {'name': name, 'phone': phone},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> deletePerson(int id) async {
+    final db = await database;
+    return await db.delete('persons', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<bool> hasPersonDependencies(int id) async {
+    final db = await database;
+    final debts = await db.query('debts', where: 'person_id = ?', whereArgs: [id]);
+    final installments = await db.query('installments', where: 'person_id = ?', whereArgs: [id]);
+    return debts.isNotEmpty || installments.isNotEmpty;
+  }
+
+  Future<void> importDeviceContacts(List<Map<String, String>> contacts) async {
+    final db = await database;
+    final batch = db.batch();
+    for (final contact in contacts) {
+      batch.insert('persons', {
+        'name': contact['name'],
+        'phone': contact['phone'],
+      });
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> toggleInstallmentDetailPaid(int detailId, int walletId) async {
+    final db = await database;
+    final detail = await db.query('installment_details', where: 'id = ?', whereArgs: [detailId]);
+    if (detail.isEmpty) return;
+    final isPaid = detail.first['is_paid'] == 1;
+    if (isPaid) {
+      // Unpay: reverse the wallet balance
+      final amount = (detail.first['amount'] as num).toDouble();
+      await db.update('installment_details', {
+        'is_paid': 0,
+        'paid_at': null,
+      }, where: 'id = ?', whereArgs: [detailId]);
+      // Reverse: add back to any wallet (walletId=0 means skip)
+      if (walletId > 0) {
+        await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+      }
+    } else {
+      // Pay: deduct from wallet
+      final amount = (detail.first['amount'] as num).toDouble();
+      await db.update('installment_details', {
+        'is_paid': 1,
+        'paid_at': DateTime.now().toIso8601String(),
+      }, where: 'id = ?', whereArgs: [detailId]);
+      if (walletId > 0) {
+        await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+      }
+    }
+  }
+
+  Future<void> addDebtPayment({
+    required int debtId,
+    required double amount,
+    required String direction,
+    required int walletId,
+    String? notes,
+  }) async {
+    final db = await database;
+    // Get debt info to find person_id and category_id
+    final debt = await db.query('debts', where: 'id = ?', whereArgs: [debtId]);
+    if (debt.isEmpty) return;
+    
+    final personId = debt.first['person_id'] as int;
+    final categoryId = debt.first['category_id'] as int;
+    
+    // Get default currency
+    final settings = await db.query('settings', limit: 1);
+    final currencyId = settings.isNotEmpty ? (settings.first['default_currency_id'] as int?) ?? 1 : 1;
+    
+    // Insert transaction linked to debt
+    await db.insert('transactions', {
+      'wallet_id': walletId,
+      'category_id': categoryId,
+      'person_id': personId,
+      'currency_id': currencyId,
+      'type': 'debt',
+      'direction': direction,
+      'amount': amount,
+      'date': DateTime.now().toIso8601String(),
+      'is_paid': 1,
+      'debt_id': debtId,
+      'notes': notes,
+    });
+
+    // Update wallet balance
+    if (direction == 'min') {
+      await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+    } else {
+      await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+    }
+
+    // Update debt totals
+    if (direction == 'plus') {
+      await db.rawUpdate('UPDATE debts SET income = income + ? WHERE id = ?', [amount, debtId]);
+    } else {
+      await db.rawUpdate('UPDATE debts SET expense = expense + ? WHERE id = ?', [amount, debtId]);
+    }
   }
 
   Future<int> deleteCategory(int id) async {

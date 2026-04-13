@@ -10,8 +10,16 @@ final subscriptionServiceProvider = Provider<SubscriptionService>((ref) => Subsc
 final isProProvider = StateProvider<bool>((ref) => false);
 
 class SubscriptionService {
+  /// TODO: Replace with your actual RevenueCat API Keys from the dashboard
+  /// Android: https://app.revenuecat.com/projects/YOUR_PROJECT/apps/android/settings
   static const _apiKeyAndroid = 'goog_placeholder_android_key';
+  
+  /// iOS: https://app.revenuecat.com/projects/YOUR_PROJECT/apps/ios/settings
   static const _apiKeyIos = 'appl_placeholder_ios_key';
+
+  /// The ID of the entitlement that grants Pro access.
+  /// Usually set up in RevenueCat Dashboard -> Entitlements.
+  static const _proEntitlementId = 'premium';
 
   Future<void> init() async {
     try {
@@ -39,8 +47,7 @@ class SubscriptionService {
   Future<bool> checkEntitlements() async {
     try {
       CustomerInfo customerInfo = await Purchases.getCustomerInfo();
-      // 'premium' is a common entitlement ID, should match RevenueCat dashboard
-      bool isPro = customerInfo.entitlements.all['premium']?.isActive ?? false;
+      bool isPro = customerInfo.entitlements.all[_proEntitlementId]?.isActive ?? false;
       return isPro;
     } catch (e) {
       return false;
@@ -55,7 +62,7 @@ class SubscriptionService {
           offerings.current!.availablePackages.first,
         );
         CustomerInfo customerInfo = result.customerInfo;
-        return customerInfo.entitlements.all['premium']?.isActive ?? false;
+        return customerInfo.entitlements.all[_proEntitlementId]?.isActive ?? false;
       }
     } catch (e) {
       debugPrint('Purchase failed: $e');
@@ -66,7 +73,7 @@ class SubscriptionService {
   Future<bool> restorePurchases() async {
     try {
       CustomerInfo customerInfo = await Purchases.restorePurchases();
-      return customerInfo.entitlements.all['premium']?.isActive ?? false;
+      return customerInfo.entitlements.all[_proEntitlementId]?.isActive ?? false;
     } catch (e) {
       debugPrint('Restore failed: $e');
       return false;

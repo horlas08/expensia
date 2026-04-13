@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/services/backup_restore_service.dart';
 
 class BackupRestoreSheet extends StatelessWidget {
@@ -75,11 +76,15 @@ class BackupRestoreSheet extends StatelessWidget {
                 subtitle: 'Sync securely with your Google cloud storage',
                 color: const Color(0xFF4285F4),
                 onTap: () async {
-                  Navigator.pop(context);
-                  if (isBackup) {
-                    await BackupRestoreService.backupToGoogleDrive(context);
-                  } else {
-                    await BackupRestoreService.restoreFromGoogleDrive(context);
+                  final restored = isBackup 
+                    ? await BackupRestoreService.backupToGoogleDrive(context) 
+                    : await BackupRestoreService.restoreFromGoogleDrive(context);
+                  
+                  if (!isBackup && restored && context.mounted) {
+                    Navigator.pop(context);
+                    context.go('/splash');
+                  } else if (context.mounted) {
+                    Navigator.pop(context);
                   }
                 },
               ),
@@ -89,12 +94,16 @@ class BackupRestoreSheet extends StatelessWidget {
                 title: '$actionName Local File',
                 subtitle: 'Use the device local file system',
                 color: const Color(0xFF00C48C),
-                onTap: () {
-                  Navigator.pop(context);
-                  if (isBackup) {
-                    BackupRestoreService.backupDatabase(context);
-                  } else {
-                    BackupRestoreService.restoreDatabase(context);
+                onTap: () async {
+                  final restored = isBackup 
+                    ? await BackupRestoreService.backupDatabase(context) 
+                    : await BackupRestoreService.restoreDatabase(context);
+                  
+                  if (!isBackup && restored && context.mounted) {
+                    Navigator.pop(context);
+                    context.go('/splash');
+                  } else if (context.mounted) {
+                    Navigator.pop(context);
                   }
                 },
               ),

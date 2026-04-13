@@ -12,6 +12,10 @@ import '../../../transactions/presentation/widgets/transaction_type_sheet.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../../../core/constants/category_icons.dart';
+import '../../../../features/transactions/presentation/pages/transactions_page.dart';
+import '../../../../features/profile/presentation/pages/notification_settings_page.dart';
+import '../../../../core/utils/transaction_grouper.dart';
+
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
 
@@ -81,7 +85,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     Icons.notifications_none_rounded,
                     color: cs.onSurface,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationSettingsPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
               Positioned(
@@ -142,7 +153,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _balanceVisible = !_balanceVisible),
+                          onTap:
+                              () => setState(
+                                () => _balanceVisible = !_balanceVisible,
+                              ),
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
@@ -152,7 +166,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 250),
                               child: Icon(
-                                _balanceVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                _balanceVisible
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
                                 key: ValueKey(_balanceVisible),
                                 color: Colors.white,
                                 size: 18,
@@ -166,7 +182,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: Text(
-                        _balanceVisible ? '$currencySymbol${totalBalance.toStringAsFixed(2)}' : '••••••',
+                        _balanceVisible
+                            ? '$currencySymbol${totalBalance.toStringAsFixed(2)}'
+                            : '••••••',
                         key: ValueKey(_balanceVisible),
                         style: const TextStyle(
                           color: Colors.white,
@@ -178,34 +196,38 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     ),
                     const SizedBox(height: 20),
                     metricsAsync.when(
-                      data: (metrics) => Row(
-                        children: [
-                          Expanded(
-                            child: _MiniBalanceStat(
-                              label: 'dashboard.income'.tr(),
-                              value: '$currencySymbol${metrics['monthly_income']}',
-                              icon: Icons.arrow_downward_rounded,
-                              color: const Color(0xFF69F0AE),
-                              visible: _balanceVisible,
-                            ),
+                      data:
+                          (metrics) => Row(
+                            children: [
+                              Expanded(
+                                child: _MiniBalanceStat(
+                                  label: 'dashboard.income'.tr(),
+                                  value:
+                                      '$currencySymbol${metrics['monthly_income']}',
+                                  icon: Icons.arrow_downward_rounded,
+                                  color: const Color(0xFF69F0AE),
+                                  visible: _balanceVisible,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 36,
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                              Expanded(
+                                child: _MiniBalanceStat(
+                                  label: 'dashboard.expenses'.tr(),
+                                  value:
+                                      '$currencySymbol${metrics['monthly_expense']}',
+                                  icon: Icons.arrow_upward_rounded,
+                                  color: const Color(0xFFFF6E6E),
+                                  visible: _balanceVisible,
+                                ),
+                              ),
+                            ],
                           ),
-                          Container(
-                            width: 1,
-                            height: 36,
-                            color: Colors.white.withOpacity(0.2),
-                          ),
-                          Expanded(
-                            child: _MiniBalanceStat(
-                              label: 'dashboard.expenses'.tr(),
-                              value: '$currencySymbol${metrics['monthly_expense']}',
-                              icon: Icons.arrow_upward_rounded,
-                              color: const Color(0xFFFF6E6E),
-                              visible: _balanceVisible,
-                            ),
-                          ),
-                        ],
-                      ),
-                      loading: () => const Center(child: LinearProgressIndicator()),
+                      loading:
+                          () => const Center(child: LinearProgressIndicator()),
                       error: (e, _) => Text('Error: $e'),
                     ),
                   ],
@@ -216,75 +238,94 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
             // ── 4 UNIQUE ANIMATED SUMMARY CARDS ───────────────────────────
             metricsAsync.when(
-              data: (metrics) => Column(
-                children: [
-                  // Row(
-                  //   children: [
-                  //     Expanded(
-                  //       child: FadeInLeft(
-                  //         delay: const Duration(milliseconds: 100),
-                  //         child: _GlowingMetricCard(
-                  //           label: 'dashboard.income'.tr(),
-                  //           amount: '$currencySymbol${metrics['monthly_income']}',
-                  //           gradient: const [Color(0xFF1A1A2E), Color(0xFF23233E)],
-                  //           icon: Icons.south_west_rounded,
-                  //           trend: '+12%',
-                  //           trendUp: true,
-                  //         ),
-                  //       ),
-                  //     ),
-                  //     const SizedBox(width: 12),
-                  //     Expanded(
-                  //       child: FadeInRight(
-                  //         delay: const Duration(milliseconds: 100),
-                  //         child: _GlowingMetricCard(
-                  //           label: 'dashboard.expenses'.tr(),
-                  //           amount: '$currencySymbol${metrics['monthly_expense']}',
-                  //           gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
-                  //           icon: Icons.north_east_rounded,
-                  //           trend: '-5%',
-                  //           trendUp: false,
-                  //         ),
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
-                  const SizedBox(height: 12),
-                  Row(
+              data:
+                  (metrics) => Column(
                     children: [
-                      Expanded(
-                        child: FadeInLeft(
-                          delay: const Duration(milliseconds: 200),
-                          child: _FlipMetricCard(
-                            label: 'dashboard.installment'.tr(),
-                            amount: '$currencySymbol${metrics['installment_total']}',
-                            onYouAmount: '$currencySymbol${metrics['installment_total']}',
-                            forYouAmount: '${currencySymbol}0',
-                            accentColor: const Color(0xFFAA00FF),
-                            gradient: const [Color(0xFF8E24AA), Color(0xFFAB47BC)],
-                            onDetails: () => _showInstallmentsSheet(context, currencySymbol),
+                      // Row(
+                      //   children: [
+                      //     Expanded(
+                      //       child: FadeInLeft(
+                      //         delay: const Duration(milliseconds: 100),
+                      //         child: _GlowingMetricCard(
+                      //           label: 'dashboard.income'.tr(),
+                      //           amount: '$currencySymbol${metrics['monthly_income']}',
+                      //           gradient: const [Color(0xFF1A1A2E), Color(0xFF23233E)],
+                      //           icon: Icons.south_west_rounded,
+                      //           trend: '+12%',
+                      //           trendUp: true,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 12),
+                      //     Expanded(
+                      //       child: FadeInRight(
+                      //         delay: const Duration(milliseconds: 100),
+                      //         child: _GlowingMetricCard(
+                      //           label: 'dashboard.expenses'.tr(),
+                      //           amount: '$currencySymbol${metrics['monthly_expense']}',
+                      //           gradient: const [Color(0xFFFF1744), Color(0xFFFF6D00)],
+                      //           icon: Icons.north_east_rounded,
+                      //           trend: '-5%',
+                      //           trendUp: false,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
+                      // const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FadeInLeft(
+                              delay: const Duration(milliseconds: 200),
+                              child: _FlipMetricCard(
+                                label: 'dashboard.installment'.tr(),
+                                amount:
+                                    '${(metrics['installment_on_you'] ?? 0.0) + (metrics['installment_for_you'] ?? 0.0)}',
+                                onYouAmount:
+                                    '${metrics['installment_on_you'] ?? 0.0}',
+                                forYouAmount:
+                                    '${metrics['installment_for_you'] ?? 0.0}',
+                                accentColor: const Color(0xFFAA00FF),
+                                gradient: const [
+                                  Color(0xFF8E24AA),
+                                  Color(0xFFAB47BC),
+                                ],
+                                onDetails:
+                                    () => _showInstallmentsSheet(
+                                      context,
+                                      currencySymbol,
+                                    ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FadeInRight(
-                          delay: const Duration(milliseconds: 200),
-                          child: _FlipMetricCard(
-                            label: 'dashboard.debt'.tr(),
-                            amount: '$currencySymbol${metrics['debt_on_you'] + metrics['debt_for_you']}',
-                            onYouAmount: '$currencySymbol${metrics['debt_on_you']}',
-                            forYouAmount: '$currencySymbol${metrics['debt_for_you']}',
-                            accentColor: const Color(0xFF0091EA),
-                            gradient: const [Color(0xFF01579B), Color(0xFF0288D1)],
-                            onDetails: () => _showDebtsSheet(context, currencySymbol),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FadeInRight(
+                              delay: const Duration(milliseconds: 200),
+                              child: _FlipMetricCard(
+                                label: 'dashboard.debt'.tr(),
+                                amount:
+                                    '${metrics['debt_on_you'] + metrics['debt_for_you']}', //$currencySymbol
+                                onYouAmount: '${metrics['debt_on_you']}',
+                                forYouAmount: '${metrics['debt_for_you']}',
+                                accentColor: const Color(0xFF0091EA),
+                                gradient: const [
+                                  Color(0xFF01579B),
+                                  Color(0xFF0288D1),
+                                ],
+                                onDetails:
+                                    () => _showDebtsSheet(
+                                      context,
+                                      currencySymbol,
+                                    ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
               loading: () => const SizedBox(height: 200),
               error: (e, _) => const SizedBox(),
             ),
@@ -299,10 +340,19 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 children: [
                   Text(
                     'dashboard.recent_transactions'.tr(),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed:
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TransactionsPage(),
+                          ),
+                        ),
                     child: Text(
                       '${'dashboard.view_all'.tr()} ›',
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -313,87 +363,114 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             ),
             const SizedBox(height: 8),
             transactionsAsync.when(
-              data: (transactions) => Column(
-                children: transactions.map((tx) {
-                  final type = tx['type'] as String;
-                  final categoryName = tx['category_name'] as String? ?? 'Other';
-                  IconData iconData;
-                  Color iconColor;
-                  
-                  switch (type) {
-                    case 'transfer':
-                      iconData = Icons.swap_horiz_rounded;
-                      iconColor = Colors.blue;
-                      break;
-                    case 'debt':
-                      iconData = Icons.handshake_rounded;
-                      iconColor = Colors.orange;
-                      break;
-                    case 'installment':
-                      iconData = Icons.credit_card_rounded;
-                      iconColor = Colors.purple;
-                      break;
-                    case 'income':
-                      iconData = CategoryIcons.getIcon(categoryName);
-                      iconColor = Colors.green;
-                      break;
-                    default:
-                      iconData = CategoryIcons.getIcon(categoryName);
-                      iconColor = CategoryIcons.getColor(categoryName);
-                  }
-
-                  return FadeInUp(
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: iconColor.withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              iconData,
-                              color: iconColor,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tx['category_name'] ?? 'General',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              data: (transactions) {
+                if (transactions.isEmpty) return const SizedBox();
+                final grouped = groupTransactionsByDate(transactions, context);
+                return Column(
+                  children:
+                      grouped.entries.map((entry) {
+                        double income = 0;
+                        double expense = 0;
+                        for (var tx in entry.value) {
+                          if (tx['direction'] == 'plus') {
+                            income += (tx['amount'] as num?)?.toDouble() ?? 0.0;
+                          } else if (tx['direction'] == 'min') {
+                            expense +=
+                                (tx['amount'] as num?)?.toDouble() ?? 0.0;
+                          }
+                        }
+                        return FadeInUp(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 8.0,
+                                  bottom: 16.0,
                                 ),
-                                Text(
-                                  DateFormat.yMMMd().format(DateTime.parse(tx['date'])),
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: cs.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          color: cs.primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Divider(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    if (income > 0) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.arrow_downward_rounded,
+                                        color: Colors.green,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        income
+                                            .toStringAsFixed(1)
+                                            .replaceAll(RegExp(r'\.0$'), ''),
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                    if (expense > 0) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.arrow_upward_rounded,
+                                        color: Colors.red,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        expense
+                                            .toStringAsFixed(1)
+                                            .replaceAll(RegExp(r'\.0$'), ''),
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              ...entry.value.map((tx) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: TransactionListItem(tx: tx),
+                                );
+                              }),
+                            ],
                           ),
-                          Text(
-                            '${tx['direction'] == 'plus' ? '+' : '-'}$currencySymbol${tx['amount']}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: tx['direction'] == 'plus' ? Colors.green : Colors.redAccent,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                        );
+                      }).toList(),
+                );
+              },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text('Error: $e'),
             ),
@@ -408,43 +485,52 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text('Active Debts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Expanded(
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: _fetchList('debts'),
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                  if (snap.hasError) return Text('Err: ${snap.error}');
-                  final data = snap.data ?? [];
-                  if (data.isEmpty) return const Center(child: Text('No active debts.'));
-                  return ListView.builder(
-                    itemCount: data.length,
-                    itemBuilder: (context, i) {
-                      final item = data[i];
-                      final isForYou = item['income'] > 0;
-                      return ListTile(
-                        leading: CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(item['person_name'] ?? 'Unknown'),
-                        subtitle: Text(isForYou ? 'For you' : 'On you'),
-                        trailing: Text(
-                          '$sym${isForYou ? item['income'] : item['expense']}',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: isForYou ? Colors.green : Colors.red),
-                        ),
+      builder:
+          (_) => Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Text(
+                  'Active Debts',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _fetchList('debts'),
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting)
+                        return const Center(child: CircularProgressIndicator());
+                      if (snap.hasError) return Text('Err: ${snap.error}');
+                      final data = snap.data ?? [];
+                      if (data.isEmpty)
+                        return const Center(child: Text('No active debts.'));
+                      return ListView.builder(
+                        itemCount: data.length,
+                        itemBuilder: (context, i) {
+                          final item = data[i];
+                          final isForYou = item['income'] > 0;
+                          return ListTile(
+                            leading: CircleAvatar(child: Icon(Icons.person)),
+                            title: Text(item['person_name'] ?? 'Unknown'),
+                            subtitle: Text(isForYou ? 'For you' : 'On you'),
+                            trailing: Text(
+                              '$sym${isForYou ? item['income'] : item['expense']}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isForYou ? Colors.green : Colors.red,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -453,48 +539,65 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text('Active Installments', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Expanded(
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: _fetchList('installments'),
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                  if (snap.hasError) return Text('Err: ${snap.error}');
-                  final data = snap.data ?? [];
-                  if (data.isEmpty) return const Center(child: Text('No active installments.'));
-                  return ListView.builder(
-                    itemCount: data.length,
-                    itemBuilder: (context, i) {
-                      final item = data[i];
-                      return ListTile(
-                        leading: CircleAvatar(child: Icon(Icons.business_rounded)),
-                        title: Text(item['person_name'] ?? 'Unknown'),
-                        subtitle: Text('Remaining Months: ${item['remaining_months']}'),
-                        trailing: Text(
-                          '$sym${item['remaining_price']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
-                        ),
+      builder:
+          (_) => Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Text(
+                  'Active Installments',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _fetchList('installments'),
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting)
+                        return const Center(child: CircularProgressIndicator());
+                      if (snap.hasError) return Text('Err: ${snap.error}');
+                      final data = snap.data ?? [];
+                      if (data.isEmpty)
+                        return const Center(
+                          child: Text('No active installments.'),
+                        );
+                      return ListView.builder(
+                        itemCount: data.length,
+                        itemBuilder: (context, i) {
+                          final item = data[i];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              child: Icon(Icons.business_rounded),
+                            ),
+                            title: Text(item['person_name'] ?? 'Unknown'),
+                            subtitle: Text(
+                              'Remaining Months: ${item['remaining_months']}',
+                            ),
+                            trailing: Text(
+                              '$sym${item['remaining_price']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   Future<List<Map<String, dynamic>>> _fetchList(String table) async {
     final db = await DatabaseService().database;
-    return db.rawQuery('SELECT t.*, p.name as person_name FROM $table t LEFT JOIN persons p ON t.person_id = p.id WHERE t.status = "active" ORDER BY t.id DESC');
+    return db.rawQuery(
+      'SELECT t.*, p.name as person_name FROM $table t LEFT JOIN persons p ON t.person_id = p.id WHERE t.status = "active" ORDER BY t.id DESC',
+    );
   }
 }
 
@@ -699,7 +802,8 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
 
   @override
   Widget build(BuildContext context) {
-    final labelText = _showOnYou ? 'dashboard.on_you'.tr() : 'dashboard.for_you'.tr();
+    final labelText =
+        _showOnYou ? 'dashboard.on_you'.tr() : 'dashboard.for_you'.tr();
     final displayAmount = _showOnYou ? widget.onYouAmount : widget.forYouAmount;
 
     return Stack(
@@ -710,25 +814,33 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: widget.gradient != null
-                  ? LinearGradient(
-                      colors: widget.gradient!,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: widget.gradient == null ? widget.accentColor.withOpacity(0.08) : null,
+              gradient:
+                  widget.gradient != null
+                      ? LinearGradient(
+                        colors: widget.gradient!,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                      : null,
+              color:
+                  widget.gradient == null
+                      ? widget.accentColor.withOpacity(0.08)
+                      : null,
               borderRadius: BorderRadius.circular(20),
-              border: widget.gradient == null ? Border.all(color: widget.accentColor.withOpacity(0.2)) : null,
-              boxShadow: widget.gradient != null
-                  ? [
-                      BoxShadow(
-                        color: widget.gradient![0].withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
+              border:
+                  widget.gradient == null
+                      ? Border.all(color: widget.accentColor.withOpacity(0.2))
+                      : null,
+              boxShadow:
+                  widget.gradient != null
+                      ? [
+                        BoxShadow(
+                          color: widget.gradient![0].withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                      : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,45 +853,64 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: widget.gradient != null ? Colors.white : widget.accentColor,
+                        color:
+                            widget.gradient != null
+                                ? Colors.white
+                                : widget.accentColor,
                       ),
                     ),
                     const SizedBox(width: 32),
                   ],
                 ),
                 const SizedBox(height: 10),
-                FadeTransition(
-                  opacity: _fade,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayAmount,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: widget.gradient != null ? Colors.white : widget.accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: widget.gradient != null
-                              ? Colors.white.withOpacity(0.2)
-                              : widget.accentColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          labelText,
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _toggle,
+                  child: FadeTransition(
+                    opacity: _fade,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayAmount,
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: widget.gradient != null ? Colors.white : widget.accentColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color:
+                                widget.gradient != null
+                                    ? Colors.white
+                                    : widget.accentColor,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                widget.gradient != null
+                                    ? Colors.white.withOpacity(0.2)
+                                    : widget.accentColor.withValues(
+                                      alpha: 0.15,
+                                    ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            labelText,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  widget.gradient != null
+                                      ? Colors.white
+                                      : widget.accentColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -787,16 +918,16 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
           ),
         ),
         Positioned(
-          top: 0,
-          right: 0,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggle,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Icon(
+          top: 4,
+          right: 4,
+          child: Material(
+            color: Colors.transparent,
+            child: IconButton(
+              onPressed: _toggle,
+              icon: Icon(
                 Icons.swap_horiz_rounded,
-                color: widget.gradient != null ? Colors.white : widget.accentColor,
+                color:
+                    widget.gradient != null ? Colors.white : widget.accentColor,
                 size: 20,
               ),
             ),

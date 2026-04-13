@@ -15,6 +15,11 @@ import '../widgets/language_sheet.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/app_lock_sheet.dart';
 import 'notification_settings_page.dart';
+import 'persons_page.dart';
+import '../widgets/subscription_sheet.dart';
+import '../../../../core/services/database_service.dart';
+import 'package:go_router/go_router.dart';
+
 
 // Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
@@ -61,6 +66,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final cs = Theme.of(context).colorScheme;
     final currencySymbol = ref.watch(currencySymbolProvider);
     final currencyCode = ref.watch(currencyCodeProvider);
+    final isPro = ref.watch(isProProvider);
 
     // ThemeSwitchingArea is REQUIRED for the ripple animation to cover the page
     return ThemeSwitchingArea(
@@ -108,7 +114,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.person_outline_rounded,
                           label: 'profile.persons'.tr(),
-                          onTap: () {},
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const PersonsPage()),
+                          ),
                         ),
                         _SettingTile(
                           icon: Icons.language_rounded,
@@ -200,20 +208,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           label: 'profile.app_lock'.tr(),
                           onTap: () => showAppLockSheet(context, ref),
                         ),
+                        _SettingTile(
+                          icon: Icons.delete_forever_rounded,
+                          label: 'profile.clear_data'.tr(),
+                          onTap: () => _showClearDataConfirm(context),
+                        ),
                       ]),
                     ),
 
-                    // ── Premium Banner ───────────────────────────────────
-                    _SectionLabel('profile.section_premium'.tr(), delay: 240),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 290),
-                      child: GestureDetector(
-                        onTap: () => _showPremiumSheet(context),
-                        child: _PremiumBanner(),
+                    if (!isPro) ...[
+                      // ── Premium Banner ───────────────────────────────────
+                      _SectionLabel('profile.section_premium'.tr(), delay: 240),
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 290),
+                        child: const _PremiumBanner(),
                       ),
-                    ),
-
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 28),
+                    ],
 
                     // ── About ────────────────────────────────────────────
                     _SectionLabel('profile.section_about'.tr(), delay: 320),
@@ -260,12 +271,45 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     BackupRestoreSheet.showLocal(context, isBackup: false);
   }
 
-  void _showPremiumSheet(BuildContext context) {
-    showModalBottomSheet(
+  void _showClearDataConfirm(BuildContext context) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _PremiumSheet(ref: ref),
+      builder: (context) => AlertDialog(
+        title: Text('profile.clear_data'.tr()),
+        content: Text('profile.clear_data_confirm'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('common.cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              
+              // 1. Wipe Data
+              await DatabaseService().deleteAllData();
+              
+              // 2. Clear SharedPreferences
+              final prefs = await SharedPreferencesService.getInstance();
+              await prefs.clearAppSetup();
+              
+              // 3. Reset DB singleton
+              DatabaseService().resetInstance();
+
+              if (!mounted) return;
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('profile.clear_data_success'.tr())),
+              );
+
+              // 4. Restart app state (go to splash)
+              context.go('/splash');
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('common.delete'.tr()),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -380,7 +424,7 @@ class _PremiumBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () => SubscriptionSheet.show(context),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -594,198 +638,6 @@ class _SettingTile extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Premium Sheet — full RevenueCat purchase flow
-// ---------------------------------------------------------------------------
-class _PremiumSheet extends ConsumerStatefulWidget {
-  const _PremiumSheet({required this.ref});
-  final WidgetRef ref;
-
-  @override
-  ConsumerState<_PremiumSheet> createState() => _PremiumSheetState();
-}
-
-class _PremiumSheetState extends ConsumerState<_PremiumSheet> {
-  bool _loading = false;
-  bool _restoring = false;
-
-  Future<void> _purchase() async {
-    setState(() => _loading = true);
-    final service = ref.read(subscriptionServiceProvider);
-    final isPro = await service.purchasePro();
-    if (!mounted) return;
-    setState(() => _loading = false);
-    ref.read(isProProvider.notifier).state = isPro;
-    if (isPro) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('get_started.restore_purchase_success'.tr()),
-          backgroundColor: const Color(0xFF00C48C),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _restore() async {
-    setState(() => _restoring = true);
-    final service = ref.read(subscriptionServiceProvider);
-    final isPro = await service.restorePurchases();
-    if (!mounted) return;
-    setState(() => _restoring = false);
-    ref.read(isProProvider.notifier).state = isPro;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isPro
-            ? 'get_started.restore_purchase_success'.tr()
-            : 'get_started.restore_purchase_failed'.tr()),
-        backgroundColor: isPro ? const Color(0xFF00C48C) : Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    if (isPro && mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    final features = [
-      (Icons.cloud_upload_rounded, 'Google Drive Backup', 'Auto backup your data to the cloud'),
-      (Icons.bar_chart_rounded, 'Advanced Analytics', 'Deep insights & export to PDF/CSV'),
-      (Icons.block_outlined, 'Ad-Free Experience', 'No ads, ever — full focus on you'),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  'PRO',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'profile.upgrade_premium'.tr(),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'profile.premium_subtitle'.tr(),
-            style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.5)),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 28),
-          // Features
-          ...features.map((f) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(f.$1, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(f.$2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text(f.$3, style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.check_circle_rounded, color: Color(0xFF00C48C), size: 20),
-              ],
-            ),
-          )),
-          const SizedBox(height: 24),
-          // Purchase button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _loading ? null : _purchase,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: const Color(0xFFFFD700),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _loading
-                  ? const SizedBox(height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                  : Text(
-                      'profile.upgrade_premium'.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Restore purchases
-          TextButton(
-            onPressed: _restoring ? null : _restore,
-            child: _restoring
-                ? const SizedBox(height: 16, width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(
-                    'get_started.restore_purchase'.tr(),
-                    style: TextStyle(
-                      color: cs.onSurface.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
-          ),
-        ],
       ),
     );
   }

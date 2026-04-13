@@ -95,7 +95,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddCategorySheet(
+      builder: (_) => _CategoryFormSheet(
         type: currentType,
         onSaved: () {
           // Invalidate providers to refresh all tabs
@@ -137,12 +137,27 @@ class _CategoryTabView extends ConsumerWidget {
           ),
           itemCount: categories.length,
           itemBuilder: (context, i) {
+            final category = categories[i];
             return FadeInUp(
               delay: Duration(milliseconds: 40 * i),
               child: _CategoryCard(
-                category: categories[i],
+                category: category,
+                onEdit: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => _CategoryFormSheet(
+                      type: type,
+                      category: category,
+                      onSaved: () {
+                        ref.invalidate(_categoriesProvider(type));
+                      },
+                    ),
+                  );
+                },
                 onDelete: () async {
-                  final id = categories[i]['id'] as int;
+                  final id = category['id'] as int;
                   await DatabaseService().deleteCategory(id);
                   ref.invalidate(_categoriesProvider(type));
                 },
@@ -159,9 +174,14 @@ class _CategoryTabView extends ConsumerWidget {
 // Single category card
 // ---------------------------------------------------------------------------
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.category, required this.onDelete});
+  const _CategoryCard({
+    required this.category,
+    required this.onDelete,
+    required this.onEdit,
+  });
   final Map<String, dynamic> category;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +194,7 @@ class _CategoryCard extends StatelessWidget {
     final color = CategoryIcons.getColor(nameEn);
 
     return GestureDetector(
+      onTap: onEdit,
       onLongPress: () => _showDeleteDialog(context),
       child: Container(
         decoration: BoxDecoration(
@@ -279,22 +300,39 @@ class _EmptyCategoryState extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Add Category Sheet
+// Category Form Sheet (Add/Edit)
 // ---------------------------------------------------------------------------
-class _AddCategorySheet extends StatefulWidget {
-  const _AddCategorySheet({required this.type, required this.onSaved});
+class _CategoryFormSheet extends StatefulWidget {
+  const _CategoryFormSheet({
+    required this.type,
+    required this.onSaved,
+    this.category,
+  });
   final String type;
   final VoidCallback onSaved;
+  final Map<String, dynamic>? category;
 
   @override
-  State<_AddCategorySheet> createState() => _AddCategorySheetState();
+  State<_CategoryFormSheet> createState() => _CategoryFormSheetState();
 }
 
-class _AddCategorySheetState extends State<_AddCategorySheet> {
+class _CategoryFormSheetState extends State<_CategoryFormSheet> {
   final _nameEnCtrl = TextEditingController();
   final _nameArCtrl = TextEditingController();
   String _selectedIconKey = 'other';
   bool _saving = false;
+
+  bool get _isEdit => widget.category != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEdit) {
+      _nameEnCtrl.text = widget.category!['name_en'] as String? ?? '';
+      _nameArCtrl.text = widget.category!['name_ar'] as String? ?? '';
+      _selectedIconKey = widget.category!['image_name'] as String? ?? 'other';
+    }
+  }
 
   // Available icon slots the user can pick from
   static const _iconOptions = [
@@ -317,12 +355,23 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
     final nameEn = _nameEnCtrl.text.trim();
     if (nameEn.isEmpty) return;
     setState(() => _saving = true);
-    await DatabaseService().addCategory(
-      nameEn: nameEn,
-      nameAr: _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
-      type: widget.type,
-      iconKey: _selectedIconKey,
-    );
+    
+    if (_isEdit) {
+      await DatabaseService().updateCategory(
+        widget.category!['id'] as int,
+        nameEn,
+        _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
+        widget.type,
+        _selectedIconKey,
+      );
+    } else {
+      await DatabaseService().addCategory(
+        nameEn: nameEn,
+        nameAr: _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
+        type: widget.type,
+        iconKey: _selectedIconKey,
+      );
+    }
     if (!mounted) return;
     setState(() => _saving = false);
     widget.onSaved();
@@ -369,7 +418,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'categories.add'.tr(),
+                  _isEdit ? 'categories.edit_title'.tr() : 'categories.add'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,

@@ -19,7 +19,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final List<Widget> _pages = [
     const HomeTab(),
-    const TransactionsPage(),
+    // const TransactionsPage(),
     const WalletPage(),
     const StatisticsPage(),
     const ProfilePage(),
@@ -34,8 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
           duration: const Duration(milliseconds: 300),
           child: _pages[_currentIndex],
         ),
-        floatingActionButton: _currentIndex == 0
-            ?
+        floatingActionButton:
 
         FloatingActionButton(
                 heroTag: 'add_transaction_fab',
@@ -47,41 +46,48 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
               )
-            : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+           ,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
-              label: 'Activity',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet),
-              label: 'Wallet',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart),
-              label: 'Stats',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile',
+        bottomNavigationBar: BottomAppBar(
+          height: 65,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          notchMargin: 8,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildNavDestination(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
+              _buildNavDestination(1, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Wallet'),
+              const SizedBox(width: 40), // Gap for FAB
+              _buildNavDestination(2, Icons.bar_chart_rounded, Icons.bar_chart_outlined, 'Stats'),
+              _buildNavDestination(3, Icons.person_rounded, Icons.person_outline, 'Profile'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavDestination(int index, IconData selectedIcon, IconData icon, String label) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant;
+    
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _currentIndex = index),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(isSelected ? selectedIcon : icon, color: color),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ],
         ),
