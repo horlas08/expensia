@@ -60,7 +60,7 @@ class GetStartedPage extends ConsumerWidget {
                 onTap: () async {
                   final success = await BackupRestoreService.restoreDatabase(context);
                   if (success && context.mounted) {
-                    context.go('/dashboard');
+                    context.go('/splash');
                   }
                 },
               ),
@@ -74,7 +74,7 @@ class GetStartedPage extends ConsumerWidget {
                   ? () async {
                       final success = await BackupRestoreService.restoreFromGoogleDrive(context);
                       if (success && context.mounted) {
-                        context.go('/dashboard');
+                        context.go('/splash');
                       }
                     } 
                   : null,
