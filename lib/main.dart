@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,7 +17,8 @@ void main() async {
   // Load persisted theme before first frame
   final prefs = await SharedPreferencesService.getInstance();
   final savedDark = prefs.isDarkMode();
-
+  SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
   runApp(
     ProviderScope(
       child: EasyLocalization(
@@ -45,7 +47,7 @@ class ExpensiaApp extends ConsumerWidget {
           builder: (context, theme) {
             return MaterialApp.router(
               debugShowCheckedModeBanner: false,
-              title: 'Expensia',
+              title: 'Expensia pro',
               localizationsDelegates: context.localizationDelegates,
               supportedLocales: context.supportedLocales,
               locale: context.locale,
