@@ -274,6 +274,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   void _showClearDataConfirm(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Text('profile.clear_data'.tr()),
         content: Text('profile.clear_data_confirm'.tr()),
@@ -284,26 +285,52 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
+              // 1. Show loading state
+              Navigator.pop(context); // Close confirm dialog
               
-              // 1. Wipe Data
-              await DatabaseService().deleteAllData();
-              
-              // 2. Clear SharedPreferences
-              final prefs = await SharedPreferencesService.getInstance();
-              await prefs.clearAppSetup();
-              
-              // 3. Reset DB singleton
-              DatabaseService().resetInstance();
-
-              if (!mounted) return;
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('profile.clear_data_success'.tr())),
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
 
-              // 4. Restart app state (go to splash)
-              context.go('/splash');
+              try {
+                // 2. Wipe Data
+                await DatabaseService().deleteAllData();
+                
+                // 3. Clear SharedPreferences
+                final prefs = await SharedPreferencesService.getInstance();
+                await prefs.clearAppSetup();
+                
+                // 4. Reset DB singleton
+                DatabaseService().resetInstance();
+
+                if (!mounted) return;
+                
+                // 5. Close loading dialog
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('profile.clear_data_success'.tr())),
+                );
+
+                // 6. Give the snackbar a moment and restart app state
+                await Future.delayed(const Duration(milliseconds: 500));
+                
+                if (mounted) {
+                  // Using go() to completely replace the route stack
+                  context.go('/splash');
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context); // Close loading if error
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('common.error'.tr() + ': $e')),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text('common.delete'.tr()),
