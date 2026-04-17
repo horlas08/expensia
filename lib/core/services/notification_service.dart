@@ -142,6 +142,42 @@ class NotificationService {
     );
   }
 
+  Future<void> scheduleReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String repeatType = 'once',
+  }) async {
+    final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
+    if (tzDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    DateTimeComponents? matchComponents;
+    switch (repeatType) {
+      case 'daily':
+        matchComponents = DateTimeComponents.time;
+        break;
+      case 'weekly':
+        matchComponents = DateTimeComponents.dayOfWeekAndTime;
+        break;
+      case 'monthly':
+        matchComponents = DateTimeComponents.dayOfMonthAndTime;
+        break;
+      default: // once
+        matchComponents = null;
+    }
+
+    await _plugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tzDate,
+      notificationDetails: _notificationDetails(),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: matchComponents,
+    );
+  }
+
   Future<void> cancel(int id) async {
     await _plugin.cancel(id: id);
   }

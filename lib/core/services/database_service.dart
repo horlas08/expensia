@@ -34,7 +34,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -68,6 +68,18 @@ class DatabaseService {
     }
     if (oldVersion < 6) {
       await _forceReseedCategories(db);
+    }
+    if (oldVersion < 7) {
+      // Add body column to reminders table for custom reminder descriptions
+      final reminderCols = await db.rawQuery('PRAGMA table_info(reminders)');
+      final hasBody = reminderCols.any((c) => c['name'] == 'body');
+      if (!hasBody) {
+        await db.execute('ALTER TABLE reminders ADD COLUMN body TEXT');
+      }
+      final hasScheduledDate = reminderCols.any((c) => c['name'] == 'scheduled_date');
+      if (!hasScheduledDate) {
+        await db.execute('ALTER TABLE reminders ADD COLUMN scheduled_date TEXT');
+      }
     }
   }
 
@@ -657,6 +669,43 @@ class DatabaseService {
     return await db.delete('persons', where: 'id = ?', whereArgs: [id]);
   }
 
+  // --- TRANSACTION UPDATE ---
+
+  Future<void> updateTransaction(int id, Map<String, dynamic> updates) async {
+    final db = await database;
+    await db.update('transactions', updates, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- REMINDER METHODS ---
+
+  Future<List<Map<String, dynamic>>> getReminders() async {
+    final db = await database;
+    return await db.query('reminders', orderBy: 'scheduled_date ASC');
+  }
+
+  Future<int> addReminder({
+    required String title,
+    String? body,
+    required String repeatType,
+    required String scheduledDate,
+  }) async {
+    final db = await database;
+    return await db.insert('reminders', {
+      'type': 'custom',
+      'title': title,
+      'body': body,
+      'repeat_type': repeatType,
+      'start_date': DateTime.now().toIso8601String(),
+      'scheduled_date': scheduledDate,
+      'is_active': 1,
+    });
+  }
+
+  Future<int> deleteReminder(int id) async {
+    final db = await database;
+    return await db.delete('reminders', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<bool> hasPersonDependencies(int id) async {
     final db = await database;
     final debts = await db.query(
@@ -917,10 +966,12 @@ class DatabaseService {
   static const _sqlReminders = '''
     CREATE TABLE IF NOT EXISTS reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT CHECK(type IN ('expense', 'debt')) NOT NULL,
+      type TEXT CHECK(type IN ('expense', 'debt', 'custom')) NOT NULL DEFAULT 'custom',
       title TEXT,
-      repeat_type TEXT CHECK(repeat_type IN ('daily', 'weekly', 'monthly')),
+      body TEXT,
+      repeat_type TEXT CHECK(repeat_type IN ('once', 'daily', 'weekly', 'monthly')),
       start_date TEXT,
+      scheduled_date TEXT,
       is_active INTEGER DEFAULT 1
     );
   ''';

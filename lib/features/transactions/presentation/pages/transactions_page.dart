@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animations/animations.dart';
@@ -12,6 +13,9 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../providers/transaction_filter_provider.dart';
 import '../widgets/transaction_filter_sheet.dart';
+import 'add_income_expense_page.dart';
+import 'add_debt_page.dart';
+import 'add_installment_page.dart';
 
 /// Provider for filtered transactions based on the current filter state
 final filteredTransactionsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -369,12 +373,36 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-            onPressed: () => _confirmDelete(context),
+            icon: const Icon(Icons.edit_rounded),
+            onPressed: () => _handleEdit(context, type),
           ),
         ],
       ),
-      bottomNavigationBar: type == 'debt' ? _buildDebtActions(context) : null,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (type == 'debt') _buildDebtActions(context),
+              if (type == 'debt') const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _confirmDelete(context),
+                  icon: const Icon(Icons.delete_rounded),
+                  label: const Text('Delete Transaction'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -506,10 +534,80 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                       _buildRow(context, 'Notes', widget.tx['notes'], isMultiline: true),
                     ]),
                   ],
+
+                  // ── IMAGE/RECEIPT ──
+                  if (widget.tx['image_url'] != null && (widget.tx['image_url'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader(context, 'Receipt', Icons.receipt_long_rounded),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                backgroundColor: Colors.transparent,
+                                insetPadding: const EdgeInsets.all(8),
+                                child: InteractiveViewer(
+                                  clipBehavior: Clip.none,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.file(
+                                      File(widget.tx['image_url']),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(
+                              File(widget.tx['image_url']),
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
     );
+  }
+
+  void _handleEdit(BuildContext context, String type) async {
+    final tx = widget.tx;
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) {
+          switch (type) {
+            case 'debt':
+              return AddDebtPage(initialTransaction: tx);
+            case 'installment':
+              return AddInstallmentPage(initialTransaction: tx);
+            default:
+              return AddIncomeExpensePage(
+                transactionType: tx['type'] as String? ?? 'expense',
+                initialTransaction: tx,
+              );
+          }
+        },
+      ),
+    );
+    if (result == true && mounted) {
+      ref.invalidate(filteredTransactionsProvider);
+      ref.invalidate(dashboardMetricsProvider);
+      ref.invalidate(recentTransactionsProvider);
+      Navigator.pop(context, true); // close detail page after edit
+    }
   }
 
   String _titleForType(String type) {

@@ -16,7 +16,7 @@ import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
 import '../widgets/wallet_picker_sheet.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
+import '../widgets/person_picker_sheet.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -24,7 +24,8 @@ import 'dart:io';
 // Add Installment Page
 // ---------------------------------------------------------------------------
 class AddInstallmentPage extends ConsumerStatefulWidget {
-  const AddInstallmentPage({super.key});
+  const AddInstallmentPage({super.key, this.initialTransaction});
+  final Map<String, dynamic>? initialTransaction;
 
   @override
   ConsumerState<AddInstallmentPage> createState() => _AddInstallmentPageState();
@@ -43,6 +44,22 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   bool _saving = false;
   bool _isForYou = false;
   String? _imageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTransaction != null) {
+      final tx = widget.initialTransaction!;
+      _totalPriceCtrl.text = tx['amount']?.toString() ?? '';
+      _noteCtrl.text = tx['notes']?.toString() ?? '';
+      _personCtrl.text = tx['person_name']?.toString() ?? '';
+      _selectedCategoryId = tx['category_id'] as int?;
+      _selectedCategoryName = tx['category_name'] as String?;
+      _selectedWalletId = tx['wallet_id'] as int?;
+      _imageUrl = tx['image_url'] as String?;
+      _isForYou = (tx['direction'] as String? ?? 'min') == 'plus';
+    }
+  }
 
   @override
   void dispose() {
@@ -290,19 +307,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   }
 
   Future<void> _pickContact() async {
-    if (await FlutterContacts.requestPermission()) {
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact != null) {
-        setState(() {
-          _personCtrl.text = contact.displayName;
-        });
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact permission denied')),
-        );
-      }
+    final person = await PersonPickerSheet.show(context);
+    if (person != null) {
+      setState(() {
+        _personCtrl.text = person.name;
+      });
     }
   }
 

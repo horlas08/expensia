@@ -14,14 +14,14 @@ import '../../../../features/dashboard/presentation/providers/dashboard_provider
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../widgets/person_picker_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // Add Debt Page
 // ---------------------------------------------------------------------------
 class AddDebtPage extends ConsumerStatefulWidget {
-  const AddDebtPage({super.key});
+  const AddDebtPage({super.key, this.initialTransaction});
+  final Map<String, dynamic>? initialTransaction;
 
   @override
   ConsumerState<AddDebtPage> createState() => _AddDebtPageState();
@@ -41,6 +41,23 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
 
   // For you (they owe me = income technically) vs On you (I owe them = expense)
   bool _isOnYou = true; 
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTransaction != null) {
+      final tx = widget.initialTransaction!;
+      _amountCtrl.text = tx['amount'].toString();
+      _noteCtrl.text = tx['notes']?.toString() ?? '';
+      _personCtrl.text = tx['person_name']?.toString() ?? '';
+      _selectedCategoryId = tx['category_id'] as int?;
+      _selectedCategoryName = tx['category_name'] as String?;
+      _selectedWalletId = tx['wallet_id'] as int?;
+      if (tx['date'] != null) _selectedDate = DateTime.parse(tx['date'].toString());
+      _imageUrl = tx['image_url'] as String?;
+      _isOnYou = (tx['direction'] as String? ?? 'min') == 'min';
+    }
+  }
 
   @override
   void dispose() {
@@ -80,46 +97,55 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       final db = DatabaseService();
       final dbRaw = await db.database;
 
-      // Ensure person exists or create them
-      int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
-
-      double income = _isOnYou ? 0 : amount;
-      double expense = _isOnYou ? amount : 0;
-
-      await dbRaw.insert('debts', {
-        'person_id': personId,
-        'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? 6, // generic default debt category
-        'income': income,
-        'expense': expense,
-        'status': 'active',
-        'due_date': _selectedDate.toIso8601String(),
-        'notes': _noteCtrl.text.trim(),
-        'image_path': _imageUrl,
-      });
-
-      // Update wallet balance - In old manage_mony, debt normally adds/removes main balance?
-      // Since it's a debt ON you, you gave them money now, so balance decreases.
-      // If it's a debt FOR you, they gave you money now? Actually, usually, debt tracking might just add a transaction too.
-      // We will also insert it to transactions so it shows in the global history.
-      final curr = ref.read(defaultCurrencyProvider).valueOrNull;
-      await dbRaw.insert('transactions', {
-        'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? 6,
-        'currency_id': curr?.id ?? 1,
-        'type': 'debt',
-        'direction': _isOnYou ? 'min' : 'plus',
-        'amount': amount,
-        'date': _selectedDate.toIso8601String(),
-        'is_paid': 1,
-        'notes': _noteCtrl.text.trim(),
-        'image_url': _imageUrl,
-      });
-
-      if (_isOnYou) {
-        await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+      if (widget.initialTransaction != null) {
+        final id = widget.initialTransaction!['id'] as int;
+        final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
+        final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
+        // Revert old balance
+        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount); }
+        else { await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount); }
+        await db.updateTransaction(id, {
+          'wallet_id': _selectedWalletId,
+          'category_id': _selectedCategoryId ?? 6,
+          'amount': amount,
+          'direction': _isOnYou ? 'min' : 'plus',
+          'date': _selectedDate.toIso8601String(),
+          'notes': _noteCtrl.text.trim(),
+          'image_url': _imageUrl,
+        });
+        // Apply new balance
+        if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
+        else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
       } else {
-        await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+        int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
+        double income = _isOnYou ? 0 : amount;
+        double expense = _isOnYou ? amount : 0;
+        await dbRaw.insert('debts', {
+          'person_id': personId,
+          'wallet_id': _selectedWalletId,
+          'category_id': _selectedCategoryId ?? 6,
+          'income': income,
+          'expense': expense,
+          'status': 'active',
+          'due_date': _selectedDate.toIso8601String(),
+          'notes': _noteCtrl.text.trim(),
+          'image_path': _imageUrl,
+        });
+        final curr = ref.read(defaultCurrencyProvider).valueOrNull;
+        await dbRaw.insert('transactions', {
+          'wallet_id': _selectedWalletId,
+          'category_id': _selectedCategoryId ?? 6,
+          'currency_id': curr?.id ?? 1,
+          'type': 'debt',
+          'direction': _isOnYou ? 'min' : 'plus',
+          'amount': amount,
+          'date': _selectedDate.toIso8601String(),
+          'is_paid': 1,
+          'notes': _noteCtrl.text.trim(),
+          'image_url': _imageUrl,
+        });
+        if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
+        else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
       }
 
       if (!mounted) return;
@@ -162,19 +188,11 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   }
 
   Future<void> _pickContact() async {
-    if (await FlutterContacts.requestPermission()) {
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact != null) {
-        setState(() {
-          _personCtrl.text = contact.displayName;
-        });
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact permission denied')),
-        );
-      }
+    final person = await PersonPickerSheet.show(context);
+    if (person != null) {
+      setState(() {
+        _personCtrl.text = person.name;
+      });
     }
   }
 

@@ -21,10 +21,11 @@ import '../widgets/wallet_picker_sheet.dart';
 // Replaces the old add_income_expense_screen.dart
 // ---------------------------------------------------------------------------
 class AddIncomeExpensePage extends ConsumerStatefulWidget {
-  const AddIncomeExpensePage({super.key, required this.transactionType});
+  const AddIncomeExpensePage({super.key, required this.transactionType, this.initialTransaction});
 
   /// 'income' or 'expense'
   final String transactionType;
+  final Map<String, dynamic>? initialTransaction;
 
   @override
   ConsumerState<AddIncomeExpensePage> createState() =>
@@ -47,6 +48,25 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   bool _isRepeat = false;
   String _repeatType = 'monthly'; // daily, weekly, monthly, yearly
   bool _autoAdd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTransaction != null) {
+      final tx = widget.initialTransaction!;
+      _amountCtrl.text = tx['amount'].toString();
+      _noteCtrl.text = tx['notes']?.toString() ?? '';
+      _selectedCategoryId = tx['category_id'] as int?;
+      _selectedCategoryName = tx['category_name'] as String?;
+      _selectedWalletId = tx['wallet_id'] as int?;
+      if (tx['date'] != null) {
+        _selectedDate = DateTime.parse(tx['date'].toString());
+      }
+      _imageUrl = tx['image_url'] as String?;
+      _selectedPriority = tx['priority'] as int? ?? 1;
+      _isRepeat = (tx['is_repeat'] as int? ?? 0) == 1;
+    }
+  }
 
   @override
   void dispose() {
@@ -88,7 +108,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
       final wallet = ref.read(walletProvider).firstWhere((w) => w.id == _selectedWalletId);
 
-      final transactionId = await dbRaw.insert('transactions', {
+      final transactionData = {
         'wallet_id': _selectedWalletId,
         'category_id': _selectedCategoryId ?? (_isIncome ? 5 : 11), // Default to Salary(5) or Housing(11)
         'currency_id': currency?.id ?? wallet.currencyId,
@@ -101,34 +121,58 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         'image_url': _imageUrl,
         'priority': _selectedPriority,
         'is_repeat': _isRepeat ? 1 : 0,
-      });
+      };
 
-      // Handle recurring transaction
-      if (_isRepeat) {
-        DateTime nextDate;
-        switch (_repeatType) {
-          case 'daily': nextDate = _selectedDate.add(const Duration(days: 1)); break;
-          case 'weekly': nextDate = _selectedDate.add(const Duration(days: 7)); break;
-          case 'monthly': nextDate = DateTime(_selectedDate.year, _selectedDate.month + 1, _selectedDate.day); break;
-          case 'yearly': nextDate = DateTime(_selectedDate.year + 1, _selectedDate.month, _selectedDate.day); break;
-          default: nextDate = _selectedDate.add(const Duration(days: 30));
+      if (widget.initialTransaction != null) {
+        final id = widget.initialTransaction!['id'] as int;
+        final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
+        final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
+        
+        // Revert old wallet balance
+        if (_isIncome) {
+          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount);
+        } else {
+          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
         }
 
-        await dbRaw.insert('recurring_transactions', {
-          'transaction_id': transactionId,
-          'start_date': _selectedDate.toIso8601String(),
-          'next_execution_date': nextDate.toIso8601String(),
-          'repeat_type': _repeatType,
-          'is_active': 1,
-          'auto_add': _autoAdd ? 1 : 0,
-        });
-      }
+        await db.updateTransaction(id, transactionData);
 
-      // Update wallet balance
-      if (_isIncome) {
-        await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+        // Apply new wallet balance
+        if (_isIncome) {
+          await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+        } else {
+          await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+        }
       } else {
-        await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+        final transactionId = await dbRaw.insert('transactions', transactionData);
+
+        // Handle recurring transaction
+        if (_isRepeat) {
+          DateTime nextDate;
+          switch (_repeatType) {
+            case 'daily': nextDate = _selectedDate.add(const Duration(days: 1)); break;
+            case 'weekly': nextDate = _selectedDate.add(const Duration(days: 7)); break;
+            case 'monthly': nextDate = DateTime(_selectedDate.year, _selectedDate.month + 1, _selectedDate.day); break;
+            case 'yearly': nextDate = DateTime(_selectedDate.year + 1, _selectedDate.month, _selectedDate.day); break;
+            default: nextDate = _selectedDate.add(const Duration(days: 30));
+          }
+
+          await dbRaw.insert('recurring_transactions', {
+            'transaction_id': transactionId,
+            'start_date': _selectedDate.toIso8601String(),
+            'next_execution_date': nextDate.toIso8601String(),
+            'repeat_type': _repeatType,
+            'is_active': 1,
+            'auto_add': _autoAdd ? 1 : 0,
+          });
+        }
+
+        // Update wallet balance
+        if (_isIncome) {
+          await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+        } else {
+          await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+        }
       }
 
       if (!mounted) return;
