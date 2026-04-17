@@ -191,6 +191,25 @@ class TransactionListItem extends ConsumerWidget {
 
   const TransactionListItem({super.key, required this.tx});
 
+  static ({IconData icon, Color color}) getStyle(Map<String, dynamic> tx) {
+    final type = tx['type'] as String;
+    final categoryName = tx['category_name'] as String? ?? 'Other';
+
+    switch (type) {
+      case 'transfer':
+        return (icon: Icons.swap_horiz_rounded, color: Colors.blue);
+      case 'debt':
+        return (icon: Icons.handshake_rounded, color: Colors.orange);
+      case 'installment':
+        return (icon: Icons.credit_card_rounded, color: Colors.purple);
+      default:
+        return (
+          icon: CategoryIcons.getIcon(categoryName),
+          color: CategoryIcons.getColor(categoryName)
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
@@ -201,33 +220,27 @@ class TransactionListItem extends ConsumerWidget {
     final categoryName = tx['category_name'] as String? ?? 'Other';
     
     // Custom styling based on type
-    IconData iconData;
-    Color iconColor;
+    final style = getStyle(tx);
+    final iconData = style.icon;
+    final iconColor = style.color;
+    
     String displayTitle;
     String displaySubtitle;
 
     switch (type) {
       case 'transfer':
-        iconData = Icons.swap_horiz_rounded;
-        iconColor = Colors.blue;
         displayTitle = 'Transfer';
         displaySubtitle = '${tx['wallet_name']} → ${tx['to_wallet_name']}';
         break;
       case 'debt':
-        iconData = Icons.handshake_rounded;
-        iconColor = Colors.orange;
         displayTitle = 'Debt';
         displaySubtitle = tx['person_name'] ?? 'Private';
         break;
       case 'installment':
-        iconData = Icons.credit_card_rounded;
-        iconColor = Colors.purple;
         displayTitle = 'Installment Deposit';
         displaySubtitle = tx['person_name'] ?? notes;
         break;
       default: // 'transaction'
-        iconData = CategoryIcons.getIcon(categoryName);
-        iconColor = CategoryIcons.getColor(categoryName);
         displayTitle = categoryName;
         displaySubtitle = notes.isNotEmpty ? notes : (tx['wallet_name'] ?? '');
     }

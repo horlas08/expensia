@@ -516,6 +516,36 @@ class DatabaseService {
     }).toList();
   }
 
+  Future<Map<String, dynamic>?> getMainTransactionForDebt(int debtId) async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT t.*, c.name_en as category_name, w.name as wallet_name, p.name as person_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN wallets w ON t.wallet_id = w.id
+      LEFT JOIN persons p ON t.person_id = p.id
+      WHERE t.debt_id = ?
+      ORDER BY t.is_opening DESC, t.id ASC
+      LIMIT 1
+    ''', [debtId]);
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<Map<String, dynamic>?> getMainTransactionForInstallment(int installmentId) async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT t.*, c.name_en as category_name, w.name as wallet_name, p.name as person_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN wallets w ON t.wallet_id = w.id
+      LEFT JOIN persons p ON t.person_id = p.id
+      WHERE t.installment_id = ?
+      ORDER BY t.is_opening DESC, t.id ASC
+      LIMIT 1
+    ''', [installmentId]);
+    return results.isNotEmpty ? results.first : null;
+  }
+
   Future<int> insertInstallmentDetail(Map<String, dynamic> detail) async {
     final db = await database;
     return await db.insert('installment_details', detail);

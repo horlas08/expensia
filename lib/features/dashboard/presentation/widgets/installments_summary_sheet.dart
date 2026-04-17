@@ -5,6 +5,7 @@ import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../../../../core/services/database_service.dart';
+import '../../../transactions/presentation/pages/transactions_page.dart';
 
 class InstallmentsSummarySheet extends ConsumerStatefulWidget {
   const InstallmentsSummarySheet({super.key, required this.currencySymbol});
@@ -157,6 +158,22 @@ class _InstallmentListView extends StatelessWidget {
                   border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
                 ),
                 child: ListTile(
+                  onTap: () async {
+                    final tx = await DatabaseService().getMainTransactionForInstallment(item['id']);
+                    if (tx != null && context.mounted) {
+                      final style = TransactionListItem.getStyle(tx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransactionDetailPage(
+                            tx: tx,
+                            iconData: style.icon,
+                            iconColor: style.color,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: Container(
                     width: 48,
