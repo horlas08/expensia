@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/models/person_model.dart';
 
@@ -40,6 +39,8 @@ class PersonsNotifier extends AsyncNotifier<List<Person>> {
   Future<bool> hasDependencies(int id) async {
     return await DatabaseService().hasPersonDependencies(id);
   }
+
+  Future<int> syncFromDeviceOnOpen() async => importFromDevice();
 
   Future<int> importFromDevice() async {
     // 1. Request Permission

@@ -8,6 +8,7 @@ import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/shared_preferences_service.dart';
+import 'core/services/recurring_transaction_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,12 +20,17 @@ void main() async {
   final savedDark = prefs.isDarkMode();
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+
+  // Process any pending recurring transactions
+  await RecurringTransactionService().processDueTransactions();
+
   runApp(
     ProviderScope(
       child: EasyLocalization(
         supportedLocales: const [Locale('en'), Locale('ar')],
         path: 'assets/lang',
         fallbackLocale: const Locale('en'),
+        useOnlyLangCode: true,
         child: ExpensiaApp(initDark: savedDark),
       ),
     ),
@@ -54,11 +60,16 @@ class ExpensiaApp extends ConsumerWidget {
               theme: theme,
               routerConfig: appRouter,
               builder: (context, child) {
-                return MediaQuery(
-                  data: MediaQuery.of(context).copyWith(
-                    textScaler: const TextScaler.linear(1.0),
+                return GestureDetector(
+                  onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  child: MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaler: const TextScaler.linear(1.0),
+                    ),
+                    child: child!,
                   ),
-                  child: child!,
                 );
               },
             );

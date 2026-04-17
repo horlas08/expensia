@@ -3,16 +3,64 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:toastification/toastification.dart';
+import 'package:flutter/scheduler.dart';
 import '../../../../core/models/person_model.dart';
 import '../../../../core/utils/url_launcher_utils.dart';
 import '../providers/persons_provider.dart';
 import '../widgets/add_person_sheet.dart';
 
-class PersonsPage extends ConsumerWidget {
+class PersonsPage extends ConsumerStatefulWidget {
   const PersonsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PersonsPage> createState() => _PersonsPageState();
+}
+
+class _PersonsPageState extends ConsumerState<PersonsPage> {
+  bool _didAutoSync = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _autoSyncContacts();
+    });
+  }
+
+  Future<void> _autoSyncContacts() async {
+    if (_didAutoSync || !mounted) return;
+    _didAutoSync = true;
+
+    final toast = toastification.show(
+      context: context,
+      type: ToastificationType.info,
+      style: ToastificationStyle.flat,
+      title: Text('common.loading'.tr()),
+      description: Text('${'profile.import_contacts'.tr()}...'),
+      autoCloseDuration: null,
+    );
+
+    try {
+      final count = await ref.read(personsProvider.notifier).syncFromDeviceOnOpen();
+      toastification.dismiss(toast);
+
+      if (!mounted || count <= 0) return;
+
+      toastification.show(
+        context: context,
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('common.success'.tr()),
+        description: Text('profile.import_success'.tr(args: [count.toString()])),
+        autoCloseDuration: const Duration(seconds: 4),
+      );
+    } catch (_) {
+      toastification.dismiss(toast);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final filteredPersonsAsync = ref.watch(filteredPersonsProvider);
 
@@ -25,10 +73,16 @@ class PersonsPage extends ConsumerWidget {
           SliverAppBar(
             expandedHeight: 180,
             pinned: true,
+            backgroundColor: cs.primary,
+            foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 'profile.persons'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -48,7 +102,7 @@ class PersonsPage extends ConsumerWidget {
             actions: [
               IconButton(
                 onPressed: () => _handleImport(context, ref),
-                icon: const Icon(Icons.sync_rounded),
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                 tooltip: 'profile.import_contacts'.tr(),
               ),
             ],
@@ -129,7 +183,7 @@ class PersonsPage extends ConsumerWidget {
       type: ToastificationType.info,
       style: ToastificationStyle.flat,
       title: Text('common.loading'.tr()),
-      description: Text('profile.import_contacts'.tr() + '...'),
+      description: Text('${'profile.import_contacts'.tr()}...'),
       autoCloseDuration: null, // Keep it open during sync
     );
 
@@ -257,7 +311,7 @@ class _PersonCard extends ConsumerWidget {
           content: Text(
             hasDeps 
               ? 'profile.delete_person_confirm'.tr()
-              : 'common.delete'.tr() + ' ${person.name}?'
+              : "${'common.delete'.tr()} ${person.name}?"
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),

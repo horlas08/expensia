@@ -2,6 +2,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:async';
 
+import 'currency_catalog_service.dart';
+
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
@@ -32,7 +34,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -43,7 +45,7 @@ class DatabaseService {
       // Check if 'type' column exists in installments
       final result = await db.rawQuery('PRAGMA table_info(installments)');
       final hasTypeColumn = result.any((column) => column['name'] == 'type');
-      
+
       if (!hasTypeColumn) {
         await db.execute('ALTER TABLE installments ADD COLUMN type TEXT');
       }
@@ -54,6 +56,46 @@ class DatabaseService {
       await db.execute(_sqlInstallmentDetails);
       await db.execute(_sqlScheduledNotifications);
     }
+    if (oldVersion < 4) {
+      await syncCurrencyCatalog(database: db);
+    }
+    if (oldVersion < 5) {
+      final result = await db.rawQuery('PRAGMA table_info(categories)');
+      final hasParentId = result.any((column) => column['name'] == 'parent_id');
+      if (!hasParentId) {
+        await db.execute('ALTER TABLE categories ADD COLUMN parent_id INTEGER');
+      }
+    }
+    if (oldVersion < 6) {
+      await _forceReseedCategories(db);
+    }
+  }
+
+  Future<void> _forceReseedCategories(Database db) async {
+    // We want to update existing categories with their parent_id and icons
+    // and insert new ones. We'll use a batch for efficiency.
+    final batch = db.batch();
+    
+    // The safest way is to clear and re-insert, but that would break transaction foreign keys.
+    // Instead, we'll UPSERT based on the ID if possible, or name.
+    // Our _sqlInsertCategories uses specific IDs, so we can use those.
+    
+    // First, ensure all categories from our new list exist or are updated.
+    // I'll parse the _sqlInsertCategories string logic or just re-apply the logic manually.
+    // Since _sqlInsertCategories is a large string, I'll just execute it with 
+    // INSERT OR REPLACE if I change the SQL slightly, but that might change IDs 
+    // which are foreign keys in transactions.
+    
+    // Better: Update if ID exists, insert if not.
+    // I will use a simplified version of the list for the upgrade script.
+    
+    final scripts = _sqlInsertCategories.split(';').where((s) => s.trim().isNotEmpty).toList();
+    for (var script in scripts) {
+      // Modify INSERT INTO to INSERT OR REPLACE INTO for this force reseed
+      final modifiedScript = script.replaceFirst('INSERT INTO categories', 'INSERT OR REPLACE INTO categories');
+      batch.execute(modifiedScript);
+    }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -73,9 +115,9 @@ class DatabaseService {
       _sqlTransfers,
       _sqlInstallmentDetails,
       _sqlScheduledNotifications,
-      _sqlInsertCurrencies,
       _sqlInsertCategories,
     ]);
+    await syncCurrencyCatalog(database: db);
   }
 
   Future<void> _executeBatch(Database db, List<String> scripts) async {
@@ -86,6 +128,50 @@ class DatabaseService {
       }
     }
     await batch.commit();
+  }
+
+  Future<void> syncCurrencyCatalog({Database? database}) async {
+    final db = database ?? await this.database;
+    final currencies = await CurrencyCatalogService().loadCurrencies();
+    final batch = db.batch();
+
+    for (final currency in currencies) {
+      batch.rawInsert(
+        '''
+        INSERT INTO all_currencies (
+          id,
+          currency_name_ar,
+          currency_name_en,
+          country_code,
+          currency_code,
+          currency_symbol,
+          rate_to_usd,
+          is_default,
+          flag
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          currency_name_ar = excluded.currency_name_ar,
+          currency_name_en = excluded.currency_name_en,
+          country_code = excluded.country_code,
+          currency_code = excluded.currency_code,
+          currency_symbol = excluded.currency_symbol,
+          rate_to_usd = excluded.rate_to_usd,
+          flag = excluded.flag
+        ''',
+        [
+          currency.id,
+          currency.currencyNameAr,
+          currency.currencyNameEn,
+          currency.countryCode,
+          currency.currencyCode,
+          currency.currencySymbol,
+          currency.rateToUsd,
+          currency.flag,
+        ],
+      );
+    }
+
+    await batch.commit(noResult: true);
   }
 
   // --- WALLET METHODS ---
@@ -115,7 +201,7 @@ class DatabaseService {
         'UPDATE wallets SET balance = balance + ? WHERE id = ?',
         [amount, toId],
       );
-      
+
       // Record the transfer in transfers table
       await txn.insert('transfers', {
         'from_wallet_id': fromId,
@@ -282,20 +368,26 @@ class DatabaseService {
 
   Future<Map<String, dynamic>> getDashboardMetrics() async {
     final db = await database;
-    
+
     // Get total income and expense for the current month
     final now = DateTime.now();
     final firstDayOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
-    
-    final incomeResult = await db.rawQuery('''
+
+    final incomeResult = await db.rawQuery(
+      '''
       SELECT SUM(amount) as total FROM transactions 
       WHERE type = 'income' AND date >= ?
-    ''', [firstDayOfMonth]);
+    ''',
+      [firstDayOfMonth],
+    );
 
-    final expenseResult = await db.rawQuery('''
+    final expenseResult = await db.rawQuery(
+      '''
       SELECT SUM(amount) as total FROM transactions 
       WHERE type = 'expense' AND date >= ?
-    ''', [firstDayOfMonth]);
+    ''',
+      [firstDayOfMonth],
+    );
 
     final debtResult = await db.rawQuery('''
       SELECT SUM(income) as for_you, SUM(expense) as on_you FROM debts
@@ -309,16 +401,22 @@ class DatabaseService {
     ''');
 
     return {
-      'monthly_income': (incomeResult.first['total'] as num?)?.toDouble() ?? 0.0,
-      'monthly_expense': (expenseResult.first['total'] as num?)?.toDouble() ?? 0.0,
+      'monthly_income':
+          (incomeResult.first['total'] as num?)?.toDouble() ?? 0.0,
+      'monthly_expense':
+          (expenseResult.first['total'] as num?)?.toDouble() ?? 0.0,
       'debt_on_you': (debtResult.first['on_you'] as num?)?.toDouble() ?? 0.0,
       'debt_for_you': (debtResult.first['for_you'] as num?)?.toDouble() ?? 0.0,
-      'installment_on_you': (installmentResult.first['on_you'] as num?)?.toDouble() ?? 0.0,
-      'installment_for_you': (installmentResult.first['for_you'] as num?)?.toDouble() ?? 0.0,
+      'installment_on_you':
+          (installmentResult.first['on_you'] as num?)?.toDouble() ?? 0.0,
+      'installment_for_you':
+          (installmentResult.first['for_you'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
-  Future<List<Map<String, dynamic>>> getRecentTransactions({int limit = 5}) async {
+  Future<List<Map<String, dynamic>>> getRecentTransactions({
+    int limit = 5,
+  }) async {
     final db = await database;
     // Union across multiple tables to get a unified view of all activities
     final sql = '''
@@ -398,12 +496,13 @@ class DatabaseService {
       }
       if (toDate != null) {
         final txDate = DateTime.tryParse(tx['date'] as String? ?? '');
-        if (txDate == null || txDate.isAfter(toDate.add(const Duration(days: 1)))) return false;
+        if (txDate == null ||
+            txDate.isAfter(toDate.add(const Duration(days: 1))))
+          return false;
       }
       return true;
     }).toList();
   }
-
 
   Future<int> insertInstallmentDetail(Map<String, dynamic> detail) async {
     final db = await database;
@@ -422,7 +521,7 @@ class DatabaseService {
         year++;
       }
     }
-    
+
     // Handle edge cases like 31st of Feb
     try {
       return DateTime(year, month, day);
@@ -461,24 +560,54 @@ class DatabaseService {
     });
   }
 
-  Future<void> updateCategory(int id, String nameEn, String nameAr, String type, String iconKey) async {
+  Future<void> updateCategory(
+    int id,
+    String nameEn,
+    String nameAr,
+    String type,
+    String iconKey, {
+    int? parentId,
+  }) async {
     final db = await database;
-    await db.update('categories', {
-      'name_en': nameEn,
-      'name_ar': nameAr,
-      'type': type,
-      'image_name': iconKey,
-    }, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'categories',
+      {
+        'name_en': nameEn,
+        'name_ar': nameAr,
+        'type': type,
+        'image_name': iconKey,
+        'parent_id': parentId ?? 0,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getCategoriesByParent(int? parentId, {String? type}) async {
+    final db = await database;
+    return await db.query(
+      'categories',
+      where: 'parent_id = ? ${type != null ? 'AND type = ?' : ''}',
+      whereArgs: [parentId ?? 0, if (type != null) type],
+      orderBy: 'id ASC',
+    );
   }
 
   Future<void> deleteAnyTransaction(int id, String type) async {
     final db = await database;
     String table;
     switch (type) {
-      case 'transfer': table = 'transfers'; break;
-      case 'debt': table = 'debts'; break;
-      case 'installment': table = 'installments'; break;
-      default: table = 'transactions';
+      case 'transfer':
+        table = 'transfers';
+        break;
+      case 'debt':
+        table = 'debts';
+        break;
+      case 'installment':
+        table = 'installments';
+        break;
+      default:
+        table = 'transactions';
     }
     await db.delete(table, where: 'id = ?', whereArgs: [id]);
   }
@@ -486,14 +615,18 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getDebtTransactions(int debtId) async {
     final db = await database;
     return await db.rawQuery(
-      'SELECT * FROM transactions WHERE debt_id = ? ORDER BY date DESC', [debtId]
+      'SELECT * FROM transactions WHERE debt_id = ? ORDER BY date DESC',
+      [debtId],
     );
   }
 
-  Future<List<Map<String, dynamic>>> getInstallmentDetails(int installmentId) async {
+  Future<List<Map<String, dynamic>>> getInstallmentDetails(
+    int installmentId,
+  ) async {
     final db = await database;
     return await db.rawQuery(
-      'SELECT * FROM installment_details WHERE installment_id = ? ORDER BY due_date ASC', [installmentId]
+      'SELECT * FROM installment_details WHERE installment_id = ? ORDER BY due_date ASC',
+      [installmentId],
     );
   }
 
@@ -506,10 +639,7 @@ class DatabaseService {
 
   Future<int> addPerson(String name, String? phone) async {
     final db = await database;
-    return await db.insert('persons', {
-      'name': name,
-      'phone': phone,
-    });
+    return await db.insert('persons', {'name': name, 'phone': phone});
   }
 
   Future<int> updatePerson(int id, String name, String? phone) async {
@@ -529,8 +659,16 @@ class DatabaseService {
 
   Future<bool> hasPersonDependencies(int id) async {
     final db = await database;
-    final debts = await db.query('debts', where: 'person_id = ?', whereArgs: [id]);
-    final installments = await db.query('installments', where: 'person_id = ?', whereArgs: [id]);
+    final debts = await db.query(
+      'debts',
+      where: 'person_id = ?',
+      whereArgs: [id],
+    );
+    final installments = await db.query(
+      'installments',
+      where: 'person_id = ?',
+      whereArgs: [id],
+    );
     return debts.isNotEmpty || installments.isNotEmpty;
   }
 
@@ -548,29 +686,43 @@ class DatabaseService {
 
   Future<void> toggleInstallmentDetailPaid(int detailId, int walletId) async {
     final db = await database;
-    final detail = await db.query('installment_details', where: 'id = ?', whereArgs: [detailId]);
+    final detail = await db.query(
+      'installment_details',
+      where: 'id = ?',
+      whereArgs: [detailId],
+    );
     if (detail.isEmpty) return;
     final isPaid = detail.first['is_paid'] == 1;
     if (isPaid) {
       // Unpay: reverse the wallet balance
       final amount = (detail.first['amount'] as num).toDouble();
-      await db.update('installment_details', {
-        'is_paid': 0,
-        'paid_at': null,
-      }, where: 'id = ?', whereArgs: [detailId]);
+      await db.update(
+        'installment_details',
+        {'is_paid': 0, 'paid_at': null},
+        where: 'id = ?',
+        whereArgs: [detailId],
+      );
       // Reverse: add back to any wallet (walletId=0 means skip)
       if (walletId > 0) {
-        await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+        await db.rawUpdate(
+          'UPDATE wallets SET balance = balance + ? WHERE id = ?',
+          [amount, walletId],
+        );
       }
     } else {
       // Pay: deduct from wallet
       final amount = (detail.first['amount'] as num).toDouble();
-      await db.update('installment_details', {
-        'is_paid': 1,
-        'paid_at': DateTime.now().toIso8601String(),
-      }, where: 'id = ?', whereArgs: [detailId]);
+      await db.update(
+        'installment_details',
+        {'is_paid': 1, 'paid_at': DateTime.now().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [detailId],
+      );
       if (walletId > 0) {
-        await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+        await db.rawUpdate(
+          'UPDATE wallets SET balance = balance - ? WHERE id = ?',
+          [amount, walletId],
+        );
       }
     }
   }
@@ -586,14 +738,17 @@ class DatabaseService {
     // Get debt info to find person_id and category_id
     final debt = await db.query('debts', where: 'id = ?', whereArgs: [debtId]);
     if (debt.isEmpty) return;
-    
+
     final personId = debt.first['person_id'] as int;
     final categoryId = debt.first['category_id'] as int;
-    
+
     // Get default currency
     final settings = await db.query('settings', limit: 1);
-    final currencyId = settings.isNotEmpty ? (settings.first['default_currency_id'] as int?) ?? 1 : 1;
-    
+    final currencyId =
+        settings.isNotEmpty
+            ? (settings.first['default_currency_id'] as int?) ?? 1
+            : 1;
+
     // Insert transaction linked to debt
     await db.insert('transactions', {
       'wallet_id': walletId,
@@ -611,16 +766,28 @@ class DatabaseService {
 
     // Update wallet balance
     if (direction == 'min') {
-      await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+      await db.rawUpdate(
+        'UPDATE wallets SET balance = balance - ? WHERE id = ?',
+        [amount, walletId],
+      );
     } else {
-      await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+      await db.rawUpdate(
+        'UPDATE wallets SET balance = balance + ? WHERE id = ?',
+        [amount, walletId],
+      );
     }
 
     // Update debt totals
     if (direction == 'plus') {
-      await db.rawUpdate('UPDATE debts SET income = income + ? WHERE id = ?', [amount, debtId]);
+      await db.rawUpdate('UPDATE debts SET income = income + ? WHERE id = ?', [
+        amount,
+        debtId,
+      ]);
     } else {
-      await db.rawUpdate('UPDATE debts SET expense = expense + ? WHERE id = ?', [amount, debtId]);
+      await db.rawUpdate(
+        'UPDATE debts SET expense = expense + ? WHERE id = ?',
+        [amount, debtId],
+      );
     }
   }
 
@@ -845,42 +1012,111 @@ class DatabaseService {
     );
   ''';
 
-  static const _sqlInsertCurrencies = '''
-    INSERT OR IGNORE INTO all_currencies (id, currency_name_ar, currency_name_en, country_code, currency_code, currency_symbol, rate_to_usd, is_default, flag) VALUES
-    (1, 'الريال السعودي', 'Saudi Riyal', 'SA', 'SAR', '﷼', 0.2666, 1, 'sa.svg'),
-    (2, 'الجنيه المصري', 'Egyptian Pound', 'EG', 'EGP', '£', 0.0205, 0, 'eg.svg'),
-    (3, 'الدرهم الإماراتي', 'UAE Dirham', 'AE', 'AED', 'د.إ', 0.2723, 0, 'ae.svg'),
-    (4, 'الدينار الكويتي', 'Kuwaiti Dinar', 'KW', 'KWD', 'د.ك', 3.25, 0, 'kw.svg'),
-    (5, 'الدرهم المغربي', 'Moroccan Dirham', 'MA', 'MAD', 'د.م.', 0.099, 0, 'ma.svg'),
-    (6, 'الدينار الجزائري', 'Algerian Dinar', 'DZ', 'DZD', 'د.ج', 0.0074, 0, 'dz.svg'),
-    (7, 'الليرة اللبنانية', 'Lebanese Pound', 'LB', 'LBP', 'ل.ل', 0.000011, 0, 'lb.svg'),
-    (8, 'الليرة السورية', 'Syrian Pound', 'SY', 'SYP', '£', 0.00008, 0, 'sy.svg'),
-    (9, 'الدينار التونسي', 'Tunisian Dinar', 'TN', 'TND', 'د.ت', 0.32, 0, 'tn.svg'),
-    (10, 'الريال اليمني', 'Yemeni Rial', 'YE', 'YER', '﷼', 0.004, 0, 'ye.svg'),
-    (11, 'الدولار الأمريكي', 'US Dollar', 'US', 'USD', '\$', 1.0, 0, 'us.svg'),
-    (12, 'اليورو', 'Euro', 'EU', 'EUR', '€', 1.07, 0, 'eu.svg'),
-    (13, 'الين الياباني', 'Japanese Yen', 'JP', 'JPY', '¥', 0.0064, 0, 'jp.svg'),
-    (14, 'الجنيه الإسترليني', 'British Pound', 'GB', 'GBP', '£', 1.27, 0, 'gb.svg'),
-    (15, 'اليوان الصيني', 'Chinese Yuan', 'CN', 'CNY', '¥', 0.14, 0, 'cn.svg'),
-    (16, 'الروبية الهندية', 'Indian Rupee', 'IN', 'INR', '₹', 0.012, 0, 'in.svg'),
-    (17, 'الدولار الكندي', 'Canadian Dollar', 'CA', 'CAD', '\$', 0.73, 0, 'ca.svg'),
-    (18, 'الفرنك السويسري', 'Swiss Franc', 'CH', 'CHF', 'Fr', 1.12, 0, 'ch.svg'),
-    (19, 'الدولار الأسترالي', 'Australian Dollar', 'AU', 'AUD', '\$', 0.66, 0, 'au.svg'),
-    (20, 'الريال القطري', 'Qatari Riyal', 'QA', 'QAR', 'ر.ق', 0.2747, 0, 'qa.svg');
-  ''';
-
   static const _sqlInsertCategories = '''
     INSERT OR IGNORE INTO categories (id , name_ar, name_en, type, parent_id, image_name) VALUES 
-    (1, 'سحب رصيد', 'Withdraw Balance', 'expense', NULL, 'assets/images/category_png/with_draw.png'),
-    (2, 'تحويل رصيد', 'Transfer Balance', 'expense', NULL, 'assets/images/category_png/with_draw.png'),
-    (3, 'دفع ديون وأقساط', 'Pay Debts & Installments', 'debt', NULL, 'assets/images/category_png/with_draw.png'),
-    (4, 'استلام ديون وأقساط', 'Receive Debts & Installments', 'debt', NULL, 'assets/images/category_png/with_draw.png'),
-    (5, 'الراتب', 'Salary', 'income', NULL, 'assets/images/category_png/with_draw.png'),
-    (6, 'إضافة رصيد', 'Add Balance', 'income', NULL, 'assets/images/category_png/with_draw.png'),
-    (7, 'السكن', 'Housing', 'expense', NULL, 'assets/images/category_png/1.png'),
-    (8, 'إيجار', 'Rent', 'expense', 7, 'assets/images/category_png/2.png'),
-    (25, 'الطعام', 'Food', 'expense', NULL, 'assets/images/category_png/19.png'),
-    (26, 'بقالة', 'Groceries', 'expense', 25, 'assets/images/category_png/20.png'),
-    (27, 'مطاعم', 'Restaurants', 'expense', 25, 'assets/images/category_png/21.png');
+    (1, 'سحب رصيد', 'Withdraw Balance', 'expense', NULL, 'with_draw'),
+    (2, 'تحويل رصيد', 'Transfer Balance', 'expense', NULL, 'transfer'),
+    (3, 'دفع ديون وأقساط', 'Pay Debts & Installments', 'debt', NULL, 'debt'),
+    (4, 'استلام ديون وأقساط', 'Receive Debts & Installments', 'debt', NULL, 'receive_debt'),
+    
+    -- Income
+    (5, 'الراتب', 'Salary', 'income', NULL, 'salary'),
+    (6, 'علاوة', 'Bonus', 'income', NULL, 'bonus'),
+    (7, 'دخل الأعمال', 'Business Income', 'income', NULL, 'business'),
+    (8, 'استثمارات', 'Investments', 'income', NULL, 'investment'),
+    (9, 'هدايا', 'Gifts', 'income', NULL, 'gift'),
+    (10, 'دخل آخر', 'Other Income', 'income', NULL, 'other'),
+
+    -- Expenses - Housing
+    (11, 'السكن', 'Housing', 'expense', NULL, 'housing'),
+    (12, 'إيجار', 'Rent', 'expense', 11, 'rent'),
+    (13, 'قرض عقاري', 'Mortgage', 'expense', 11, 'mortgage'),
+    (14, 'خدمات ومرافق', 'Utilities & Bills', 'expense', 11, 'utilities'),
+    (15, 'صيانة وإصلاحات', 'Maintenance & Repairs', 'expense', 11, 'maintenance'),
+    (16, 'ضريبة عقار', 'Property Tax', 'expense', 11, 'tax'),
+
+    -- Expenses - Utilities & Bills
+    (20, 'الفواتير', 'Utilities & Bills', 'expense', NULL, 'bills'),
+    (21, 'كهرباء', 'Electricity', 'expense', 20, 'electricity'),
+    (22, 'ماء', 'Water', 'expense', 20, 'water'),
+    (23, 'إنترنت', 'Internet', 'expense', 20, 'internet'),
+    (24, 'هاتف جوال', 'Mobile', 'expense', 20, 'mobile'),
+
+    -- Expenses - Transportation
+    (30, 'المواصلات', 'Transportation', 'expense', NULL, 'transport'),
+    (31, 'وقود', 'Fuel', 'expense', 30, 'fuel'),
+    (32, 'صيانة', 'Maintenance', 'expense', 30, 'maintenance_car'),
+    (33, 'تأمين', 'Insurance', 'expense', 30, 'insurance_car'),
+    (34, 'مواقف', 'Parking', 'expense', 30, 'parking'),
+    (35, 'مواصلات عامة', 'Public Transport', 'expense', 30, 'bus'),
+    (36, 'غرامات ومخالفات', 'Fines', 'expense', 30, 'fine'),
+
+    -- Expenses - Food
+    (40, 'الطعام', 'Food', 'expense', NULL, 'food'),
+    (41, 'بقالة', 'Groceries', 'expense', 40, 'groceries'),
+    (42, 'مطاعم', 'Restaurants', 'expense', 40, 'restaurants'),
+    (43, 'قهوة ووجبات خفيفة', 'Coffee & Snacks', 'expense', 40, 'coffee'),
+
+    -- Expenses - Health
+    (50, 'الصحة', 'Health', 'expense', NULL, 'health'),
+    (51, 'فواتير طبية', 'Medical Bills', 'expense', 50, 'hospital'),
+    (52, 'صيدلية', 'Pharmacy', 'expense', 50, 'pharmacy'),
+    (53, 'تأمين صحي', 'Health Insurance', 'expense', 50, 'health_insurance'),
+
+    -- Expenses - Education
+    (60, 'التعليم', 'Education', 'expense', NULL, 'education'),
+    (61, 'رسوم دراسية', 'Tuition', 'expense', 60, 'tuition'),
+    (62, 'كتب ولوازم', 'Books & Supplies', 'expense', 60, 'books'),
+    (63, 'دورات وتدريب', 'Courses & Training', 'expense', 60, 'course'),
+
+    -- Expenses - Personal Care
+    (70, 'العناية الشخصية', 'Personal Care', 'expense', NULL, 'personal_care'),
+    (71, 'ملابس', 'Clothes', 'expense', 70, 'clothes'),
+    (72, 'حلاقة وتجميل', 'Hair & Beauty', 'expense', 70, 'barber'),
+    (73, 'مستحضرات تجميل', 'Cosmetics', 'expense', 70, 'cosmetics'),
+
+    -- Expenses - Entertainment
+    (80, 'الترفيه', 'Entertainment', 'expense', NULL, 'entertainment'),
+    (81, 'اشتراكات', 'Subscriptions', 'expense', 80, 'subscriptions'),
+    (82, 'سينما وفعاليات', 'Cinema & Events', 'expense', 80, 'cinema'),
+    (83, 'هوايات', 'Hobbies', 'expense', 80, 'hobby'),
+
+    -- Expenses - Family & Kids
+    (90, 'الأسرة والأطفال', 'Family & Kids', 'expense', NULL, 'family'),
+    (91, 'رعاية أطفال', 'Childcare', 'expense', 90, 'childcare'),
+    (92, 'رسوم مدرسية', 'School Fees', 'expense', 90, 'school'),
+    (93, 'ألعاب', 'Toys', 'expense', 90, 'toys'),
+
+    -- Expenses - Pets
+    (100, 'الحيوانات الأليفة', 'Pets', 'expense', NULL, 'pets'),
+    (101, 'طعام ومستلزمات', 'Food & Supplies', 'expense', 100, 'pet_food'),
+    (102, 'بيطري', 'Vet', 'expense', 100, 'vet'),
+
+    -- Expenses - Gifts & Donations
+    (110, 'الهدايا والتبرعات', 'Gifts & Donations', 'expense', NULL, 'gifts_given'),
+    (111, 'هدايا مقدمة', 'Gifts Given', 'expense', 110, 'gift_box'),
+    (112, 'صدقات وتبرعات', 'Charity & Donations', 'expense', 110, 'charity'),
+
+    -- Expenses - Savings & Investments
+    (120, 'الادخار والاستثمار', 'Savings & Investments', 'expense', NULL, 'savings_invest'),
+    (121, 'صندوق طوارئ', 'Emergency Fund', 'expense', 120, 'emergency'),
+    (122, 'ادخار تقاعد', 'Retirement', 'expense', 120, 'retirement'),
+    (123, 'استثمار أسهم', 'Stocks', 'expense', 120, 'stocks'),
+
+    -- Expenses - Debt & Loans
+    (130, 'الديون والقروض', 'Debt & Loans', 'expense', NULL, 'debt_loans'),
+    (131, 'أقساط القروض', 'Loan Installments', 'expense', 130, 'loan_payment'),
+    (132, 'مدفوعات بطاقة الائتمان', 'Credit Card Payments', 'expense', 130, 'credit_card_pay'),
+
+    -- Expenses - Insurance
+    (140, 'التأمين', 'Insurance', 'expense', NULL, 'insurance'),
+    (141, 'تأمين صحي', 'Health Insurance', 'expense', 140, 'health_insurance_alt'),
+    (142, 'تأمين سيارة', 'Car Insurance', 'expense', 140, 'car_insurance'),
+    (143, 'تأمين حياة', 'Life Insurance', 'expense', 140, 'life_insurance'),
+
+    -- Expenses - Miscellaneous
+    (150, 'متفرقات', 'Miscellaneous', 'expense', NULL, 'misc'),
+    (151, 'مصروفات غير مخططة', 'Unplanned', 'expense', 150, 'unplanned'),
+    (152, 'أخرى', 'Other', 'expense', 150, 'other_expense');
   ''';
 }

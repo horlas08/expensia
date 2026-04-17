@@ -173,7 +173,26 @@
     "no_wallet": "No wallets found. Add one first.",
     "saved": "Transaction saved!",
     "type_transfer": "Transfer",
-    "type_transfer_sub": "Move funds between wallets"
+    "type_transfer_sub": "Move funds between wallets",
+    "priority": "Priority",
+    "priority_basic": "Basic",
+    "priority_normal": "Normal",
+    "priority_entertainment": "Entertainment",
+    "repeat": "Repeat Transaction",
+    "frequency": "Frequency",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "remember_transaction": "Remember Transaction",
+    "sub_category": "Sub-category",
+    "select_sub_category": "Select a sub-category",
+    "select_parent": "Select {}",
+    "repeat_title": "Repeat Transaction",
+    "repeat_enabled": "Automatically repeating",
+    "repeat_disabled": "One-time transaction",
+    "auto_add": "Auto-add",
+    "auto_add_hint": "Transaction will be added automatically on the due date."
   },
   "history": {
     "title": "History",
@@ -195,5 +214,23 @@
   },
   "transfer": {
     "success": "Transfer completed successfully!"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Track Expenses",
+      "subtitle": "Log your daily spending and understand where your money goes."
+    },
+    "step2": {
+      "title": "Manage Debts",
+      "subtitle": "Keep track of what you owe and what others owe you بسهولة."
+    },
+    "step3": {
+      "title": "Track Installments",
+      "subtitle": "Stay updated with your installment plans and due dates."
+    },
+    "step4": {
+      "title": "View Reports",
+      "subtitle": "See clear insights about your spending and income."
+    }
   }
 }

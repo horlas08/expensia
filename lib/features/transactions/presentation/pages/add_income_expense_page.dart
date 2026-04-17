@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/category_icons.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../../../../core/providers/categories_provider.dart';
 import '../widgets/calculator_dialog.dart';
+import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
+import '../widgets/modern_priority_selector.dart';
+import '../widgets/wallet_picker_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // Add Income / Expense Page
@@ -38,6 +41,12 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   DateTime _selectedDate = DateTime.now();
   String? _imageUrl;
   bool _saving = false;
+
+  // New fields
+  int _selectedPriority = 1; // 1: Basic, 2: Normal, 3: Ent
+  bool _isRepeat = false;
+  String _repeatType = 'monthly'; // daily, weekly, monthly, yearly
+  bool _autoAdd = false;
 
   @override
   void dispose() {
@@ -77,10 +86,12 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       final db = DatabaseService();
       final dbRaw = await db.database;
 
-      await dbRaw.insert('transactions', {
+      final wallet = ref.read(walletProvider).firstWhere((w) => w.id == _selectedWalletId);
+
+      final transactionId = await dbRaw.insert('transactions', {
         'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? (_isIncome ? 5 : 1),
-        'currency_id': currency?.id ?? 1,
+        'category_id': _selectedCategoryId ?? (_isIncome ? 5 : 11), // Default to Salary(5) or Housing(11)
+        'currency_id': currency?.id ?? wallet.currencyId,
         'type': widget.transactionType,
         'direction': _isIncome ? 'plus' : 'min',
         'amount': amount,
@@ -88,7 +99,30 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         'is_paid': 1,
         'notes': _noteCtrl.text.trim(),
         'image_url': _imageUrl,
+        'priority': _selectedPriority,
+        'is_repeat': _isRepeat ? 1 : 0,
       });
+
+      // Handle recurring transaction
+      if (_isRepeat) {
+        DateTime nextDate;
+        switch (_repeatType) {
+          case 'daily': nextDate = _selectedDate.add(const Duration(days: 1)); break;
+          case 'weekly': nextDate = _selectedDate.add(const Duration(days: 7)); break;
+          case 'monthly': nextDate = DateTime(_selectedDate.year, _selectedDate.month + 1, _selectedDate.day); break;
+          case 'yearly': nextDate = DateTime(_selectedDate.year + 1, _selectedDate.month, _selectedDate.day); break;
+          default: nextDate = _selectedDate.add(const Duration(days: 30));
+        }
+
+        await dbRaw.insert('recurring_transactions', {
+          'transaction_id': transactionId,
+          'start_date': _selectedDate.toIso8601String(),
+          'next_execution_date': nextDate.toIso8601String(),
+          'repeat_type': _repeatType,
+          'is_active': 1,
+          'auto_add': _autoAdd ? 1 : 0,
+        });
+      }
 
       // Update wallet balance
       if (_isIncome) {
@@ -165,26 +199,35 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   }
 
   Future<void> _pickCategory() async {
-    final categories = await DatabaseService()
-        .getCategoriesByType(widget.transactionType);
+    final categories = await ref.read(categoriesProvider(widget.transactionType).future) as List<Map<String, dynamic>>;
     if (!mounted) return;
-    final locale = context.locale.languageCode;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _CategoryPickerSheet(
-        categories: categories,
-        locale: locale,
-        onSelected: (id, name) {
-          setState(() {
-            _selectedCategoryId = id;
-            _selectedCategoryName = name;
-          });
-        },
-      ),
+    final selected = await showCategoryPickerSheet(
+      context,
+      categories: categories,
+      locale: context.locale.languageCode,
+      initialParentId: _selectedCategoryId == null ? null : _getInitialParentId(categories),
     );
+
+    if (selected != null) {
+      setState(() {
+        _selectedCategoryId = selected['id'];
+        _selectedCategoryName = context.locale.languageCode == 'ar'
+            ? (selected['name_ar'] ?? selected['name_en'])
+            : selected['name_en'];
+      });
+    }
+  }
+
+  int? _getInitialParentId(List<Map<String, dynamic>> categories) {
+    if (_selectedCategoryId == null) return null;
+    try {
+      final current = categories.firstWhere((c) => c['id'] == _selectedCategoryId);
+      final pId = current['parent_id'] as int?;
+      return (pId == 0) ? null : pId;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -294,30 +337,40 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                   // Wallet
                   FadeInUp(
                     delay: const Duration(milliseconds: 60),
-                    child: _FormCard(
-                      icon: Icons.account_balance_wallet_rounded,
-                      color: cs.primary,
-                      label: 'transaction.wallet'.tr(),
-                      child: wallets.isEmpty
-                          ? Text(
-                              'transaction.no_wallet'.tr(),
-                              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5)),
-                            )
-                          : DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _selectedWalletId,
-                                isExpanded: true,
-                                hint: Text('transaction.select_wallet'.tr()),
-                                items: wallets
-                                    .map((w) => DropdownMenuItem<int>(
-                                          value: w.id,
-                                          child: Text(w.name),
-                                        ))
-                                    .toList(),
-                                onChanged: (v) =>
-                                    setState(() => _selectedWalletId = v),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        if (wallet != null) {
+                          setState(() => _selectedWalletId = wallet.id);
+                        }
+                      },
+                      child: _FormCard(
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: cs.primary,
+                        label: 'transaction.wallet'.tr(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              wallets.isEmpty
+                                  ? 'transaction.no_wallet'.tr()
+                                  : (wallets.any((w) => w.id == _selectedWalletId)
+                                      ? wallets.firstWhere((w) => w.id == _selectedWalletId).name
+                                      : 'transaction.select_wallet'.tr()),
+                              style: TextStyle(
+                                color: _selectedWalletId != null
+                                    ? cs.onSurface
+                                    : cs.onSurface.withValues(alpha: 0.4),
+                                fontWeight: _selectedWalletId != null ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: cs.onSurface.withValues(alpha: 0.3),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -470,7 +523,31 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 12),
+
+                  // Priority
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 200),
+                    child: ModernPrioritySelector(
+                      selectedPriority: _selectedPriority,
+                      onChanged: (v) => setState(() => _selectedPriority = v),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Repeat
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 220),
+                    child: _ModernRepeatSection(
+                      isRepeat: _isRepeat,
+                      repeatType: _repeatType,
+                      autoAdd: _autoAdd,
+                      onRepeatChanged: (v) => setState(() => _isRepeat = v),
+                      onTypeChanged: (v) => setState(() => _repeatType = v),
+                      onAutoAddChanged: (v) => setState(() => _autoAdd = v),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // Save button
                   FadeInUp(
@@ -572,103 +649,235 @@ class _FormCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Category picker bottom sheet
-// ---------------------------------------------------------------------------
-class _CategoryPickerSheet extends StatelessWidget {
-  const _CategoryPickerSheet({
-    required this.categories,
-    required this.locale,
-    required this.onSelected,
-  });
+class _ModernRepeatSection extends StatelessWidget {
+  final bool isRepeat;
+  final String repeatType;
+  final bool autoAdd;
+  final ValueChanged<bool> onRepeatChanged;
+  final ValueChanged<String> onTypeChanged;
+  final ValueChanged<bool> onAutoAddChanged;
 
-  final List<Map<String, dynamic>> categories;
-  final String locale;
-  final void Function(int id, String name) onSelected;
+  const _ModernRepeatSection({
+    required this.isRepeat,
+    required this.repeatType,
+    required this.autoAdd,
+    required this.onRepeatChanged,
+    required this.onTypeChanged,
+    required this.onAutoAddChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => onRepeatChanged(!isRepeat),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: cs.onSurface.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'transaction.select_category'.tr(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          if (categories.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'categories.empty'.tr(),
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
-              ),
-            )
-          else
-            SizedBox(
-              height: 300,
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.8,
+              color: isRepeat ? cs.primary.withOpacity(0.08) : cs.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: (isRepeat ? cs.primary : Colors.black).withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                itemCount: categories.length,
-                itemBuilder: (_, i) {
-                  final cat = categories[i];
-                  final nameEn = cat['name_en'] as String? ?? '';
-                  final displayName = locale == 'ar'
-                      ? (cat['name_ar'] as String? ?? nameEn)
-                      : nameEn;
-                  final icon = CategoryIcons.getIcon(nameEn);
-                  final color = CategoryIcons.getColor(nameEn);
-                  return GestureDetector(
-                    onTap: () {
-                      onSelected(cat['id'] as int, displayName);
-                      Navigator.of(context).pop();
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(icon, color: color, size: 22),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          displayName,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: cs.onSurface),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              ],
             ),
-        ],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (isRepeat ? cs.primary : cs.onSurface).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.replay_rounded,
+                    color: isRepeat ? cs.primary : cs.onSurface.withOpacity(0.5),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'transaction.repeat_title'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(
+                        isRepeat ? 'transaction.repeat_enabled'.tr() : 'transaction.repeat_disabled'.tr(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: isRepeat,
+                  onChanged: onRepeatChanged,
+                  activeColor: cs.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: !isRepeat
+              ? const SizedBox.shrink()
+              : Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'transaction.frequency'.tr(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface.withOpacity(0.5),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _FrequencyChip(
+                              label: 'transaction.daily'.tr(),
+                              isSelected: repeatType == 'daily',
+                              onTap: () => onTypeChanged('daily'),
+                            ),
+                            const SizedBox(width: 8),
+                            _FrequencyChip(
+                              label: 'transaction.weekly'.tr(),
+                              isSelected: repeatType == 'weekly',
+                              onTap: () => onTypeChanged('weekly'),
+                            ),
+                            const SizedBox(width: 8),
+                            _FrequencyChip(
+                              label: 'transaction.monthly'.tr(),
+                              isSelected: repeatType == 'monthly',
+                              onTap: () => onTypeChanged('monthly'),
+                            ),
+                            const SizedBox(width: 8),
+                            _FrequencyChip(
+                              label: 'transaction.yearly'.tr(),
+                              isSelected: repeatType == 'yearly',
+                              onTap: () => onTypeChanged('yearly'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Divider(color: cs.outlineVariant.withOpacity(0.3)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'transaction.auto_add'.tr(),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'transaction.auto_add_hint'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: cs.onSurface.withOpacity(0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Checkbox(
+                            value: autoAdd,
+                            onChanged: (v) => onAutoAddChanged(v ?? false),
+                            activeColor: cs.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FrequencyChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FrequencyChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? cs.primary : cs.surfaceContainerHighest.withOpacity(0.35),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: cs.primary.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : cs.onSurface.withOpacity(0.8),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }

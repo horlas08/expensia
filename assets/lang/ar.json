@@ -156,7 +156,26 @@
     "no_wallet": "لا توجد محافظ. أضف واحدة أولاً.",
     "saved": "تم حفظ المعاملة!",
     "type_transfer": "تحويل",
-    "type_transfer_sub": "نقل الأموال بين المحافظ"
+    "type_transfer_sub": "نقل الأموال بين المحافظ",
+    "priority": "الأولوية",
+    "priority_basic": "أساسي",
+    "priority_normal": "عادي",
+    "priority_entertainment": "ترفيهي",
+    "repeat": "تكرار المعاملة",
+    "frequency": "التكرار",
+    "daily": "يومياً",
+    "weekly": "أسبوعياً",
+    "monthly": "شهرياً",
+    "yearly": "سنوياً",
+    "remember_transaction": "تذكير بالمعاملة",
+    "sub_category": "الفئة الفرعية",
+    "select_sub_category": "اختر فئة فرعية",
+    "select_parent": "اختر {}",
+    "repeat_title": "تكرار المعاملة",
+    "repeat_enabled": "تكرار تلقائي",
+    "repeat_disabled": "معاملة لمرة واحدة",
+    "auto_add": "إضافة تلقائية",
+    "auto_add_hint": "سيتم إضافة المعاملة تلقائياً في تاريخ الاستحقاق."
   },
   "history": {
     "title": "السجل",
@@ -164,5 +183,23 @@
   },
   "transfer": {
     "success": "تم التحويل بنجاح!"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "تتبع المصروفات",
+      "subtitle": "سجّل مصروفاتك اليومية واعرف أين تذهب أموالك."
+    },
+    "step2": {
+      "title": "إدارة الديون",
+      "subtitle": "تابع ديونك بدقة، سواء لك أو عليك."
+    },
+    "step3": {
+      "title": "متابعة الأقساط",
+      "subtitle": "تابع أقساطك والتزم بمواعيد السداد بسهولة."
+    },
+    "step4": {
+      "title": "عرض التقارير",
+      "subtitle": "اطّلع على تقارير واضحة لدخلك ومصروفاتك."
+    }
   }
 }

@@ -271,27 +271,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     BackupRestoreSheet.showLocal(context, isBackup: false);
   }
 
-  void _showClearDataConfirm(BuildContext context) {
+  void _showClearDataConfirm(BuildContext pageContext) {
     showDialog(
-      context: context,
+      context: pageContext,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('profile.clear_data'.tr()),
         content: Text('profile.clear_data_confirm'.tr()),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () async {
               // 1. Show loading state
-              Navigator.pop(context); // Close confirm dialog
+              Navigator.pop(dialogContext); // Close confirm dialog
               
+              if (!mounted) return;
+
               showDialog(
-                context: context,
+                context: pageContext,
                 barrierDismissible: false,
-                builder: (context) => const Center(
+                builder: (loadingContext) => const Center(
                   child: CircularProgressIndicator(),
                 ),
               );
@@ -309,10 +311,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                 if (!mounted) return;
                 
-                // 5. Close loading dialog
-                Navigator.pop(context);
+                // 5. Close loading dialog using the stable pageContext
+                Navigator.of(pageContext).pop();
                 
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(pageContext).showSnackBar(
                   SnackBar(content: Text('profile.clear_data_success'.tr())),
                 );
 
@@ -321,12 +323,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 
                 if (mounted) {
                   // Using go() to completely replace the route stack
-                  context.go('/splash');
+                  pageContext.go('/splash');
                 }
               } catch (e) {
                 if (mounted) {
-                  Navigator.pop(context); // Close loading if error
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  Navigator.of(pageContext).pop(); // Close loading if error
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
                     SnackBar(content: Text('common.error'.tr() + ': $e')),
                   );
                 }

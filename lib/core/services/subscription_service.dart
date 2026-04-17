@@ -12,10 +12,10 @@ final isProProvider = StateProvider<bool>((ref) => false);
 class SubscriptionService {
   /// TODO: Replace with your actual RevenueCat API Keys from the dashboard
   /// Android: https://app.revenuecat.com/projects/YOUR_PROJECT/apps/android/settings
-  static const _apiKeyAndroid = 'goog_placeholder_android_key';
+  static const _apiKeyAndroid = 'test_NUOHsGDJSvGQYdBPxLFIYWSDuIg';
   
   /// iOS: https://app.revenuecat.com/projects/YOUR_PROJECT/apps/ios/settings
-  static const _apiKeyIos = 'appl_placeholder_ios_key';
+  static const _apiKeyIos = 'test_NUOHsGDJSvGQYdBPxLFIYWSDuIg';
 
   /// The ID of the entitlement that grants Pro access.
   /// Usually set up in RevenueCat Dashboard -> Entitlements.

@@ -68,14 +68,18 @@ class CurrencyModel {
   });
 
   factory CurrencyModel.fromMap(Map<String, dynamic> map) {
+    final idValue = map['id'];
+    final rateValue = map['rate_to_usd'];
+
     return CurrencyModel(
-      id: map['id'],
-      currencyNameAr: map['currency_name_ar'] ?? '',
-      currencyNameEn: map['currency_name_en'] ?? '',
+      id: idValue is num ? idValue.toInt() : 0,
+      currencyNameAr: map['currency_name_ar'] ?? map['name_ar'] ?? '',
+      currencyNameEn: map['currency_name_en'] ?? map['name_en'] ?? '',
       countryCode: map['country_code'] ?? '',
-      currencyCode: map['currency_code'] ?? '',
-      currencySymbol: map['currency_symbol'] ?? '',
-      rateToUsd: map['rate_to_usd']?.toDouble() ?? 1.0,
+      currencyCode: map['currency_code'] ?? map['code'] ?? '',
+      currencySymbol:
+          map['currency_symbol'] ?? map['symbol'] ?? map['symbol_en'] ?? '',
+      rateToUsd: rateValue is num ? rateValue.toDouble() : 1.0,
       flag: map['flag'] ?? '',
     );
   }
@@ -93,5 +97,6 @@ class CurrencyModel {
     };
   }
 
-  String get displayName => currencyNameEn.isNotEmpty ? currencyNameEn : currencyNameAr;
+  String get displayName =>
+      currencyNameEn.isNotEmpty ? currencyNameEn : currencyNameAr;
 }

@@ -10,9 +10,12 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../../core/providers/categories_provider.dart';
 import '../widgets/calculator_dialog.dart';
+import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
+import '../widgets/wallet_picker_sheet.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -34,9 +37,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   final _noteCtrl = TextEditingController();
   final _personCtrl = TextEditingController();
 
+  int? _selectedWalletId;
   int? _selectedCategoryId;
   String? _selectedCategoryName;
-  int? _selectedWalletId;
   bool _saving = false;
   bool _isForYou = false;
   String? _imageUrl;
@@ -97,7 +100,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       final installmentId = await dbRaw.insert('installments', {
         'person_id': personId,
         'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? 7, // generic installment category
+        'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
         'deposit': deposit,
         'remaining_price': remaining,
         'total_months': months,
@@ -125,7 +128,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         final curr = ref.read(defaultCurrencyProvider).valueOrNull;
         await dbRaw.insert('transactions', {
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? 7,
+          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
           'currency_id': curr?.id ?? 1,
           'type': 'installment',
           'direction': _isForYou ? 'plus' : 'min', 
@@ -331,28 +334,6 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         SnackBar(content: Text('Error picking image: $e')),
       );
     }
-  }
-
-  Future<void> _pickCategory() async {
-    final categories = await DatabaseService().getCategoriesByType('expense'); // using expenses for installment categorizations
-    if (!mounted) return;
-    final locale = context.locale.languageCode;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _CategoryPickerSheet(
-        categories: categories,
-        locale: locale,
-        onSelected: (id, name) {
-          setState(() {
-            _selectedCategoryId = id;
-            _selectedCategoryName = name;
-          });
-        },
-      ),
-    );
   }
 
   @override
@@ -587,30 +568,34 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   // Wallet
                   FadeInUp(
                     delay: const Duration(milliseconds: 80),
-                    child: _FormCard(
-                      icon: Icons.account_balance_wallet_rounded,
-                      color: cs.primary,
-                      label: 'transaction.wallet'.tr(),
-                      child: wallets.isEmpty
-                          ? Text(
-                              'transaction.no_wallet'.tr(),
-                              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5)),
-                            )
-                          : DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _selectedWalletId,
-                                isExpanded: true,
-                                hint: Text('transaction.select_wallet'.tr()),
-                                items: wallets
-                                    .map((w) => DropdownMenuItem<int>(
-                                          value: w.id,
-                                          child: Text(w.name),
-                                        ))
-                                    .toList(),
-                                onChanged: (v) =>
-                                    setState(() => _selectedWalletId = v),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        if (wallet != null) {
+                          setState(() => _selectedWalletId = wallet.id);
+                        }
+                      },
+                      child: _FormCard(
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: cs.primary,
+                        label: 'transaction.wallet'.tr(),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedWalletId == null
+                                    ? 'transaction.select_wallet'.tr()
+                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
+                                style: TextStyle(
+                                  color: _selectedWalletId == null ? cs.onSurface.withOpacity(0.5) : cs.onSurface,
+                                  fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
+                                ),
                               ),
                             ),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withOpacity(0.3)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -619,32 +604,47 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 100),
                     child: GestureDetector(
-                      onTap: _pickCategory,
+                      onTap: () async {
+                        final categories = await ref.read(categoriesProvider('debt').future) as List<Map<String, dynamic>>;
+                        if (!mounted) return;
+                        final selected = await showCategoryPickerSheet(
+                          context,
+                          categories: categories,
+                          locale: context.locale.languageCode,
+                        );
+                        if (selected != null) {
+                          setState(() {
+                            _selectedCategoryId = selected['id'];
+                            _selectedCategoryName = context.locale.languageCode == 'ar'
+                                ? (selected['name_ar'] ?? selected['name_en'])
+                                : selected['name_en'];
+                          });
+                        }
+                      },
                       child: _FormCard(
                         icon: Icons.category_rounded,
-                        color: const Color(0xFF9B5DE5),
+                        color: Colors.orange,
                         label: 'transaction.category'.tr(),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _selectedCategoryName ??
-                                  'transaction.select_category'.tr(),
-                              style: TextStyle(
-                                color: _selectedCategoryName != null
-                                    ? cs.onSurface
-                                    : cs.onSurface.withValues(alpha: 0.4),
+                            Expanded(
+                              child: Text(
+                                _selectedCategoryId == null 
+                                    ? (_isForYou ? 'Receive Debts & Installments' : 'Pay Debts & Installments')
+                                    : _selectedCategoryName!,
+                                style: TextStyle(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withValues(alpha: 0.3)),
                           ],
                         ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 12),
 
                   // Note
@@ -831,108 +831,6 @@ class _FormCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Category picker bottom sheet
-// ---------------------------------------------------------------------------
-class _CategoryPickerSheet extends StatelessWidget {
-  const _CategoryPickerSheet({
-    required this.categories,
-    required this.locale,
-    required this.onSelected,
-  });
-
-  final List<Map<String, dynamic>> categories;
-  final String locale;
-  final void Function(int id, String name) onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: cs.onSurface.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'transaction.select_category'.tr(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          if (categories.isEmpty)
-            Padding(
-               padding: const EdgeInsets.all(24),
-              child: Text(
-                'categories.empty'.tr(),
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
-              ),
-            )
-          else
-            SizedBox(
-              height: 300,
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: categories.length,
-                itemBuilder: (_, i) {
-                  final cat = categories[i];
-                  final nameEn = cat['name_en'] as String? ?? '';
-                  final displayName = locale == 'ar'
-                      ? (cat['name_ar'] as String? ?? nameEn)
-                      : nameEn;
-                  final icon = CategoryIcons.getIcon(nameEn);
-                  final color = CategoryIcons.getColor(nameEn);
-                  return GestureDetector(
-                    onTap: () {
-                      onSelected(cat['id'] as int, displayName);
-                      Navigator.of(context).pop();
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(icon, color: color, size: 22),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          displayName,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: cs.onSurface),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
         ],
       ),
     );

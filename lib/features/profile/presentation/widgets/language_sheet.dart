@@ -53,54 +53,57 @@ class LanguageSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [cs.primary, Colors.deepPurple]),
-                              borderRadius: BorderRadius.circular(14),
+              SafeArea(
+                bottom: true,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FadeInDown(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [cs.primary, Colors.deepPurple]),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.language_rounded, color: Colors.white, size: 22),
                             ),
-                            child: const Icon(Icons.language_rounded, color: Colors.white, size: 22),
-                          ),
-                          const SizedBox(width: 14),
-                          Text(
-                            'profile.lang_title'.tr(),
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: cs.onSurface,
+                            const SizedBox(width: 14),
+                            Text(
+                              'profile.lang_title'.tr(),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: cs.onSurface,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ...List.generate(_languages.length, (i) {
-                      final lang = _languages[i];
-                      final isSelected = currentCode == lang['code'];
-                      return FadeInUp(
-                        delay: Duration(milliseconds: 80 * i),
-                        child: _LangTile(
-                          flag: lang['flag']!,
-                          nameEn: lang['nameEn']!,
-                          nameNative: lang['nameNative']!,
-                          isSelected: isSelected,
-                          onTap: () async {
-                            await context.setLocale(Locale(lang['code']!));
-                            if (context.mounted) Navigator.of(context).pop();
-                          },
+                          ],
                         ),
-                      );
-                    }),
-                    const SizedBox(height: 24),
-                  ],
+                      ),
+                      const SizedBox(height: 24),
+                      ...List.generate(_languages.length, (i) {
+                        final lang = _languages[i];
+                        final isSelected = currentCode == lang['code'];
+                        return FadeInUp(
+                          delay: Duration(milliseconds: 80 * i),
+                          child: _LangTile(
+                            flag: lang['flag']!,
+                            nameEn: lang['nameEn']!,
+                            nameNative: lang['nameNative']!,
+                            isSelected: isSelected,
+                            onTap: () async {
+                              await context.setLocale(Locale(lang['code']!));
+                              if (context.mounted) Navigator.of(context).pop();
+                            },
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ],

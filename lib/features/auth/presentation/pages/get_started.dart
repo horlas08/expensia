@@ -6,16 +6,18 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/services/backup_restore_service.dart';
 import '../../../../core/services/subscription_service.dart';
+import '../../../profile/presentation/widgets/language_sheet.dart';
 
 class GetStartedPage extends ConsumerWidget {
   const GetStartedPage({super.key});
 
-  void _showRestoreModal(BuildContext context, WidgetRef ref) {
-    final isPro = ref.watch(isProProvider);
-
+  void _showRestoreModal(BuildContext context) {
     showModalSheet(
       context: context,
-      builder: (context) => DraggableScrollableSheet(
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final isPro = ref.watch(isProProvider);
+          return DraggableScrollableSheet(
         initialChildSize: 0.6,
         minChildSize: 0.4,
         maxChildSize: 0.9,
@@ -106,6 +108,8 @@ class GetStartedPage extends ConsumerWidget {
             ],
           ),
         ),
+        );
+        },
       ),
     );
   }
@@ -125,13 +129,21 @@ class GetStartedPage extends ConsumerWidget {
             ],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: Icon(Icons.language_rounded, color: Theme.of(context).colorScheme.primary),
+                    onPressed: () => showLanguageSheet(context),
+                  ),
+                ),
+                const Spacer(),
               FadeInDown(
                 child: Center(
                   child: Container(
@@ -196,7 +208,7 @@ class GetStartedPage extends ConsumerWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 600),
                 child: OutlinedButton(
-                  onPressed: () => _showRestoreModal(context, ref),
+                  onPressed: () => _showRestoreModal(context),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     side: BorderSide(color: Theme.of(context).colorScheme.primary),
@@ -218,6 +230,7 @@ class GetStartedPage extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

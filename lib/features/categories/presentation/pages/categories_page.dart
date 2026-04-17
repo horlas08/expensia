@@ -2,17 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:animate_do/animate_do.dart' ;
+import '../../../../core/providers/categories_provider.dart';
 import '../../../../core/constants/category_icons.dart';
 import '../../../../core/services/database_service.dart';
-
-// ---------------------------------------------------------------------------
-// Riverpod provider — loads categories by type from SQLite
-// ---------------------------------------------------------------------------
-final _categoriesProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, type) async {
-  final db = DatabaseService();
-  return db.getCategoriesByType(type);
-});
 
 // ---------------------------------------------------------------------------
 // Categories Page — 3 tabs: Expense / Income / Debt
@@ -100,7 +92,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
         onSaved: () {
           // Invalidate providers to refresh all tabs
           for (final t in _tabs) {
-            ref.invalidate(_categoriesProvider(t));
+            ref.invalidate(categoriesProvider(t));
           }
         },
       ),
@@ -111,61 +103,125 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
 // ---------------------------------------------------------------------------
 // Single tab body
 // ---------------------------------------------------------------------------
-class _CategoryTabView extends ConsumerWidget {
+class _CategoryTabView extends ConsumerStatefulWidget {
   const _CategoryTabView({required this.type});
   final String type;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_categoriesProvider(type));
+  ConsumerState<_CategoryTabView> createState() => _CategoryTabViewState();
+}
+
+class _CategoryTabViewState extends ConsumerState<_CategoryTabView> {
+  int? _activeParentId;
+  String? _activeParentName;
+
+  @override
+  Widget build(BuildContext context) {
+    // We'll load ALL categories for this type and filter in memory for better UX responsiveness
+    final async = ref.watch(categoriesProvider(widget.type));
     final cs = Theme.of(context).colorScheme;
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text(e.toString())),
-      data: (categories) {
-        if (categories.isEmpty) {
-          return _EmptyCategoryState(type: type);
+      data: (allCategories) {
+        final filtered = allCategories.where((c) {
+          final pId = c['parent_id'] as int?;
+          return (_activeParentId == null) 
+              ? (pId == null || pId == 0) 
+              : (pId == _activeParentId);
+        }).toList();
+
+        if (allCategories.isEmpty) {
+          return _EmptyCategoryState(type: widget.type);
         }
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.85,
-          ),
-          itemCount: categories.length,
-          itemBuilder: (context, i) {
-            final category = categories[i];
-            return FadeInUp(
-              delay: Duration(milliseconds: 40 * i),
-              child: _CategoryCard(
-                category: category,
-                onEdit: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => _CategoryFormSheet(
-                      type: type,
+
+        return Column(
+          children: [
+            if (_activeParentId != null)
+              FadeInDown(
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: cs.primary.withValues(alpha: 0.1),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _activeParentId = null;
+                          _activeParentName = null;
+                        }),
+                        icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: cs.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _activeParentName ?? 'profile.categories'.tr(),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: filtered.length,
+                itemBuilder: (context, i) {
+                  final category = filtered[i];
+                  final catId = category['id'] as int;
+                  final hasChildren = allCategories.any((c) => c['parent_id'] == catId);
+                  final locale = context.locale.languageCode;
+                  final displayName = locale == 'ar' ? category['name_ar'] : category['name_en'];
+
+                  return FadeInUp(
+                    delay: Duration(milliseconds: 30 * i),
+                    child: _CategoryCard(
                       category: category,
-                      onSaved: () {
-                        ref.invalidate(_categoriesProvider(type));
+                      hasChildren: hasChildren,
+                      onTap: () {
+                        if (hasChildren) {
+                          setState(() {
+                            _activeParentId = catId;
+                            _activeParentName = displayName;
+                          });
+                        } else {
+                          _openEdit(category);
+                        }
+                      },
+                      onEdit: () => _openEdit(category),
+                      onDelete: () async {
+                        await DatabaseService().deleteCategory(catId);
+                        ref.invalidate(categoriesProvider(widget.type));
                       },
                     ),
                   );
                 },
-                onDelete: () async {
-                  final id = category['id'] as int;
-                  await DatabaseService().deleteCategory(id);
-                  ref.invalidate(_categoriesProvider(type));
-                },
               ),
-            );
-          },
+            ),
+          ],
         );
       },
+    );
+  }
+
+  void _openEdit(Map<String, dynamic> category) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CategoryFormSheet(
+        type: widget.type,
+        category: category,
+        onSaved: () {
+          ref.invalidate(categoriesProvider(widget.type));
+        },
+      ),
     );
   }
 }
@@ -178,10 +234,14 @@ class _CategoryCard extends StatelessWidget {
     required this.category,
     required this.onDelete,
     required this.onEdit,
+    required this.onTap,
+    this.hasChildren = false,
   });
   final Map<String, dynamic> category;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final VoidCallback onTap;
+  final bool hasChildren;
 
   @override
   Widget build(BuildContext context) {
@@ -190,11 +250,11 @@ class _CategoryCard extends StatelessWidget {
     final nameEn = category['name_en'] as String? ?? '';
     final nameAr = category['name_ar'] as String? ?? '';
     final displayName = locale == 'ar' ? nameAr : nameEn;
-    final icon = CategoryIcons.getIcon(nameEn);
-    final color = CategoryIcons.getColor(nameEn);
+    final icon = CategoryIcons.getIcon(category['image_name'] ?? '');
+    final color = CategoryIcons.getColor(category['image_name'] ?? '');
 
     return GestureDetector(
-      onTap: onEdit,
+      onTap: onTap,
       onLongPress: () => _showDeleteDialog(context),
       child: Container(
         decoration: BoxDecoration(
@@ -202,37 +262,65 @@ class _CategoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      displayName,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text(
-                displayName,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
+            if (hasChildren)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: cs.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 8),
                 ),
+              ),
+            Positioned(
+              top: 4,
+              left: 4,
+              child: IconButton(
+                icon: Icon(Icons.edit_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.3)),
+                onPressed: onEdit,
+                visualDensity: VisualDensity.compact,
               ),
             ),
           ],
@@ -302,8 +390,9 @@ class _EmptyCategoryState extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Category Form Sheet (Add/Edit)
 // ---------------------------------------------------------------------------
-class _CategoryFormSheet extends StatefulWidget {
+class _CategoryFormSheet extends ConsumerStatefulWidget {
   const _CategoryFormSheet({
+    super.key,
     required this.type,
     required this.onSaved,
     this.category,
@@ -313,13 +402,14 @@ class _CategoryFormSheet extends StatefulWidget {
   final Map<String, dynamic>? category;
 
   @override
-  State<_CategoryFormSheet> createState() => _CategoryFormSheetState();
+  ConsumerState<_CategoryFormSheet> createState() => _CategoryFormSheetState();
 }
 
-class _CategoryFormSheetState extends State<_CategoryFormSheet> {
+class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
   final _nameEnCtrl = TextEditingController();
   final _nameArCtrl = TextEditingController();
   String _selectedIconKey = 'other';
+  int? _selectedParentId;
   bool _saving = false;
 
   bool get _isEdit => widget.category != null;
@@ -331,6 +421,8 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
       _nameEnCtrl.text = widget.category!['name_en'] as String? ?? '';
       _nameArCtrl.text = widget.category!['name_ar'] as String? ?? '';
       _selectedIconKey = widget.category!['image_name'] as String? ?? 'other';
+      _selectedParentId = widget.category!['parent_id'] as int?;
+      if (_selectedParentId == 0) _selectedParentId = null;
     }
   }
 
@@ -363,6 +455,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
         _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
         widget.type,
         _selectedIconKey,
+        parentId: _selectedParentId,
       );
     } else {
       await DatabaseService().addCategory(
@@ -370,6 +463,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
         nameAr: _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
         type: widget.type,
         iconKey: _selectedIconKey,
+        parentId: _selectedParentId,
       );
     }
     if (!mounted) return;
@@ -381,6 +475,10 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final locale = context.locale.languageCode;
+    
+    // Load parent categories to choose from (only those of same type that are roots)
+    final categoriesAsync = ref.watch(categoriesProvider(widget.type));
 
     return Container(
       decoration: BoxDecoration(
@@ -428,6 +526,53 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
               ],
             ),
             const SizedBox(height: 24),
+
+            // Parent category selection
+            categoriesAsync.when(
+              data: (all) {
+                final roots = all.where((c) => (c['parent_id'] == null || c['parent_id'] == 0)).toList();
+                // If editing, exclude itself from being its own parent
+                if (_isEdit) {
+                  roots.removeWhere((c) => c['id'] == widget.category!['id']);
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'transaction.sub_category'.tr(),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: cs.primary),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      value: _selectedParentId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: cs.surfaceContainerLow,
+                        hintText: 'transaction.select_category'.tr(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text("None (Root Category)"),
+                        ),
+                        ...roots.map((c) => DropdownMenuItem<int>(
+                          value: c['id'] as int,
+                          child: Text(locale == 'ar' ? c['name_ar'] : c['name_en']),
+                        )),
+                      ],
+                      onChanged: (v) => setState(() => _selectedParentId = v),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+
             // Name EN
             TextField(
               controller: _nameEnCtrl,

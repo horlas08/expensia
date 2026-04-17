@@ -1,10 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_setup_model.dart';
+import '../services/currency_catalog_service.dart';
 import '../services/shared_preferences_service.dart';
 
 // ---------------------------------------------------------------------------
 // Global currency provider — reads saved default currency from SharedPrefs
 // ---------------------------------------------------------------------------
+
+final currencyCatalogProvider = FutureProvider<List<CurrencyModel>>((
+  ref,
+) async {
+  return CurrencyCatalogService().loadCurrencies();
+});
 
 /// The full CurrencyModel for the user's chosen default currency.
 /// Returns null if none has been set yet.
