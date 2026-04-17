@@ -104,6 +104,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         // Revert old balance
         if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount); }
         else { await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount); }
+        // Update transaction
         await db.updateTransaction(id, {
           'wallet_id': _selectedWalletId,
           'category_id': _selectedCategoryId ?? 6,
@@ -113,6 +114,22 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'notes': _noteCtrl.text.trim(),
           'image_url': _imageUrl,
         });
+
+        // Update underlying debt if exists
+        final debtId = widget.initialTransaction!['debt_id'];
+        if (debtId != null) {
+          int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
+          await dbRaw.update('debts', {
+            'person_id': personId,
+            'wallet_id': _selectedWalletId,
+            'category_id': _selectedCategoryId ?? 6,
+            'income': _isOnYou ? 0 : amount,
+            'expense': _isOnYou ? amount : 0,
+            'due_date': _selectedDate.toIso8601String(),
+            'notes': _noteCtrl.text.trim(),
+            'image_path': _imageUrl,
+          }, where: 'id = ?', whereArgs: [debtId]);
+        }
         // Apply new balance
         if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
         else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
@@ -120,7 +137,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
         double income = _isOnYou ? 0 : amount;
         double expense = _isOnYou ? amount : 0;
-        await dbRaw.insert('debts', {
+        final debtId = await dbRaw.insert('debts', {
           'person_id': personId,
           'wallet_id': _selectedWalletId,
           'category_id': _selectedCategoryId ?? 6,
@@ -143,6 +160,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'is_paid': 1,
           'notes': _noteCtrl.text.trim(),
           'image_url': _imageUrl,
+          'debt_id': debtId,
         });
         if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
         else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
@@ -261,7 +279,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         title: Text(
-          'dashboard.debt'.tr(),
+          widget.initialTransaction != null ? 'Edit Debt' : 'dashboard.debt'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,

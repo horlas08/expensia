@@ -114,51 +114,103 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       // Ensure entity exists or create them
       int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
 
-      final installmentId = await dbRaw.insert('installments', {
-        'person_id': personId,
-        'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
-        'deposit': deposit,
-        'remaining_price': remaining,
-        'total_months': months,
-        'remaining_months': months, // assume 0 paid so far
-        'status': 'active',
-        'type': _isForYou ? 'for_you' : 'on_you',
-        'image_path': _imageUrl,
-        'notes': _noteCtrl.text.trim(),
-        'created_at': DateTime.now().toIso8601String(),
-      });
+      if (widget.initialTransaction != null) {
+        final id = widget.initialTransaction!['id'] as int;
+        final instId = widget.initialTransaction!['installment_id'] as int;
+        final oldDeposit = (widget.initialTransaction!['amount'] as num).toDouble();
+        final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
 
-      // Generation of monthly schedules
-      final plan = _calculatePlan();
-      for (final item in plan) {
-        await dbRaw.insert('installment_details', {
-          'installment_id': installmentId,
-          'due_date': item['due_date'],
-          'amount': item['amount'],
-          'is_paid': 0,
-        });
-      }
+        // 1. Revert old balance
+        if (_isForYou) {
+          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldDeposit);
+        } else {
+          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldDeposit);
+        }
 
-      // The initial 'deposit' is a cash flow.
-      if (deposit > 0) {
+        // 2. Update installment record
+        await dbRaw.update('installments', {
+          'person_id': personId,
+          'wallet_id': _selectedWalletId,
+          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+          'deposit': deposit,
+          'remaining_price': remaining,
+          'total_months': months,
+          // Note: Full schedule regeneration logic could be added here if needed
+          'type': _isForYou ? 'for_you' : 'on_you',
+          'image_path': _imageUrl,
+          'notes': _noteCtrl.text.trim(),
+        }, where: 'id = ?', whereArgs: [instId]);
+
+        // 3. Update the deposit transaction
         final curr = ref.read(defaultCurrencyProvider).valueOrNull;
-        await dbRaw.insert('transactions', {
+        await db.updateTransaction(id, {
           'wallet_id': _selectedWalletId,
           'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
           'currency_id': curr?.id ?? 1,
           'type': 'installment',
-          'direction': _isForYou ? 'plus' : 'min', 
+          'direction': _isForYou ? 'plus' : 'min',
           'amount': deposit,
           'date': DateTime.now().toIso8601String(),
-          'is_paid': 1,
           'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
+          'image_url': _imageUrl,
         });
 
+        // 4. Apply new balance
         if (_isForYou) {
           await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, deposit);
         } else {
           await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, deposit);
+        }
+      } else {
+        // --- NEW INSTALLMENT ---
+        final installmentId = await dbRaw.insert('installments', {
+          'person_id': personId,
+          'wallet_id': _selectedWalletId,
+          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+          'deposit': deposit,
+          'remaining_price': remaining,
+          'total_months': months,
+          'remaining_months': months,
+          'status': 'active',
+          'type': _isForYou ? 'for_you' : 'on_you',
+          'image_path': _imageUrl,
+          'notes': _noteCtrl.text.trim(),
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        // Generation of monthly schedules
+        final plan = _calculatePlan();
+        for (final item in plan) {
+          await dbRaw.insert('installment_details', {
+            'installment_id': installmentId,
+            'due_date': item['due_date'],
+            'amount': item['amount'],
+            'is_paid': 0,
+          });
+        }
+
+        // The initial 'deposit' is a cash flow
+        if (deposit > 0) {
+          final curr = ref.read(defaultCurrencyProvider).valueOrNull;
+          await dbRaw.insert('transactions', {
+            'wallet_id': _selectedWalletId,
+            'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+            'currency_id': curr?.id ?? 1,
+            'type': 'installment',
+            'direction': _isForYou ? 'plus' : 'min',
+            'amount': deposit,
+            'date': DateTime.now().toIso8601String(),
+            'is_paid': 1,
+            'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
+            'installment_id': installmentId,
+            'image_url': _imageUrl,
+          });
+
+          if (_isForYou) {
+            await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, deposit);
+          } else {
+            await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, deposit);
+          }
         }
       }
 
@@ -357,7 +409,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         title: Text(
-          'dashboard.installment'.tr(),
+          widget.initialTransaction != null ? 'Edit Installment' : 'dashboard.installment'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,

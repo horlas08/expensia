@@ -344,9 +344,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     List<Map<String, dynamic>> installments = [];
     
     if (type == 'debt') {
-      debts = await dbService.getDebtTransactions(id);
+      final debtId = widget.tx['debt_id'] as int? ?? id;
+      debts = await dbService.getDebtTransactions(debtId);
     } else if (type == 'installment') {
-      installments = await dbService.getInstallmentDetails(id);
+      final instId = widget.tx['installment_id'] as int? ?? id;
+      installments = await dbService.getInstallmentDetails(instId);
     }
 
     if (mounted) {

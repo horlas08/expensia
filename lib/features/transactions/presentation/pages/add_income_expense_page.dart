@@ -287,9 +287,11 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         backgroundColor: _typeColor,
         foregroundColor: Colors.white,
         title: Text(
-          _isIncome
-              ? 'transaction.type_income'.tr()
-              : 'transaction.type_expense'.tr(),
+          widget.initialTransaction != null
+              ? 'Edit Transaction'
+              : (_isIncome
+                  ? 'transaction.type_income'.tr()
+                  : 'transaction.type_expense'.tr()),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
