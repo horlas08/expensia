@@ -10,7 +10,8 @@ import '../providers/persons_provider.dart';
 import '../widgets/add_person_sheet.dart';
 
 class PersonsPage extends ConsumerStatefulWidget {
-  const PersonsPage({super.key});
+  const PersonsPage({super.key, this.isPicker = false});
+  final bool isPicker;
 
   @override
   ConsumerState<PersonsPage> createState() => _PersonsPageState();
@@ -77,7 +78,7 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                'profile.persons'.tr(),
+                widget.isPicker ? 'profile.select_person'.tr() : 'profile.persons'.tr(),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -149,7 +150,7 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
                       final person = persons[index];
                       return FadeInUp(
                         delay: Duration(milliseconds: 50 * index),
-                        child: _PersonCard(person: person),
+                        child: _PersonCard(person: person, isPicker: widget.isPicker),
                       );
                     },
                     childCount: persons.length,
@@ -222,8 +223,9 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
 }
 
 class _PersonCard extends ConsumerWidget {
-  const _PersonCard({required this.person});
+  const _PersonCard({required this.person, this.isPicker = false});
   final Person person;
+  final bool isPicker;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -241,7 +243,13 @@ class _PersonCard extends ConsumerWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
       ),
       child: ListTile(
-        onTap: () => AddPersonSheet.show(context, person: person),
+        onTap: () {
+          if (isPicker) {
+            Navigator.pop(context, person);
+          } else {
+            AddPersonSheet.show(context, person: person);
+          }
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 52,

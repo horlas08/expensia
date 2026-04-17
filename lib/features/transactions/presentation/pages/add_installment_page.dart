@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../../../../core/constants/category_icons.dart';
+import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
@@ -16,7 +17,7 @@ import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
 import '../widgets/wallet_picker_sheet.dart';
-import '../widgets/person_picker_sheet.dart';
+import '../../../../features/profile/presentation/pages/persons_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -359,7 +360,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   }
 
   Future<void> _pickContact() async {
-    final person = await PersonPickerSheet.show(context);
+    final person = await Navigator.push<Person>(
+      context,
+      MaterialPageRoute(builder: (_) => const PersonsPage(isPicker: true)),
+    );
     if (person != null) {
       setState(() {
         _personCtrl.text = person.name;
