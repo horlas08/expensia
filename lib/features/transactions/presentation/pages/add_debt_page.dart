@@ -16,6 +16,7 @@ import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
 import '../../../../features/profile/presentation/pages/persons_page.dart';
+import '../widgets/wallet_picker_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // Add Debt Page
@@ -412,30 +413,34 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                   // Wallet
                   FadeInUp(
                     delay: const Duration(milliseconds: 60),
-                    child: _FormCard(
-                      icon: Icons.account_balance_wallet_rounded,
-                      color: cs.primary,
-                      label: 'transaction.wallet'.tr(),
-                      child: wallets.isEmpty
-                          ? Text(
-                              'transaction.no_wallet'.tr(),
-                              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5)),
-                            )
-                          : DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _selectedWalletId,
-                                isExpanded: true,
-                                hint: Text('transaction.select_wallet'.tr()),
-                                items: wallets
-                                    .map((w) => DropdownMenuItem<int>(
-                                          value: w.id,
-                                          child: Text(w.name),
-                                        ))
-                                    .toList(),
-                                onChanged: (v) =>
-                                    setState(() => _selectedWalletId = v),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        if (wallet != null) {
+                          setState(() => _selectedWalletId = wallet.id);
+                        }
+                      },
+                      child: _FormCard(
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: cs.primary,
+                        label: 'transaction.wallet'.tr(),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedWalletId == null
+                                    ? 'transaction.select_wallet'.tr()
+                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
+                                style: TextStyle(
+                                  color: _selectedWalletId == null ? cs.onSurface.withOpacity(0.5) : cs.onSurface,
+                                  fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
+                                ),
                               ),
                             ),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withOpacity(0.3)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

@@ -15,6 +15,9 @@ import '../../../../core/constants/category_icons.dart';
 import '../../../../features/transactions/presentation/pages/transactions_page.dart';
 import '../../../../features/profile/presentation/pages/notification_settings_page.dart';
 import '../../../../core/utils/transaction_grouper.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
+import '../widgets/debts_summary_sheet.dart';
+import '../widgets/installments_summary_sheet.dart';
 
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
@@ -481,122 +484,20 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 
   void _showDebtsSheet(BuildContext context, String sym) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      isScrollControlled: true,
-      builder:
-          (_) => Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                const Text(
-                  'Active Debts',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: FutureBuilder<List<Map<String, dynamic>>>(
-                    future: _fetchList('debts'),
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting)
-                        return const Center(child: CircularProgressIndicator());
-                      if (snap.hasError) return Text('Err: ${snap.error}');
-                      final data = snap.data ?? [];
-                      if (data.isEmpty)
-                        return const Center(child: Text('No active debts.'));
-                      return ListView.builder(
-                        itemCount: data.length,
-                        itemBuilder: (context, i) {
-                          final item = data[i];
-                          final isForYou = item['income'] > 0;
-                          return ListTile(
-                            leading: CircleAvatar(child: Icon(Icons.person)),
-                            title: Text(item['person_name'] ?? 'Unknown'),
-                            subtitle: Text(isForYou ? 'For you' : 'On you'),
-                            trailing: Text(
-                              '$sym${isForYou ? item['income'] : item['expense']}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isForYou ? Colors.green : Colors.red,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        builder: (context) => DebtsSummarySheet(currencySymbol: sym),
+      ),
     );
   }
 
   void _showInstallmentsSheet(BuildContext context, String sym) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      isScrollControlled: true,
-      builder:
-          (_) => Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                const Text(
-                  'Active Installments',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: FutureBuilder<List<Map<String, dynamic>>>(
-                    future: _fetchList('installments'),
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting)
-                        return const Center(child: CircularProgressIndicator());
-                      if (snap.hasError) return Text('Err: ${snap.error}');
-                      final data = snap.data ?? [];
-                      if (data.isEmpty)
-                        return const Center(
-                          child: Text('No active installments.'),
-                        );
-                      return ListView.builder(
-                        itemCount: data.length,
-                        itemBuilder: (context, i) {
-                          final item = data[i];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              child: Icon(Icons.business_rounded),
-                            ),
-                            title: Text(item['person_name'] ?? 'Unknown'),
-                            subtitle: Text(
-                              'Remaining Months: ${item['remaining_months']}',
-                            ),
-                            trailing: Text(
-                              '$sym${item['remaining_price']}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchList(String table) async {
-    final db = await DatabaseService().database;
-    return db.rawQuery(
-      'SELECT t.*, p.name as person_name FROM $table t LEFT JOIN persons p ON t.person_id = p.id WHERE t.status = "active" ORDER BY t.id DESC',
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        builder: (context) => InstallmentsSummarySheet(currencySymbol: sym),
+      ),
     );
   }
 }
