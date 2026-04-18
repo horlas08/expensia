@@ -24,10 +24,11 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   }
 
   Future<void> _startApp() async {
+    SharedPreferencesService? prefs;
     try {
       // 1. Initialize core services
+      prefs = await SharedPreferencesService.getInstance();
       await ref.read(subscriptionServiceProvider).init();
-      final prefs = await SharedPreferencesService.getInstance();
       final appLock = ref.read(appLockServiceProvider);
       await NotificationService().init();
 
@@ -51,11 +52,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         if (authenticated && mounted) {
           context.go('/dashboard');
         } else {
-          // If auth fails or is cancelled, we might stay here or fallback to dashboard
-          // For safety in this fix, we'll proceed if we can't authenticate but it's enabled
-          // but usually we want to stay locked.
-          // However, to prevent "stuck at splash", we go to dashboard as a last resort 
-          // if we can't even get the auth screen up.
+          // If auth fails or is cancelled, fallback to dashboard
           if (mounted) context.go('/dashboard');
         }
       } else {
@@ -63,9 +60,13 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       }
     } catch (e) {
       debugPrint('Critical error during app startup: $e');
-      // Fallback: Always try to get into the app if possible
+      // Fallback: Try to respect onboarding status even on crash
       if (mounted) {
-        context.go('/dashboard');
+        if (prefs != null && !prefs.isFirstPageCompleted()) {
+          context.go('/onboarding');
+        } else {
+          context.go('/dashboard');
+        }
       }
     }
   }

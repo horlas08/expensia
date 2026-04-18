@@ -14,7 +14,7 @@ class NotificationService {
   Future<void> init() async {
     tz.initializeTimeZones();
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false, 
       requestBadgePermission: false,
