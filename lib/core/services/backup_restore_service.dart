@@ -12,6 +12,8 @@ import 'shared_preferences_service.dart';
 import 'database_service.dart';
 import '../models/user_setup_model.dart';
 
+
+
 class BackupRestoreService {
   static const String _dbName = 'expensia.db';
   static const String _backupFileName = 'expensia_backup.db';
@@ -126,7 +128,7 @@ class BackupRestoreService {
       final drive.File file = fileList.files!.first;
       final drive.Media media = await driveApi.files.get(
         file.id!,
-        downloadOptions: drive.DownloadOptions.metadata,
+        downloadOptions: drive.DownloadOptions.fullMedia,
       ) as drive.Media;
 
       final List<int> dataBuffer = [];

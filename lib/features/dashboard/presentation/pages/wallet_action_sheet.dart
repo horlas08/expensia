@@ -5,6 +5,8 @@ import 'package:animate_do/animate_do.dart';
 
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
+import '../../../../core/providers/currency_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Router keys — dedicated nested navigator key for the wallet sheet
@@ -87,7 +89,7 @@ class _WalletSheetShellState extends State<_WalletSheetShell> {
 // ---------------------------------------------------------------------------
 // Main Action Sheet content
 // ---------------------------------------------------------------------------
-class _WalletActionsRoot extends StatelessWidget {
+class _WalletActionsRoot extends ConsumerWidget {
   const _WalletActionsRoot({required this.wallet});
   final WalletEntity wallet;
 
@@ -96,8 +98,9 @@ class _WalletActionsRoot extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final currencySymbol = ref.watch(currencySymbolProvider);
 
     return Container(
       color: cs.surface,
@@ -138,7 +141,7 @@ class _WalletActionsRoot extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Container(
+                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
@@ -161,7 +164,7 @@ class _WalletActionsRoot extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${wallet.currencySymbol ?? '\$'}${wallet.balance.toStringAsFixed(2)}',
+                          '$currencySymbol${wallet.balance.toStringAsFixed(2)}',
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
@@ -668,19 +671,32 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
           ),
         ),
         const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          initialValue: _type,
-          decoration: InputDecoration(
-            labelText: 'Type',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        GestureDetector(
+          onTap: () async {
+            final newType = await showWalletTypeSheet(context, _type);
+            if (newType != null) {
+              setState(() => _type = newType);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Text('Type', style: TextStyle(fontSize: 16)),
+                const Spacer(),
+                Text(
+                  _type.toUpperCase(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_drop_down_rounded),
+              ],
+            ),
           ),
-          items: const [
-            DropdownMenuItem(value: 'cash', child: Text('💵 Cash')),
-            DropdownMenuItem(value: 'bank', child: Text('🏦 Bank')),
-            DropdownMenuItem(value: 'investment', child: Text('📈 Investment')),
-            DropdownMenuItem(value: 'other', child: Text('🗂 Other')),
-          ],
-          onChanged: (val) => setState(() => _type = val!),
         ),
         const SizedBox(height: 32),
         _SubmitButton(label: 'Save Changes', color: Colors.orange, loading: false, onTap: _submit),
@@ -795,6 +811,8 @@ List<Color> _walletGradient(String type) {
       return [const Color(0xFF5C35CC), const Color(0xFF9B59B6)];
     case 'investment':
       return [const Color(0xFFE65C00), const Color(0xFFF9D423)];
+    case 'credit_card':
+      return [const Color(0xFFC70039), const Color(0xFF900C3F)];
     default:
       return [const Color(0xFF2C3E50), const Color(0xFF4CA1AF)];
   }
@@ -808,6 +826,8 @@ IconData _walletIcon(String type) {
       return Icons.account_balance;
     case 'investment':
       return Icons.trending_up;
+    case 'credit_card':
+      return Icons.credit_card_rounded;
     default:
       return Icons.wallet;
   }

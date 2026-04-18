@@ -6,6 +6,7 @@ import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/pages/wallet_action_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
+import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
 
 class WalletPage extends ConsumerStatefulWidget {
   const WalletPage({super.key});
@@ -319,6 +320,8 @@ class _WalletCard extends StatelessWidget {
         return [const Color(0xFF5C35CC), const Color(0xFF9B59B6)];
       case 'investment':
         return [const Color(0xFFE65C00), const Color(0xFFF9D423)];
+      case 'credit_card':
+        return [const Color(0xFFC70039), const Color(0xFF900C3F)];
       default:
         return [const Color(0xFF2C3E50), const Color(0xFF4CA1AF)];
     }
@@ -332,6 +335,8 @@ class _WalletCard extends StatelessWidget {
         return Icons.account_balance;
       case 'investment':
         return Icons.trending_up;
+      case 'credit_card':
+        return Icons.credit_card_rounded;
       default:
         return Icons.wallet;
     }
@@ -511,24 +516,32 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _type,
-            decoration: InputDecoration(
-              labelText: 'Type',
-              border: OutlineInputBorder(
+          GestureDetector(
+            onTap: () async {
+              final newType = await showWalletTypeSheet(context, _type);
+              if (newType != null) {
+                setState(() => _type = newType);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
                 borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'cash', child: Text('💵 Cash')),
-              DropdownMenuItem(value: 'bank', child: Text('🏦 Bank')),
-              DropdownMenuItem(
-                value: 'investment',
-                child: Text('📈 Investment'),
+              child: Row(
+                children: [
+                  const Text('Type', style: TextStyle(fontSize: 16)),
+                  const Spacer(),
+                  Text(
+                    _type.toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_drop_down_rounded),
+                ],
               ),
-              DropdownMenuItem(value: 'other', child: Text('🗂 Other')),
-            ],
-            onChanged: (val) => setState(() => _type = val!),
+            ),
           ),
           const SizedBox(height: 24),
           SizedBox(

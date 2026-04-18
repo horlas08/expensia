@@ -503,17 +503,17 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                     _buildRow(context, 'Wallet', widget.tx['wallet_name'] ?? 'N/A'),
                     if (widget.tx['to_wallet_name'] != null)
                       _buildRow(context, 'To Wallet', widget.tx['to_wallet_name']),
-                    if (widget.tx['person_name'] != null)
+                    if ((_fullTx['person_name'] ?? widget.tx['person_name']) != null)
                       _buildRow(
                         context, 
                         'Person', 
-                        widget.tx['person_name'],
-                        trailing: (widget.tx['person_phone'] != null && (widget.tx['person_phone'] as String).isNotEmpty)
+                        _fullTx['person_name'] ?? widget.tx['person_name'],
+                        trailing: ((_fullTx['person_phone'] ?? widget.tx['person_phone']) != null && ((_fullTx['person_phone'] ?? widget.tx['person_phone']) as String).isNotEmpty)
                           ? Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  onPressed: () => UrlLauncherUtils.launchWhatsApp(context, widget.tx['person_phone']),
+                                  onPressed: () => UrlLauncherUtils.launchWhatsApp(context, _fullTx['person_phone'] ?? widget.tx['person_phone']),
                                   icon: const Icon(Icons.message_rounded, size: 20, color: Colors.green),
                                   style: IconButton.styleFrom(
                                     backgroundColor: Colors.green.withValues(alpha: 0.1),
@@ -522,7 +522,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton(
-                                  onPressed: () => UrlLauncherUtils.launchCall(context, widget.tx['person_phone']),
+                                  onPressed: () => UrlLauncherUtils.launchCall(context, _fullTx['person_phone'] ?? widget.tx['person_phone']),
                                   icon: const Icon(Icons.phone_rounded, size: 20, color: Colors.blue),
                                   style: IconButton.styleFrom(
                                     backgroundColor: Colors.blue.withValues(alpha: 0.1),

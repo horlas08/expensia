@@ -205,8 +205,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.income'.tr(),
-                                  value:
-                                      '$currencySymbol${metrics['monthly_income']}',
+                                  value: (metrics['monthly_income'] as num? ?? 0).toStringAsFixed(2),
                                   icon: Icons.arrow_downward_rounded,
                                   color: const Color(0xFF69F0AE),
                                   visible: _balanceVisible,
@@ -220,8 +219,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.expenses'.tr(),
-                                  value:
-                                      '$currencySymbol${metrics['monthly_expense']}',
+                                  value: (metrics['monthly_expense'] as num? ?? 0).toStringAsFixed(2),
                                   icon: Icons.arrow_upward_rounded,
                                   color: const Color(0xFFFF6E6E),
                                   visible: _balanceVisible,
