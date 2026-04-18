@@ -163,6 +163,8 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'notes': _noteCtrl.text.trim(),
           'image_url': _imageUrl,
           'debt_id': debtId,
+          'person_id': personId,
+          'person_name': _personCtrl.text.trim(),
         });
         if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
         else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }

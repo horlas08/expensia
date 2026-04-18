@@ -430,59 +430,106 @@ class DatabaseService {
     int limit = 5,
   }) async {
     final db = await database;
-    // Union across multiple tables to get a unified view of all activities
     final sql = '''
-      SELECT t.id, 'transaction' as type, t.amount, t.direction, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name, NULL as person_phone
+      SELECT
+        t.id,
+        t.type,
+        t.amount,
+        t.direction,
+        t.date,
+        t.notes,
+        t.category_id,
+        t.wallet_id,
+        t.debt_id,
+        t.installment_id,
+        c.name_en as category_name,
+        w.name as wallet_name,
+        NULL as to_wallet_name,
+        p.name as person_name,
+        p.phone as person_phone,
+        p.id as person_id
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
+      LEFT JOIN persons p ON t.person_id = p.id
       UNION ALL
-      SELECT tr.id, 'transfer' as type, tr.amount, 'neutral' as direction, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name, NULL as person_phone
+      SELECT
+        tr.id,
+        'transfer' as type,
+        tr.amount,
+        'neutral' as direction,
+        tr.date,
+        tr.notes,
+        NULL as category_id,
+        tr.from_wallet_id as wallet_id,
+        NULL as debt_id,
+        NULL as installment_id,
+        'Transfer' as category_name,
+        w1.name as wallet_name,
+        w2.name as to_wallet_name,
+        NULL as person_name,
+        NULL as person_phone,
+        NULL as person_id
       FROM transfers tr
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
-      UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, (CASE WHEN d.income > 0 THEN 'plus' ELSE 'min' END) as direction, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone
-      FROM debts d
-      LEFT JOIN wallets w ON d.wallet_id = w.id
-      LEFT JOIN persons p ON d.person_id = p.id
-      UNION ALL
-      SELECT i.id, 'installment' as type, i.deposit as amount, 'min' as direction, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone
-      FROM installments i
-      LEFT JOIN wallets w ON i.wallet_id = w.id
-      LEFT JOIN persons p ON i.person_id = p.id
       ORDER BY date DESC
       LIMIT ?
     ''';
     return await db.rawQuery(sql, [limit]);
   }
 
+
   Future<List<Map<String, dynamic>>> getAllTransactions() async {
     final db = await database;
     final sql = '''
-      SELECT t.id, 'transaction' as type, t.amount, t.direction, t.date, t.notes, c.name_en as category_name, w.name as wallet_name, NULL as to_wallet_name, NULL as person_name, NULL as person_phone, t.category_id, t.wallet_id, NULL as person_id
+      SELECT
+        t.id,
+        t.type,
+        t.amount,
+        t.direction,
+        t.date,
+        t.notes,
+        t.category_id,
+        t.wallet_id,
+        t.debt_id,
+        t.installment_id,
+        c.name_en as category_name,
+        w.name as wallet_name,
+        NULL as to_wallet_name,
+        p.name as person_name,
+        p.phone as person_phone,
+        p.id as person_id
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
+      LEFT JOIN persons p ON t.person_id = p.id
       UNION ALL
-      SELECT tr.id, 'transfer' as type, tr.amount, 'neutral' as direction, tr.date, tr.notes, 'Transfer' as category_name, w1.name as wallet_name, w2.name as to_wallet_name, NULL as person_name, NULL as person_phone, NULL as category_id, tr.from_wallet_id as wallet_id, NULL as person_id
+      SELECT
+        tr.id,
+        'transfer' as type,
+        tr.amount,
+        'neutral' as direction,
+        tr.date,
+        tr.notes,
+        NULL as category_id,
+        tr.from_wallet_id as wallet_id,
+        NULL as debt_id,
+        NULL as installment_id,
+        'Transfer' as category_name,
+        w1.name as wallet_name,
+        w2.name as to_wallet_name,
+        NULL as person_name,
+        NULL as person_phone,
+        NULL as person_id
       FROM transfers tr
       LEFT JOIN wallets w1 ON tr.from_wallet_id = w1.id
       LEFT JOIN wallets w2 ON tr.to_wallet_id = w2.id
-      UNION ALL
-      SELECT d.id, 'debt' as type, (CASE WHEN d.income > 0 THEN d.income ELSE d.expense END) as amount, (CASE WHEN d.income > 0 THEN 'plus' ELSE 'min' END) as direction, d.due_date as date, d.notes, 'Debt' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone, NULL as category_id, d.wallet_id, d.person_id
-      FROM debts d
-      LEFT JOIN wallets w ON d.wallet_id = w.id
-      LEFT JOIN persons p ON d.person_id = p.id
-      UNION ALL
-      SELECT i.id, 'installment' as type, i.deposit as amount, 'min' as direction, i.created_at as date, i.notes, 'Installment' as category_name, w.name as wallet_name, NULL as to_wallet_name, p.name as person_name, p.phone as person_phone, NULL as category_id, i.wallet_id, i.person_id
-      FROM installments i
-      LEFT JOIN wallets w ON i.wallet_id = w.id
-      LEFT JOIN persons p ON i.person_id = p.id
       ORDER BY date DESC
     ''';
     return await db.rawQuery(sql);
   }
+
 
   /// Returns filtered transactions based on a filter object.
   Future<List<Map<String, dynamic>>> getFilteredTransactions({

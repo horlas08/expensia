@@ -216,6 +216,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             'is_paid': 1,
             'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
             'installment_id': installmentId,
+            'person_id': personId,
+            'person_name': _personCtrl.text.trim(),
             'image_url': _imageUrl,
           });
 
