@@ -98,6 +98,7 @@
     "upgrade_premium": "Upgrade to Pro",
     "premium_subtitle": "Unlock cloud backup & all premium features",
     "app_version": "App Version",
+    "wallets": "Wallets",
     "privacy_policy": "Privacy Policy",
     "terms": "Terms & Conditions",
     "contact_us": "Contact Us",
@@ -234,5 +235,8 @@
       "title": "View Reports",
       "subtitle": "See clear insights about your spending and income."
     }
+  },
+  "settings": {
+    "multi_currency": "Multi-currency Support"
   }
 }

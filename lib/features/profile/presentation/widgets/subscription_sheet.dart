@@ -5,7 +5,7 @@ import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../../core/services/subscription_service.dart';
 
-class SubscriptionSheet extends ConsumerWidget {
+class SubscriptionSheet extends ConsumerStatefulWidget {
   const SubscriptionSheet({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -16,7 +16,16 @@ class SubscriptionSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionSheet> createState() => _SubscriptionSheetState();
+}
+
+class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
+  bool _isPurchasing = false;
+  bool _isRestoring = false;
+  String? _errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     
     return DraggableScrollableSheet(
@@ -128,10 +137,28 @@ class SubscriptionSheet extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── ERROR MESSAGE ──
+                  if (_errorMessage != null)
+                    FadeInUp(
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
                   FadeInUp(
                     delay: const Duration(milliseconds: 600),
                     child: ElevatedButton(
-                      onPressed: () => _handlePurchase(context, ref),
+                      onPressed: (_isPurchasing || _isRestoring) ? null : () => _handlePurchase(context, ref),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         foregroundColor: Colors.white,
@@ -139,21 +166,25 @@ class SubscriptionSheet extends ConsumerWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Unlock Pro Now',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isPurchasing 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text(
+                            'Unlock Pro Now',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FadeInUp(
                     delay: const Duration(milliseconds: 700),
                     child: TextButton(
-                      onPressed: () => _handleRestore(context, ref),
-                      child: Text(
-                        'get_started.restore_purchase'.tr(),
-                        style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
-                      ),
+                      onPressed: (_isPurchasing || _isRestoring) ? null : () => _handleRestore(context, ref),
+                      child: _isRestoring
+                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(
+                            'get_started.restore_purchase'.tr(),
+                            style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
+                          ),
                     ),
                   ),
                 ],
@@ -167,6 +198,11 @@ class SubscriptionSheet extends ConsumerWidget {
   }
 
   Future<void> _handlePurchase(BuildContext context, WidgetRef ref) async {
+    setState(() {
+      _isPurchasing = true;
+      _errorMessage = null;
+    });
+    
     final success = await ref.read(subscriptionServiceProvider).purchasePro();
     if (success) {
       ref.read(isProProvider.notifier).state = true;
@@ -174,10 +210,21 @@ class SubscriptionSheet extends ConsumerWidget {
         Navigator.pop(context);
         _showSuccess(context);
       }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isPurchasing = false;
+        });
+      }
     }
   }
 
   Future<void> _handleRestore(BuildContext context, WidgetRef ref) async {
+    setState(() {
+      _isRestoring = true;
+      _errorMessage = null;
+    });
+
     final success = await ref.read(subscriptionServiceProvider).restorePurchases();
     if (success) {
       ref.read(isProProvider.notifier).state = true;
@@ -186,10 +233,11 @@ class SubscriptionSheet extends ConsumerWidget {
         _showSuccess(context);
       }
     } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('get_started.restore_purchase_failed'.tr())),
-        );
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+          _errorMessage = 'get_started.restore_purchase_failed'.tr();
+        });
       }
     }
   }

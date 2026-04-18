@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animations/animations.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
 
 import '../../../../core/constants/category_icons.dart';
 import '../../../../core/utils/transaction_grouper.dart';
@@ -13,6 +14,8 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../providers/transaction_filter_provider.dart';
 import '../widgets/transaction_filter_sheet.dart';
+import '../widgets/wallet_picker_sheet.dart';
+import '../widgets/add_debt_payment_sheet.dart';
 import 'add_income_expense_page.dart';
 import 'add_debt_page.dart';
 import 'add_installment_page.dart';
@@ -245,6 +248,13 @@ class TransactionListItem extends ConsumerWidget {
         displaySubtitle = notes.isNotEmpty ? notes : (tx['wallet_name'] ?? '');
     }
 
+    final direction = tx['direction'] as String? ?? 'min';
+    final isPositive = direction == 'plus';
+    final isNeutral = direction == 'neutral'; // transfers
+
+    final amountPrefix = isNeutral ? '' : (isPositive ? '+ ' : '- ');
+    final amountColor = isNeutral ? cs.onSurface : (isPositive ? Colors.green : Colors.red);
+
     return OpenContainer(
       transitionType: ContainerTransitionType.fade,
       transitionDuration: const Duration(milliseconds: 500),
@@ -298,11 +308,11 @@ class TransactionListItem extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${ref.watch(currencySymbolProvider)}${amount.toStringAsFixed(2)}',
+                '$amountPrefix${amount.abs().toStringAsFixed(2)}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: type == 'transaction' && amount < 0 ? Colors.red : cs.onSurface,
+                  color: amountColor,
                 ),
               ),
               const SizedBox(height: 4),
@@ -660,7 +670,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _showAddDebtPaymentDialog(context, 'min'),
+              onPressed: () => _openDebtPaymentSheet(context, 'min'),
               icon: const Icon(Icons.arrow_upward_rounded, size: 18),
               label: const Text('Borrowed'),
               style: OutlinedButton.styleFrom(
@@ -674,7 +684,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _showAddDebtPaymentDialog(context, 'plus'),
+              onPressed: () => _openDebtPaymentSheet(context, 'plus'),
               icon: const Icon(Icons.arrow_downward_rounded, size: 18),
               label: const Text('Lent'),
               style: OutlinedButton.styleFrom(
@@ -690,113 +700,19 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     );
   }
 
-  void _showAddDebtPaymentDialog(BuildContext context, String direction) {
-    final amountController = TextEditingController();
-    int? selectedWalletId;
-    String? selectedWalletName;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(direction == 'plus' ? 'Add Lent Payment' : 'Add Borrowed Payment'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Amount',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () async {
-                  final wallet = await _showWalletPicker(ctx);
-                  if (wallet != null) {
-                    setDialogState(() {
-                      selectedWalletId = wallet['id'] as int;
-                      selectedWalletName = wallet['name'] as String;
-                    });
-                  }
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).colorScheme.outline),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.account_balance_wallet_outlined, size: 20),
-                      const SizedBox(width: 8),
-                      Text(selectedWalletName ?? 'Select Wallet'),
-                      const Spacer(),
-                      const Icon(Icons.arrow_drop_down),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final amountText = amountController.text.trim();
-                if (amountText.isEmpty || selectedWalletId == null) return;
-                final amount = double.tryParse(amountText);
-                if (amount == null || amount <= 0) return;
-
-                await DatabaseService().addDebtPayment(
-                  debtId: widget.tx['id'] as int,
-                  amount: amount,
-                  direction: direction,
-                  walletId: selectedWalletId!,
-                );
-                
-                if (mounted) {
-                  Navigator.pop(ctx);
-                  ref.invalidate(filteredTransactionsProvider);
-                  ref.invalidate(dashboardMetricsProvider);
-                  ref.invalidate(recentTransactionsProvider);
-                  _loadData();
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<Map<String, dynamic>?> _showWalletPicker(BuildContext context) async {
-    return await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Select Wallet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ..._wallets.map((w) => ListTile(
-              leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: Text(w['name'] as String),
-              subtitle: Text('${w['currency_symbol'] ?? ''} ${(w['balance'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
-              onTap: () => Navigator.pop(ctx, w),
-            )),
-          ],
+  void _openDebtPaymentSheet(BuildContext context, String direction) {
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        builder: (ctx) => AddDebtPaymentSheet(
+          debtId: widget.tx['id'] as int,
+          direction: direction,
+          onSaved: () {
+            ref.invalidate(filteredTransactionsProvider);
+            ref.invalidate(dashboardMetricsProvider);
+            ref.invalidate(recentTransactionsProvider);
+            _loadData();
+          },
         ),
       ),
     );
@@ -808,9 +724,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     
     if (!isPaid) {
       // Need to pick a wallet to pay from
-      final wallet = await _showWalletPicker(context);
+      final wallet = await showWalletPickerSheet(context, ref, selectedId: null);
       if (wallet == null) return;
-      await DatabaseService().toggleInstallmentDetailPaid(detail['id'] as int, wallet['id'] as int);
+      await DatabaseService().toggleInstallmentDetailPaid(detail['id'] as int, wallet.id);
     } else {
       // Confirm unpay
       final confirm = await showDialog<bool>(
