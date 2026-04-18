@@ -90,13 +90,13 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
     if (tPrice == null || tPrice <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid total price')),
+        SnackBar(content: Text('transaction.invalid_total_price'.tr())),
       );
       return;
     }
     if (months == null || months <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid total months')),
+        SnackBar(content: Text('transaction.invalid_total_months'.tr())),
       );
       return;
     }
@@ -108,7 +108,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     }
     if (_personCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please specify a person/company name')),
+        SnackBar(content: Text('transaction.enter_person_name'.tr())),
       );
       return;
     }
@@ -282,7 +282,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   void _showPlanPreview() {
     if (_totalPriceCtrl.text.isEmpty || _monthsCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter amount and months first')),
+        SnackBar(content: Text('transaction.enter_amount_and_months'.tr())),
       );
       return;
     }
@@ -364,7 +364,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   backgroundColor: cs.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Close Preview', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text('common.close_preview'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -410,7 +410,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
+        SnackBar(content: Text('transaction.error_picking_image'.tr()+'$e')),
       );
     }
   }
@@ -461,9 +461,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Total Price',
-                    style: TextStyle(
+                  Text(
+                    'transaction.total_price'.tr(),
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -546,8 +546,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Expanded(
                             child: TextField(
                               controller: _personCtrl,
-                              decoration: const InputDecoration(
-                                hintText: 'Entity Name (e.g. Bank, Dealership)',
+                              decoration: InputDecoration(
+                                hintText: 'transaction.entity_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
                               ),
@@ -786,7 +786,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null ? 'Attach Invoice/Receipt' : 'Receipt Attached',
+                                _imageUrl == null ? 'transaction.attach_receipt'.tr() : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
                                   color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
                                   fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,

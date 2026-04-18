@@ -88,7 +88,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     }
     if (_personCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a person name')),
+        SnackBar(content: Text('transaction.enter_person_name'.tr())),
       );
       return;
     }
@@ -246,7 +246,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
+        SnackBar(content: Text('transaction.error_picking_image'.tr()+'$e')),
       );
     }
   }
@@ -395,8 +395,8 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                           Expanded(
                             child: TextField(
                               controller: _personCtrl,
-                              decoration: const InputDecoration(
-                                hintText: 'Person Name',
+                              decoration: InputDecoration(
+                                hintText: 'transaction.person_name_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
                               ),
@@ -535,7 +535,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null ? 'Attach Receipt (Optional)' : 'Image Attached',
+                                _imageUrl == null ? 'transaction.attach_receipt'.tr() : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
                                   color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
                                   fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,

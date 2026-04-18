@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 
@@ -377,10 +378,10 @@ class _EmptyWallets extends StatelessWidget {
             onPressed: onAdd,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text('Add Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(width: 8),
-                Icon(Icons.add, size: 18),
+              children: [
+                Text('wallet.add_wallet'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                const Icon(Icons.add, size: 18),
               ],
             ),
           ),
@@ -421,11 +422,11 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
     final balance = double.tryParse(balanceText);
 
     setState(() {
-      _nameError = name.isEmpty ? 'Wallet name is required' : null;
+      _nameError = name.isEmpty ? 'wallet.name_required'.tr() : null;
       if (balanceText.isEmpty) {
-        _balanceError = 'Balance is required';
+        _balanceError = 'wallet.balance_required'.tr();
       } else if (balance == null) {
-        _balanceError = 'Enter a valid number';
+        _balanceError = 'wallet.invalid_number'.tr();
       } else {
         _balanceError = null;
       }
@@ -480,9 +481,9 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Add New Wallet',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            'wallet.add_new_wallet'.tr(),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
           TextField(
@@ -491,7 +492,7 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
               if (_nameError != null) setState(() => _nameError = null);
             },
             decoration: InputDecoration(
-              labelText: 'Wallet Name',
+              labelText: 'wallet.wallet_name'.tr(),
               prefixIcon: const Icon(Icons.wallet),
               errorText: _nameError,
               border: OutlineInputBorder(
@@ -507,7 +508,7 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
               if (_balanceError != null) setState(() => _balanceError = null);
             },
             decoration: InputDecoration(
-              labelText: 'Initial Balance',
+              labelText: 'wallet.initial_balance'.tr(),
               prefixIcon: const Icon(Icons.attach_money),
               errorText: _balanceError,
               border: OutlineInputBorder(
@@ -531,7 +532,7 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
               ),
               child: Row(
                 children: [
-                  const Text('Type', style: TextStyle(fontSize: 16)),
+                  Text('wallet.wallet_type'.tr(), style: const TextStyle(fontSize: 16)),
                   const Spacer(),
                   Text(
                     _type.toUpperCase(),

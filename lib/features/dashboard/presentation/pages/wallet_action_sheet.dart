@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
@@ -181,8 +182,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 0),
             child: _ActionTile(
               icon: Icons.add_circle_rounded,
-              title: 'Add Balance',
-              subtitle: 'Deposit money into this wallet',
+              title: 'common.add_balance'.tr(),
+              subtitle: 'wallet.add_balance_desc'.tr(),
               iconColor: Colors.green,
               onTap: () => _navigate('/add-balance'),
             ),
@@ -191,8 +192,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 50),
             child: _ActionTile(
               icon: Icons.remove_circle_rounded,
-              title: 'Withdraw Balance',
-              subtitle: 'Withdraw money from this wallet',
+              title: 'common.withdraw_balance'.tr(),
+              subtitle: 'wallet.withdraw_balance_desc'.tr(),
               iconColor: Colors.red,
               onTap: () => _navigate('/withdraw'),
             ),
@@ -201,8 +202,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 100),
             child: _ActionTile(
               icon: Icons.swap_horiz_rounded,
-              title: 'Transfer',
-              subtitle: 'Move balance to another wallet',
+              title: 'wallet.transfer'.tr(),
+              subtitle: 'wallet.transfer_desc'.tr(),
               iconColor: Colors.blue,
               onTap: () => _navigate('/transfer-balance'),
             ),
@@ -211,8 +212,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 150),
             child: _ActionTile(
               icon: Icons.receipt_long_rounded,
-              title: 'Move Transactions',
-              subtitle: 'Reassign all history to another wallet',
+              title: 'wallet.move_transactions'.tr(),
+              subtitle: 'wallet.move_transactions_desc'.tr(),
               iconColor: Colors.purple,
               onTap: () => _navigate('/transfer-transactions'),
             ),
@@ -221,8 +222,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 200),
             child: _ActionTile(
               icon: Icons.edit_rounded,
-              title: 'Edit Wallet',
-              subtitle: 'Update details or currency',
+              title: 'wallet.edit_wallet'.tr(),
+              subtitle: 'wallet.edit_wallet_desc'.tr(),
               iconColor: Colors.orange,
               onTap: () => _navigate('/edit'),
             ),
@@ -231,8 +232,8 @@ class _WalletActionsRoot extends ConsumerWidget {
             delay: const Duration(milliseconds: 250),
             child: _ActionTile(
               icon: Icons.delete_rounded,
-              title: 'Delete Wallet',
-              subtitle: 'Remove wallet completely',
+              title: 'wallet.delete_wallet'.tr(),
+              subtitle: 'wallet.delete_wallet_desc_short'.tr(),
               iconColor: Colors.redAccent,
               onTap: () => _navigate('/delete'),
             ),
@@ -515,7 +516,7 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
     final others = allWallets.where((w) => w.id != widget.wallet.id).toList();
 
     return _NestedFormPageScaffold(
-      title: 'Transfer Balance',
+      title: 'wallet.transfer_balance'.tr(),
       accentColor: Colors.blue,
       children: [
         TextField(
@@ -539,7 +540,7 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
         DropdownButtonFormField<WalletEntity>(
           initialValue: _toWallet,
           decoration: InputDecoration(
-            labelText: 'To Wallet',
+            labelText: 'wallet.to_wallet'.tr(),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           items: others
@@ -555,7 +556,7 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
           onChanged: (val) => setState(() => _toWallet = val),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(label: 'Transfer', color: Colors.blue, loading: false, onTap: _submit),
+        _SubmitButton(label: 'wallet.transfer'.tr(), color: Colors.blue, loading: false, onTap: _submit),
       ],
     );
   }
@@ -589,13 +590,13 @@ class _TransferTransactionsPageState extends ConsumerState<_TransferTransactions
     final others = allWallets.where((w) => w.id != widget.wallet.id).toList();
 
     return _NestedFormPageScaffold(
-      title: 'Move Transactions',
+      title: 'wallet.move_transactions'.tr(),
       accentColor: Colors.purple,
       children: [
         DropdownButtonFormField<WalletEntity>(
           initialValue: _toWallet,
           decoration: InputDecoration(
-            labelText: 'Destination Wallet',
+            labelText: 'wallet.destination_wallet'.tr(),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           items: others
@@ -611,7 +612,7 @@ class _TransferTransactionsPageState extends ConsumerState<_TransferTransactions
           onChanged: (val) => setState(() => _toWallet = val),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(label: 'Move Transactions', color: Colors.purple, loading: false, onTap: _submit),
+        _SubmitButton(label: 'wallet.move_transactions'.tr(), color: Colors.purple, loading: false, onTap: _submit),
       ],
     );
   }
@@ -659,13 +660,13 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
   @override
   Widget build(BuildContext context) {
     return _NestedFormPageScaffold(
-      title: 'Edit Wallet',
+      title: 'wallet.edit_wallet'.tr(),
       accentColor: Colors.orange,
       children: [
         TextField(
           controller: _nameCtrl,
           decoration: InputDecoration(
-            labelText: 'Wallet Name',
+            labelText: 'wallet.wallet_name'.tr(),
             prefixIcon: const Icon(Icons.wallet),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -686,7 +687,7 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
             ),
             child: Row(
               children: [
-                const Text('Type', style: TextStyle(fontSize: 16)),
+                Text('wallet.wallet_type'.tr(), style: const TextStyle(fontSize: 16)),
                 const Spacer(),
                 Text(
                   _type.toUpperCase(),
@@ -699,7 +700,7 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
           ),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(label: 'Save Changes', color: Colors.orange, loading: false, onTap: _submit),
+        _SubmitButton(label: 'common.save'.tr(), color: Colors.orange, loading: false, onTap: _submit),
       ],
     );
   }
@@ -726,7 +727,7 @@ class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
   @override
   Widget build(BuildContext context) {
     return _NestedFormPageScaffold(
-      title: 'Delete Wallet',
+      title: 'wallet.delete_wallet'.tr(),
       accentColor: Colors.redAccent,
       children: [
         Container(
@@ -742,7 +743,7 @@ class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Are you sure you want to delete ${widget.wallet.name}?',
+                  'wallet.delete_wallet_desc'.tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
                 ),
               ),
@@ -750,12 +751,12 @@ class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'This action is irreversible. All transactions associated with this wallet will be deleted unless you move them first.',
-          style: TextStyle(fontSize: 14),
+        Text(
+          'wallet.delete_irreversible'.tr(),
+          style: const TextStyle(fontSize: 14),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(label: 'Delete Permanently', color: Colors.redAccent, loading: false, onTap: _submit),
+        _SubmitButton(label: 'wallet.delete_permanently'.tr(), color: Colors.redAccent, loading: false, onTap: _submit),
       ],
     );
   }

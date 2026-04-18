@@ -549,7 +549,9 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null ? 'Attach Image (Optional)' : 'Image Attached',
+                                _imageUrl == null 
+                                    ? 'transaction.attach_image'.tr() 
+                                    : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
                                   color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
                                   fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,

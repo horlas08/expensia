@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animated_theme_switcher/animated_theme_switcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../features/dashboard/presentation/pages/home_tab.dart';
 import '../../../../features/transactions/presentation/pages/transactions_page.dart';
 import '../../../../features/statistics/presentation/pages/statistics_page.dart';
@@ -56,11 +57,11 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildNavDestination(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-              _buildNavDestination(1, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Wallet'),
+              _buildNavDestination(0, Icons.home_rounded, Icons.home_outlined, 'bottom_bar.home'.tr()),
+              _buildNavDestination(1, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'bottom_bar.wallet'.tr()),
               const SizedBox(width: 40), // Gap for FAB
-              _buildNavDestination(2, Icons.bar_chart_rounded, Icons.bar_chart_outlined, 'Stats'),
-              _buildNavDestination(3, Icons.person_rounded, Icons.person_outline, 'Profile'),
+              _buildNavDestination(2, Icons.bar_chart_rounded, Icons.bar_chart_outlined, 'bottom_bar.stat'.tr()),
+              _buildNavDestination(3, Icons.person_rounded, Icons.person_outline, 'bottom_bar.profile'.tr()),
             ],
           ),
         ),

@@ -53,8 +53,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     if (_dailyReminderEnabled) {
       await NotificationService().scheduleDailyReminder(
         id: 9999,
-        title: 'Expensia',
-        body: 'Time to review your daily expenses 🚀',
+        title: 'notifications.daily_reminder'.tr(),
+        body: 'notifications.daily_reminder_desc'.tr(),
         time: _reminderTime,
       );
     } else {
@@ -68,7 +68,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (!granted && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'common.error'.tr()}: Permissions not granted'),
+            content: Text('${'common.error'.tr()}: ${'notifications.permissions_error'.tr()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -132,7 +132,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     String selectedRepeat = existing?['repeat_type']?.toString() ?? 'once';
 
     final repeatOptions = ['once', 'daily', 'weekly', 'monthly'];
-    final repeatLabels = {'once': 'One-time', 'daily': 'Daily', 'weekly': 'Weekly', 'monthly': 'Monthly'};
+    final repeatLabels = {
+      'once': 'notifications.repeat_once'.tr(),
+      'daily': 'notifications.repeat_daily'.tr(),
+      'weekly': 'notifications.repeat_weekly'.tr(),
+      'monthly': 'notifications.repeat_monthly'.tr()
+    };
 
     await showModalBottomSheet(
       context: context,
@@ -166,25 +171,25 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    existing != null ? 'Edit Reminder' : 'Add Reminder',
+                    existing != null ? 'notifications.edit_reminder'.tr() : 'notifications.add_reminder'.tr(),
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
 
                   // Title Field
-                  _sheetLabel('Title'),
+                  _sheetLabel('notifications.reminder_title'.tr()),
                   const SizedBox(height: 8),
-                  _sheetTextField(titleCtrl, 'Reminder title...', cs),
+                  _sheetTextField(titleCtrl, 'notifications.reminder_title_hint'.tr(), cs),
                   const SizedBox(height: 16),
 
                   // Body Field
-                  _sheetLabel('Description (optional)'),
+                  _sheetLabel('notifications.description'.tr()),
                   const SizedBox(height: 8),
-                  _sheetTextField(bodyCtrl, 'Add more details...', cs, maxLines: 3),
+                  _sheetTextField(bodyCtrl, 'notifications.description_hint'.tr(), cs, maxLines: 3),
                   const SizedBox(height: 16),
 
                   // Date/Time
-                  _sheetLabel('Date & Time'),
+                  _sheetLabel('notifications.date_time'.tr()),
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: () async {
@@ -226,7 +231,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   const SizedBox(height: 16),
 
                   // Repeat Type
-                  _sheetLabel('Repeat'),
+                  _sheetLabel('notifications.repeat'.tr()),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -256,7 +261,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         final title = titleCtrl.text.trim();
                         if (title.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter a title')),
+                            SnackBar(content: Text('notifications.title_error'.tr())),
                           );
                           return;
                         }
@@ -271,7 +276,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         await NotificationService().scheduleReminder(
                           id: id,
                           title: title,
-                          body: bodyCtrl.text.trim().isEmpty ? 'Reminder from Expensia' : bodyCtrl.text.trim(),
+                          body: bodyCtrl.text.trim().isEmpty ? 'notifications.reminder_body_default'.tr() : bodyCtrl.text.trim(),
                           scheduledDate: selectedDate,
                           repeatType: selectedRepeat,
                         );
@@ -282,7 +287,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Text('Save Reminder', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text('notifications.save_reminder'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -326,13 +331,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('profile.notifications'.tr()),
+        title: Text('notifications.title'.tr()),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddReminderDialog,
         icon: const Icon(Icons.add_alarm_rounded),
-        label: const Text('Add Reminder'),
+        label: Text('notifications.add_reminder'.tr()),
         backgroundColor: cs.primary,
         foregroundColor: Colors.white,
       ),
@@ -340,7 +345,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
         children: [
           // ── Daily Reminder Section ──
-          _buildSectionHeader(context, 'Daily Reminder', Icons.notifications_rounded),
+          _buildSectionHeader(context, 'notifications.daily_reminder'.tr(), Icons.notifications_rounded),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
@@ -357,13 +362,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Daily Reminder',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        Text(
+                          'notifications.daily_reminder'.tr(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Remind me to log expenses',
+                          'notifications.daily_reminder_desc'.tr(),
                           style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
                         ),
                       ],
@@ -388,7 +393,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             children: [
                               Icon(Icons.access_time_rounded, color: cs.primary, size: 20),
                               const SizedBox(width: 12),
-                              const Text('Time', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                              Text('notifications.time'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                             ],
                           ),
                           Container(
@@ -414,7 +419,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           const SizedBox(height: 32),
 
           // ── Custom Reminders Section ──
-          _buildSectionHeader(context, 'Custom Reminders', Icons.alarm_rounded),
+          _buildSectionHeader(context, 'notifications.custom_reminders'.tr(), Icons.alarm_rounded),
           const SizedBox(height: 12),
           if (_reminders.where((r) => r['type'] == 'custom').isEmpty)
             _buildEmptyState(context)
@@ -461,7 +466,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           Icon(Icons.alarm_add_rounded, size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
           const SizedBox(height: 12),
           Text(
-            'No custom reminders yet.\nTap the button below to add one.',
+            'notifications.empty_state'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
           ),
@@ -478,7 +483,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         ? DateTime.tryParse(r['scheduled_date'].toString())
         : null;
 
-    final repeatLabels = {'once': 'One-time', 'daily': 'Daily', 'weekly': 'Weekly', 'monthly': 'Monthly'};
+    final repeatLabels = {
+      'once': 'notifications.repeat_once'.tr(),
+      'daily': 'notifications.repeat_daily'.tr(),
+      'weekly': 'notifications.repeat_weekly'.tr(),
+      'monthly': 'notifications.repeat_monthly'.tr()
+    };
     final repeatColors = {
       'once': Colors.blue,
       'daily': Colors.green,
@@ -548,13 +558,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Delete Reminder'),
-                  content: Text('Delete "$title"?'),
+                  title: Text('notifications.delete_title'.tr()),
+                  content: Text('notifications.delete_confirm'.tr(args: [title])),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),

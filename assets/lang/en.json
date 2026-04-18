@@ -238,5 +238,90 @@
   },
   "settings": {
     "multi_currency": "Multi-currency Support"
+  },
+  "wallet": {
+    "my_wallets": "My Wallets",
+    "add_wallet": "Add Wallet",
+    "overview": "Overview",
+    "edit_wallet": "Edit Wallet",
+    "delete_wallet": "Delete Wallet",
+    "delete_wallet_desc": "Are you sure you want to delete this wallet?",
+    "wallet_name": "Wallet Name",
+    "wallet_type": "Wallet Type",
+    "select_type": "Select Wallet Type",
+    "cash": "Cash",
+    "bank": "Bank",
+    "investment": "Investment",
+    "credit_card": "Credit Card",
+    "other": "Other",
+    "transfer": "Transfer",
+    "name_required": "Wallet name is required",
+    "balance_required": "Balance is required",
+    "invalid_number": "Enter a valid number",
+    "add_new_wallet": "Add New Wallet",
+    "initial_balance": "Initial Balance"
+  },
+  "stat": {
+    "title": "Statistics",
+    "cash_flow": "Cash Flow",
+    "top_expenses": "Top Expenses",
+    "income": "Income",
+    "expense": "Expense"
+  },
+  "subscription": {
+    "pro_plan": "Pro Plan",
+    "free_plan": "Free Plan",
+    "current_plan": "Current Plan",
+    "lifetime_unlock": "Lifetime Unlock",
+    "upgrade_now": "Unlock Pro Now",
+    "start_trial": "Start Trial",
+    "premium_features": "Premium Features",
+    "recurring_billing": "Recurring billing, cancel anytime.",
+    "restore_purchases" : "Restore Purchases",
+    "advanced_analytics": "Advanced Analytics",
+    "restore_purchases" : "Restore Purchases"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "daily_reminder": "Daily Reminder",
+    "daily_reminder_desc": "Remind me to log expenses",
+    "custom_reminders": "Custom Reminders",
+    "add_reminder": "Add Reminder",
+    "edit_reminder": "Edit Reminder",
+    "reminder_title": "Title",
+    "reminder_title_hint": "Reminder title...",
+    "description": "Description (optional)",
+    "description_hint": "Add more details...",
+    "date_time": "Date & Time",
+    "repeat": "Repeat",
+    "save_reminder": "Save Reminder",
+    "delete_title": "Delete Reminder",
+    "delete_confirm": "Delete \"{}\"?",
+    "permissions_error": "Permissions not granted",
+    "title_error": "Please enter a title",
+    "empty_state": "No custom reminders yet.\nTap the button below to add one.",
+    "time": "Time",
+    "repeat_once": "One-time",
+    "repeat_daily": "Daily",
+    "repeat_weekly": "Weekly",
+    "repeat_monthly": "Monthly",
+    "reminder_body_default": "Reminder from Expensia"
+  },
+  "bottom_bar": {
+    "home": "Home",
+    "wallet": "Wallet",
+    "stat": "Stat",
+    "profile": "Profile"
+  },
+  "media": {
+    "add_receipt": "Add Receipt",
+    "no_image_selected": "No Image Selected",
+    "change_receipt": "Change Receipt",
+    "select_date": "Select Date",
+    "due_date": "Due Date",
+    "note": "Note",
+    "contact": "Contact",
+    "select_contact": "Select Contact"
+  }
   }
 }

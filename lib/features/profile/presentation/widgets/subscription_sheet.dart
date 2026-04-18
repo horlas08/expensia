@@ -115,14 +115,14 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                   ),
                   _FeatureItem(
                     icon: Icons.analytics_rounded,
-                    title: 'Advanced Analytics',
-                    subtitle: 'Detailed insights and spending patterns',
+                    title: 'subscription.advanced_analytics'.tr(),
+                    subtitle: 'subscription.advanced_analytics_desc'.tr(),
                     delay: 400,
                   ),
                   _FeatureItem(
                     icon: Icons.ads_click_rounded,
-                    title: 'Ad Free Experience',
-                    subtitle: 'No distractions, just your finances',
+                    title: 'subscription.ad_free'.tr(),
+                    subtitle: 'subscription.ad_free_desc'.tr(),
                     delay: 500,
                   ),
 
@@ -168,8 +168,8 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                       ),
                       child: _isPurchasing 
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text(
-                            'Unlock Pro Now',
+                        : Text(
+                            'subscription.upgrade_now'.tr(),
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                     ),

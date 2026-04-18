@@ -233,7 +233,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
             pinned: true,
             backgroundColor: cs.primary,
             foregroundColor: Colors.white,
-            title: const Text('Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            title: Text('stat.title'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: Container(
@@ -249,13 +249,13 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Text(
-                      'Analytics',
-                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                    Text(
+                      'stat.title'.tr(),
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Your financial overview',
+                      'stat.overview_desc'.tr(),
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
                     ),
                   ],
@@ -334,8 +334,8 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                           FadeInUp(
                             delay: const Duration(milliseconds: 100),
                             child: _ChartCard(
-                              title: 'Income vs Expense',
-                              subtitle: 'Tap bars to inspect',
+                              title: 'stat.income_vs_expense'.tr(),
+                              subtitle: 'stat.tap_to_inspect'.tr(),
                               child: SizedBox(
                                 height: 200,
                                 child: AnimatedBuilder(
@@ -445,9 +445,9 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _LegendDot(color: const Color(0xFF00C853), label: 'Income'),
+                                  _LegendDot(color: const Color(0xFF00C853), label: 'stat.income'.tr()),
                                   const SizedBox(width: 24),
-                                  _LegendDot(color: const Color(0xFFFF1744), label: 'Expense'),
+                                  _LegendDot(color: const Color(0xFFFF1744), label: 'stat.expense'.tr()),
                                 ],
                               ),
                             ),
@@ -457,12 +457,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                           FadeInUp(
                             delay: const Duration(milliseconds: 200),
                             child: _ChartCard(
-                              title: 'Spending Breakdown',
-                              subtitle: 'This ${_periods[selectedPeriod].toLowerCase()}',
+                              title: 'stat.spending_breakdown'.tr(),
+                              subtitle: 'stat.this_period'.tr(args: [_periods[selectedPeriod].toLowerCase()]),
                               child: totalSpent == 0
-                                  ? const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 32),
-                                      child: Center(child: Text('No expense data for this period', style: TextStyle(color: Colors.grey))),
+                                  ? Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 32),
+                                      child: Center(child: Text('stat.no_expense_data'.tr(), style: const TextStyle(color: Colors.grey))),
                                     )
                                   : Column(
                                       children: [
@@ -498,7 +498,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                                               Column(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  const Text('Total', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                                  Text('stat.total'.tr(), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                                                   Text(
                                                     '$currencySymbol ${totalSpent.toStringAsFixed(0)}',
                                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -566,21 +566,21 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                               children: [
                                 Expanded(
                                   child: _MiniStatCard(
-                                    label: 'Installment',
+                                    label: 'dashboard.installment'.tr(),
                                     amount: '$currencySymbol ${stats.installmentTotal.toStringAsFixed(0)}',
                                     icon: Icons.calendar_today_outlined,
                                     color: const Color(0xFFAA00FF),
-                                    sub: '${stats.activeInstallments} active',
+                                    sub: '${stats.activeInstallments} ${'dashboard.active'.tr().toLowerCase()}',
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _MiniStatCard(
-                                    label: 'Debt',
+                                    label: 'dashboard.debt'.tr(),
                                     amount: '$currencySymbol ${stats.debtTotal.toStringAsFixed(0)}',
                                     icon: Icons.account_balance_outlined,
                                     color: const Color(0xFF0091EA),
-                                    sub: '${stats.activeDebts} active',
+                                    sub: '${stats.activeDebts} ${'dashboard.active'.tr().toLowerCase()}',
                                   ),
                                 ),
                               ],
