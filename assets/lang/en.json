@@ -139,7 +139,8 @@
     "person_name": "Full Name",
     "person_phone": "Phone Number",
     "delete_person_title": "Delete Person?",
-    "delete_person_confirm": "This will also delete all associated debts and installments. Continue?"
+    "delete_person_confirm": "This will also delete all associated debts and installments. Continue?",
+    "select_person": "Select Person"
   },
   "categories": {
     "expense": "Expense",
@@ -195,7 +196,9 @@
     "repeat_enabled": "Automatically repeating",
     "repeat_disabled": "One-time transaction",
     "auto_add": "Auto-add",
-    "auto_add_hint": "Transaction will be added automatically on the due date."
+    "auto_add_hint": "Transaction will be added automatically on the due date.",
+    "attach_image": "Attach Image (Optional)",
+    "image_attached": "Image Attached"
   },
   "history": {
     "title": "History",
@@ -322,6 +325,5 @@
     "note": "Note",
     "contact": "Contact",
     "select_contact": "Select Contact"
-  }
   }
 }
