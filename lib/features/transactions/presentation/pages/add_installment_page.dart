@@ -51,7 +51,16 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     super.initState();
     if (widget.initialTransaction != null) {
       final tx = widget.initialTransaction!;
-      _totalPriceCtrl.text = tx['amount']?.toString() ?? '';
+      
+      final deposit = (tx['deposit'] as num?)?.toDouble() ?? 0.0;
+      final remaining = (tx['remaining_price'] as num?)?.toDouble() ?? 0.0;
+      final total = deposit + remaining;
+      final months = tx['total_months'] as int? ?? 1;
+
+      _totalPriceCtrl.text = total > 0 ? total.toStringAsFixed(2) : '';
+      _depositCtrl.text = deposit > 0 ? deposit.toStringAsFixed(2) : '';
+      _monthsCtrl.text = months.toString();
+
       _noteCtrl.text = tx['notes']?.toString() ?? '';
       _personCtrl.text = tx['person_name']?.toString() ?? '';
       _selectedCategoryId = tx['category_id'] as int?;
@@ -116,9 +125,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
 
       if (widget.initialTransaction != null) {
-        final id = widget.initialTransaction!['id'] as int;
-        final instId = widget.initialTransaction!['installment_id'] as int;
-        final oldDeposit = (widget.initialTransaction!['amount'] as num).toDouble();
+        final instId = widget.initialTransaction!['id'] as int;
+        final oldDeposit = (widget.initialTransaction!['deposit'] as num?)?.toDouble() ?? 
+                           (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
 
         // 1. Revert old balance
@@ -143,18 +152,21 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         }, where: 'id = ?', whereArgs: [instId]);
 
         // 3. Update the deposit transaction
-        final curr = ref.read(defaultCurrencyProvider).valueOrNull;
-        await db.updateTransaction(id, {
-          'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
-          'currency_id': curr?.id ?? 1,
-          'type': 'installment',
-          'direction': _isForYou ? 'plus' : 'min',
-          'amount': deposit,
-          'date': DateTime.now().toIso8601String(),
-          'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
-          'image_url': _imageUrl,
-        });
+        final mainTx = await db.getMainTransactionForInstallment(instId);
+        if (mainTx != null) {
+          final txId = mainTx['id'] as int;
+          final curr = ref.read(defaultCurrencyProvider).valueOrNull;
+          await db.updateTransaction(txId, {
+            'wallet_id': _selectedWalletId,
+            'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+            'currency_id': curr?.id ?? 1,
+            'type': 'installment',
+            'direction': _isForYou ? 'plus' : 'min',
+            'amount': deposit,
+            'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
+            'image_url': _imageUrl,
+          });
+        }
 
         // 4. Apply new balance
         if (_isForYou) {
@@ -549,84 +561,76 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FadeInUp(
-                          delay: const Duration(milliseconds: 40),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _depositCtrl,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Deposit (Initial Paid)',
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _openCalculator(_depositCtrl),
-                                  icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 20),
-                                ),
-                              ],
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 40),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _depositCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Deposit (Initial Paid)',
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
                             ),
                           ),
-                        ),
+                          IconButton(
+                            onPressed: () => _openCalculator(_depositCtrl),
+                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 20),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FadeInUp(
-                          delay: const Duration(milliseconds: 60),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _monthsCtrl,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                    decoration: const InputDecoration(
-                                      labelText: 'Months',
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _openCalculator(_monthsCtrl),
-                                  icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 18),
-                                ),
-                                Container(
-                                  height: 24,
-                                  width: 1,
-                                  color: cs.outlineVariant.withValues(alpha: 0.3),
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                ),
-                                IconButton(
-                                  onPressed: _showPlanPreview,
-                                  icon: Icon(Icons.calendar_month_rounded, color: cs.primary, size: 18),
-                                  tooltip: 'Preview Plan',
-                                ),
-                              ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 60),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _monthsCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              decoration: const InputDecoration(
+                                labelText: 'Months',
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
                             ),
                           ),
-                        ),
+                          IconButton(
+                            onPressed: () => _openCalculator(_monthsCtrl),
+                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 18),
+                          ),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                          ),
+                          IconButton(
+                            onPressed: _showPlanPreview,
+                            icon: Icon(Icons.calendar_month_rounded, color: cs.primary, size: 18),
+                            tooltip: 'Preview Plan',
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 12),
 

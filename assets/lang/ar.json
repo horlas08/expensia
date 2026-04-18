@@ -48,6 +48,8 @@
     "expenses": "المصاريف",
     "installment": "الأقساط",
     "debt": "الديون",
+    "active": "النشطة",
+    "paid": "المدفوعة",
     "recent_transactions": "أحدث المعاملات",
     "view_all": "عرض الكل",
     "on_you": "عليك",

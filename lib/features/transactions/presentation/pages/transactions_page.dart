@@ -338,16 +338,19 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   List<Map<String, dynamic>> _debtPayments = [];
   List<Map<String, dynamic>> _installmentDetails = [];
   List<Map<String, dynamic>> _wallets = [];
+  Map<String, dynamic> _fullTx = {};
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _fullTx = Map<String, dynamic>.from(widget.tx);
     _loadData();
   }
 
   Future<void> _loadData() async {
     final dbService = DatabaseService();
+    final dbRaw = await dbService.database;
     final type = widget.tx['type'] as String;
     final id = widget.tx['id'] as int;
 
@@ -357,11 +360,20 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     List<Map<String, dynamic>> installments = [];
     
     if (type == 'debt') {
+      final res = await dbRaw.query('debts', where: 'id = ?', whereArgs: [id]);
+      if (res.isNotEmpty) _fullTx.addAll(res.first);
+      
       final debtId = widget.tx['debt_id'] as int? ?? id;
       debts = await dbService.getDebtTransactions(debtId);
     } else if (type == 'installment') {
+      final res = await dbRaw.query('installments', where: 'id = ?', whereArgs: [id]);
+      if (res.isNotEmpty) _fullTx.addAll(res.first);
+      
       final instId = widget.tx['installment_id'] as int? ?? id;
       installments = await dbService.getInstallmentDetails(instId);
+    } else {
+      final res = await dbRaw.query('transactions', where: 'id = ?', whereArgs: [id]);
+      if (res.isNotEmpty) _fullTx.addAll(res.first);
     }
 
     if (mounted) {
@@ -376,11 +388,15 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     final cs = Theme.of(context).colorScheme;
-    final date = DateTime.parse(widget.tx['date'] as String);
-    final type = widget.tx['type'] as String;
-    final amount = (widget.tx['amount'] as num).toDouble();
-    final direction = widget.tx['direction'] as String? ?? 'min';
+    final date = DateTime.parse((_fullTx['date'] ?? widget.tx['date']) as String);
+    final type = (_fullTx['type'] ?? widget.tx['type']) as String;
+    final amount = ((_fullTx['amount'] ?? widget.tx['amount']) as num).toDouble();
+    final direction = _fullTx['direction'] as String? ?? widget.tx['direction'] as String? ?? 'min';
+    final notes = _fullTx['notes'] as String? ?? '';
+    final imageUrl = _fullTx['image_url'] as String? ?? _fullTx['image_path'] as String?;
     
     return Scaffold(
       appBar: AppBar(
@@ -418,9 +434,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           ),
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
@@ -543,15 +557,15 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   ],
 
                   // ── NOTES ──
-                  if ((widget.tx['notes'] as String? ?? '').isNotEmpty) ...[
+                  if (notes.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     _buildDetailSection(context, [
-                      _buildRow(context, 'Notes', widget.tx['notes'], isMultiline: true),
+                      _buildRow(context, 'Notes', notes, isMultiline: true),
                     ]),
                   ],
 
                   // ── IMAGE/RECEIPT ──
-                  if (widget.tx['image_url'] != null && (widget.tx['image_url'] as String).isNotEmpty) ...[
+                  if (imageUrl != null && imageUrl.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,7 +584,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
                                     child: Image.file(
-                                      File(widget.tx['image_url']),
+                                      File(imageUrl),
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -581,7 +595,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Image.file(
-                              File(widget.tx['image_url']),
+                              File(imageUrl),
                               width: double.infinity,
                               height: 200,
                               fit: BoxFit.cover,
@@ -598,20 +612,19 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   }
 
   void _handleEdit(BuildContext context, String type) async {
-    final tx = widget.tx;
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) {
           switch (type) {
             case 'debt':
-              return AddDebtPage(initialTransaction: tx);
+              return AddDebtPage(initialTransaction: _fullTx);
             case 'installment':
-              return AddInstallmentPage(initialTransaction: tx);
+              return AddInstallmentPage(initialTransaction: _fullTx);
             default:
               return AddIncomeExpensePage(
-                transactionType: tx['type'] as String? ?? 'expense',
-                initialTransaction: tx,
+                transactionType: _fullTx['type'] as String? ?? 'expense',
+                initialTransaction: _fullTx,
               );
           }
         },
@@ -621,7 +634,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       ref.invalidate(filteredTransactionsProvider);
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
-      Navigator.pop(context, true); // close detail page after edit
+      Navigator.pop(context); // close detail page after edit
     }
   }
 

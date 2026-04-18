@@ -48,6 +48,8 @@
     "expenses": "Expenses",
     "installment": "Installment",
     "debt": "Debt",
+    "active": "Active",
+    "paid": "Paid",
     "recent_transactions": "Recent Transactions",
     "view_all": "View All",
     "on_you": "On You",

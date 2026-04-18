@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
 
@@ -14,14 +13,6 @@ final _walletSheetNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'walletSheet',
 );
 
-// ---------------------------------------------------------------------------
-// Public API — shows the wallet action sheet via GoRouter ShellRoute
-// ---------------------------------------------------------------------------
-
-/// Call this from the WalletPage when a card is tapped.
-///
-/// Uses a [ModalSheetRoute] with a dedicated [GoRouter] ShellRoute–like
-/// nested [Navigator] inside [PagedSheet], exactly as the official example.
 void showWalletActionSheet(BuildContext context, WalletEntity wallet) {
   Navigator.of(context, rootNavigator: true).push(
     ModalSheetRoute<void>(
@@ -76,7 +67,6 @@ class _WalletSheetShellState extends State<_WalletSheetShell> {
         if (builder == null) return null;
         return PagedSheetRoute<void>(
           settings: settings,
-          scrollConfiguration: const SheetScrollConfiguration(),
           builder: builder,
         );
       },
@@ -95,13 +85,13 @@ class _WalletSheetShellState extends State<_WalletSheetShell> {
 }
 
 // ---------------------------------------------------------------------------
-// Root page — action grid (matches old OptionsBottomSheetWidget)
+// Main Action Sheet content
 // ---------------------------------------------------------------------------
 class _WalletActionsRoot extends StatelessWidget {
   const _WalletActionsRoot({required this.wallet});
   final WalletEntity wallet;
 
-  void _navigate(BuildContext context, String route) {
+  void _navigate(String route) {
     _walletSheetNavigatorKey.currentState!.pushNamed(route);
   }
 
@@ -129,104 +119,121 @@ class _WalletActionsRoot extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Title row
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: _walletColor(wallet.type).withValues(alpha: 0.15),
-                child: Icon(_walletIcon(wallet.type), color: _walletColor(wallet.type)),
+          // Header Card
+          FadeInDown(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _walletGradient(wallet.type),
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: _walletGradient(wallet.type).first.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    wallet.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(_walletIcon(wallet.type), color: Colors.white, size: 24),
                   ),
-                  Text(
-                    '${wallet.currencySymbol ?? '\$'}${wallet.balance.toStringAsFixed(2)}',
-                    style: TextStyle(color: cs.onSurfaceVariant),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          wallet.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${wallet.currencySymbol ?? '\$'}${wallet.balance.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 24),
 
-          // Financial Actions label
-          Text('Financial Actions',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: cs.primary)),
-          const SizedBox(height: 12),
-
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 3,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            children: [
-              FadeInUp(
-                delay: const Duration(milliseconds: 0),
-                child: _ActionTile(
-                  icon: Icons.add_circle_outline,
-                  label: 'Add Balance',
-                  color: Colors.green,
-                  onTap: () => _navigate(context, '/add-balance'),
-                ),
-              ),
-              FadeInUp(
-                delay: const Duration(milliseconds: 60),
-                child: _ActionTile(
-                  icon: Icons.remove_circle_outline,
-                  label: 'Withdraw',
-                  color: Colors.red,
-                  onTap: () => _navigate(context, '/withdraw'),
-                ),
-              ),
-              FadeInUp(
-                delay: const Duration(milliseconds: 120),
-                child: _ActionTile(
-                  icon: Icons.swap_horiz,
-                  label: 'Transfer',
-                  color: Colors.blue,
-                  onTap: () => _navigate(context, '/transfer-balance'),
-                ),
-              ),
-              FadeInUp(
-                delay: const Duration(milliseconds: 180),
-                child: _ActionTile(
-                  icon: Icons.receipt_long,
-                  label: 'Move Txns',
-                  color: Colors.purple,
-                  onTap: () => _navigate(context, '/transfer-transactions'),
-                ),
-              ),
-              FadeInUp(
-                delay: const Duration(milliseconds: 240),
-                child: _ActionTile(
-                  icon: Icons.edit_outlined,
-                  label: 'Edit',
-                  color: Colors.orange,
-                  onTap: () => _navigate(context, '/edit'),
-                ),
-              ),
-              FadeInUp(
-                delay: const Duration(milliseconds: 300),
-                child: _ActionTile(
-                  icon: Icons.delete_outline,
-                  label: 'Delete',
-                  color: Colors.redAccent,
-                  onTap: () => _navigate(context, '/delete'),
-                ),
-              ),
-            ],
+          // Actions list
+          FadeInUp(
+            delay: const Duration(milliseconds: 0),
+            child: _ActionTile(
+              icon: Icons.add_circle_rounded,
+              title: 'Add Balance',
+              subtitle: 'Deposit money into this wallet',
+              iconColor: Colors.green,
+              onTap: () => _navigate('/add-balance'),
+            ),
           ),
-
-          const SizedBox(height: 8),
+          FadeInUp(
+            delay: const Duration(milliseconds: 50),
+            child: _ActionTile(
+              icon: Icons.remove_circle_rounded,
+              title: 'Withdraw Balance',
+              subtitle: 'Withdraw money from this wallet',
+              iconColor: Colors.red,
+              onTap: () => _navigate('/withdraw'),
+            ),
+          ),
+          FadeInUp(
+            delay: const Duration(milliseconds: 100),
+            child: _ActionTile(
+              icon: Icons.swap_horiz_rounded,
+              title: 'Transfer',
+              subtitle: 'Move balance to another wallet',
+              iconColor: Colors.blue,
+              onTap: () => _navigate('/transfer-balance'),
+            ),
+          ),
+          FadeInUp(
+            delay: const Duration(milliseconds: 150),
+            child: _ActionTile(
+              icon: Icons.receipt_long_rounded,
+              title: 'Move Transactions',
+              subtitle: 'Reassign all history to another wallet',
+              iconColor: Colors.purple,
+              onTap: () => _navigate('/transfer-transactions'),
+            ),
+          ),
+          FadeInUp(
+            delay: const Duration(milliseconds: 200),
+            child: _ActionTile(
+              icon: Icons.edit_rounded,
+              title: 'Edit Wallet',
+              subtitle: 'Update details or currency',
+              iconColor: Colors.orange,
+              onTap: () => _navigate('/edit'),
+            ),
+          ),
+          FadeInUp(
+            delay: const Duration(milliseconds: 250),
+            child: _ActionTile(
+              icon: Icons.delete_rounded,
+              title: 'Delete Wallet',
+              subtitle: 'Remove wallet completely',
+              iconColor: Colors.redAccent,
+              onTap: () => _navigate('/delete'),
+            ),
+          ),
         ],
       ),
     );
@@ -234,8 +241,146 @@ class _WalletActionsRoot extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Add Balance / Withdraw page
+// Reusable Action Tile
 // ---------------------------------------------------------------------------
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.transparent),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.2)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared UI helper: nested sheet scaffold
+// ---------------------------------------------------------------------------
+class _NestedFormPageScaffold extends StatelessWidget {
+  const _NestedFormPageScaffold({
+    required this.title,
+    required this.children,
+    required this.accentColor,
+  });
+
+  final String title;
+  final Color accentColor;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      color: cs.surface,
+      padding: EdgeInsets.fromLTRB(24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: cs.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () => _walletSheetNavigatorKey.currentState?.pop(),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Form Pages (Nested)
+// ---------------------------------------------------------------------------
+
 enum _ActionType { addBalance, withdraw }
 
 class _AmountFormPage extends ConsumerStatefulWidget {
@@ -273,46 +418,52 @@ class _AmountFormPageState extends ConsumerState<_AmountFormPage> {
     }
 
     setState(() => _loading = false);
-    // Pop back to root
     _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
     final isAdd = widget.actionType == _ActionType.addBalance;
-    final title = isAdd ? 'Add Balance' : 'Withdraw';
+    final title = isAdd ? 'Add Balance' : 'Withdraw Balance';
     final color = isAdd ? Colors.green : Colors.red;
 
-    return _FormSheetScaffold(
+    return _NestedFormPageScaffold(
       title: title,
       accentColor: color,
       children: [
-        _AmountField(controller: _ctrl),
-        const SizedBox(height: 16),
-        _NoteField(controller: _noteCtrl),
-        const SizedBox(height: 32),
-        _SubmitButton(
-          label: title,
-          color: color,
-          loading: _loading,
-          onTap: _submit,
+        TextField(
+          controller: _ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Amount',
+            prefixIcon: const Icon(Icons.attach_money),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _noteCtrl,
+          decoration: InputDecoration(
+            labelText: 'Note (optional)',
+            prefixIcon: const Icon(Icons.notes),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 32),
+        _SubmitButton(label: title, color: color, loading: _loading, onTap: _submit),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Transfer Balance page (mirroring TransferBalanceWidget)
-// ---------------------------------------------------------------------------
+// --------------------------------------------------------------------------- //
+
 class _TransferBalancePage extends ConsumerStatefulWidget {
   const _TransferBalancePage({required this.wallet});
   final WalletEntity wallet;
 
   @override
-  ConsumerState<_TransferBalancePage> createState() =>
-      _TransferBalancePageState();
+  ConsumerState<_TransferBalancePage> createState() => _TransferBalancePageState();
 }
 
 class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
@@ -336,8 +487,7 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
         _toWallet!.rateToUsd != null &&
         widget.wallet.currencyId != _toWallet!.currencyId) {
       setState(() {
-        _convertedPreview =
-            amount * (widget.wallet.rateToUsd! / _toWallet!.rateToUsd!);
+        _convertedPreview = amount * (widget.wallet.rateToUsd! / _toWallet!.rateToUsd!);
       });
     } else {
       setState(() => _convertedPreview = null);
@@ -361,11 +511,20 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
     final allWallets = ref.watch(walletProvider);
     final others = allWallets.where((w) => w.id != widget.wallet.id).toList();
 
-    return _FormSheetScaffold(
+    return _NestedFormPageScaffold(
       title: 'Transfer Balance',
       accentColor: Colors.blue,
       children: [
-        _AmountField(controller: _amountCtrl, onChanged: _onAmountChanged),
+        TextField(
+          controller: _amountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: _onAmountChanged,
+          decoration: InputDecoration(
+            labelText: 'Amount',
+            prefixIcon: const Icon(Icons.attach_money),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
         if (_convertedPreview != null) ...[
           const SizedBox(height: 8),
           Text(
@@ -374,7 +533,6 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
           ),
         ],
         const SizedBox(height: 16),
-        // Destination selector
         DropdownButtonFormField<WalletEntity>(
           initialValue: _toWallet,
           decoration: InputDecoration(
@@ -394,32 +552,23 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
           onChanged: (val) => setState(() => _toWallet = val),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(
-          label: 'Transfer',
-          color: Colors.blue,
-          loading: false,
-          onTap: _submit,
-        ),
-        const SizedBox(height: 24),
+        _SubmitButton(label: 'Transfer', color: Colors.blue, loading: false, onTap: _submit),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Transfer Transactions page (mirroring TransferTransactionWidget)
-// ---------------------------------------------------------------------------
+// --------------------------------------------------------------------------- //
+
 class _TransferTransactionsPage extends ConsumerStatefulWidget {
   const _TransferTransactionsPage({required this.wallet});
   final WalletEntity wallet;
 
   @override
-  ConsumerState<_TransferTransactionsPage> createState() =>
-      _TransferTransactionsPageState();
+  ConsumerState<_TransferTransactionsPage> createState() => _TransferTransactionsPageState();
 }
 
-class _TransferTransactionsPageState
-    extends ConsumerState<_TransferTransactionsPage> {
+class _TransferTransactionsPageState extends ConsumerState<_TransferTransactionsPage> {
   WalletEntity? _toWallet;
 
   void _submit() {
@@ -436,8 +585,8 @@ class _TransferTransactionsPageState
     final allWallets = ref.watch(walletProvider);
     final others = allWallets.where((w) => w.id != widget.wallet.id).toList();
 
-    return _FormSheetScaffold(
-      title: 'Move All Transactions',
+    return _NestedFormPageScaffold(
+      title: 'Move Transactions',
       accentColor: Colors.purple,
       children: [
         DropdownButtonFormField<WalletEntity>(
@@ -459,21 +608,14 @@ class _TransferTransactionsPageState
           onChanged: (val) => setState(() => _toWallet = val),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(
-          label: 'Move Transactions',
-          color: Colors.purple,
-          loading: false,
-          onTap: _submit,
-        ),
-        const SizedBox(height: 24),
+        _SubmitButton(label: 'Move Transactions', color: Colors.purple, loading: false, onTap: _submit),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Edit Wallet page
-// ---------------------------------------------------------------------------
+// --------------------------------------------------------------------------- //
+
 class _EditWalletPage extends ConsumerStatefulWidget {
   const _EditWalletPage({required this.wallet});
   final WalletEntity wallet;
@@ -484,13 +626,13 @@ class _EditWalletPage extends ConsumerStatefulWidget {
 
 class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
   late final TextEditingController _nameCtrl;
-  late String _selectedType;
+  late String _type;
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.wallet.name);
-    _selectedType = widget.wallet.type;
+    _type = widget.wallet.type;
   }
 
   @override
@@ -500,17 +642,20 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
   }
 
   void _submit() {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
     ref.read(walletProvider.notifier).updateWallet(
           widget.wallet.id,
-          name: _nameCtrl.text.trim(),
-          type: _selectedType,
+          name: name,
+          type: _type,
         );
     _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
-    return _FormSheetScaffold(
+    return _NestedFormPageScaffold(
       title: 'Edit Wallet',
       accentColor: Colors.orange,
       children: [
@@ -524,9 +669,9 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          initialValue: _selectedType,
+          initialValue: _type,
           decoration: InputDecoration(
-            labelText: 'Wallet Type',
+            labelText: 'Type',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           items: const [
@@ -535,234 +680,74 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
             DropdownMenuItem(value: 'investment', child: Text('📈 Investment')),
             DropdownMenuItem(value: 'other', child: Text('🗂 Other')),
           ],
-          onChanged: (val) => setState(() => _selectedType = val!),
+          onChanged: (val) => setState(() => _type = val!),
         ),
         const SizedBox(height: 32),
-        _SubmitButton(
-          label: 'Save Changes',
-          color: Colors.orange,
-          loading: false,
-          onTap: _submit,
-        ),
-        const SizedBox(height: 24),
+        _SubmitButton(label: 'Save Changes', color: Colors.orange, loading: false, onTap: _submit),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Delete Wallet page (confirmation)
-// ---------------------------------------------------------------------------
-class _DeleteWalletPage extends ConsumerWidget {
+// --------------------------------------------------------------------------- //
+
+class _DeleteWalletPage extends ConsumerStatefulWidget {
   const _DeleteWalletPage({required this.wallet});
   final WalletEntity wallet;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return _FormSheetScaffold(
+  ConsumerState<_DeleteWalletPage> createState() => _DeleteWalletPageState();
+}
+
+class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
+  void _submit() {
+    ref.read(walletProvider.notifier).deleteWallet(widget.wallet.id);
+    _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
+    // Finally close the whole sheet
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _NestedFormPageScaffold(
       title: 'Delete Wallet',
-      accentColor: Colors.red,
+      accentColor: Colors.redAccent,
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.08),
+            color: Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              const Icon(Icons.warning_amber_rounded, color: Colors.red),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Are you sure you want to delete "${wallet.name}"? '
-                  'This action cannot be undone.',
-                  style: const TextStyle(fontSize: 14),
+                  'Are you sure you want to delete ${widget.wallet.name}?',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        const Text(
+          'This action is irreversible. All transactions associated with this wallet will be deleted unless you move them first.',
+          style: TextStyle(fontSize: 14),
+        ),
         const SizedBox(height: 32),
-        _SubmitButton(
-          label: 'Yes, Delete',
-          color: Colors.red,
-          loading: false,
-          onTap: () {
-            ref.read(walletProvider.notifier).deleteWallet(wallet.id);
-            // Pop the whole modal sheet
-            Navigator.of(context, rootNavigator: true).pop();
-          },
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () =>
-                _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Cancel'),
-          ),
-        ),
-        const SizedBox(height: 24),
+        _SubmitButton(label: 'Delete Permanently', color: Colors.redAccent, loading: false, onTap: _submit),
       ],
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Shared UI helpers
+// Helpers
 // ---------------------------------------------------------------------------
-
-/// Consistent sheet page scaffold with back button + title
-class _FormSheetScaffold extends StatelessWidget {
-  const _FormSheetScaffold({
-    required this.title,
-    required this.children,
-    required this.accentColor,
-  });
-
-  final String title;
-  final Color accentColor;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => _walletSheetNavigatorKey.currentState?.pop(),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: accentColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AmountField extends StatelessWidget {
-  const _AmountField({required this.controller, this.onChanged});
-  final TextEditingController controller;
-  final ValueChanged<String>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: 'Amount',
-        prefixIcon: const Icon(Icons.attach_money),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
-
-class _NoteField extends StatelessWidget {
-  const _NoteField({required this.controller});
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: 'Note (optional)',
-        prefixIcon: const Icon(Icons.notes),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
 
 class _SubmitButton extends StatelessWidget {
   const _SubmitButton({
@@ -787,37 +772,31 @@ class _SubmitButton extends StatelessWidget {
           backgroundColor: color,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 4,
         ),
         child: loading
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white))
-            : Text(label,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Utility helpers
-// ---------------------------------------------------------------------------
-Color _walletColor(String type) {
+List<Color> _walletGradient(String type) {
   switch (type.toLowerCase()) {
     case 'cash':
-      return Colors.green;
+      return [const Color(0xFF1A1A2E), const Color(0xFF16213E)];
     case 'bank':
-      return Colors.blue;
+      return [const Color(0xFF5C35CC), const Color(0xFF9B59B6)];
     case 'investment':
-      return Colors.orange;
+      return [const Color(0xFFE65C00), const Color(0xFFF9D423)];
     default:
-      return Colors.grey;
+      return [const Color(0xFF2C3E50), const Color(0xFF4CA1AF)];
   }
 }
 
