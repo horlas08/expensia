@@ -1,0 +1,34 @@
+Untranslated strings:
+/Users/user/project/mobile/awals/lib/app/models/transaction_model.dart:22: 'USD'
+/Users/user/project/mobile/awals/lib/app/models/transaction_model.dart:37: 'USD'
+/Users/user/project/mobile/awals/lib/app/common/widget/guest_selector.dart:37: 'Max $maxGuests guests'
+/Users/user/project/mobile/awals/lib/app/common/constant/app_environment.dart:8: '$url/api/v0'
+/Users/user/project/mobile/awals/lib/app/modules/payments_and_payouts/views/payments_and_payouts_view.dart:152: 'Minimum withdrawal: \$${controller.minimumWithdrawal.value.toStringAsFixed(2)}'
+/Users/user/project/mobile/awals/lib/app/modules/transaction_log/views/transaction_log_view.dart:150: 'MMM dd, yyyy • HH:mm'
+/Users/user/project/mobile/awals/lib/app/modules/transaction_log/views/transaction_log_view.dart:167: '${tx.points > 0 ? "+" : ""}${tx.points} pts'
+/Users/user/project/mobile/awals/lib/app/modules/contact_hosting/views/contact_hosting_view.dart:18: 'ContactHostingView is working'
+/Users/user/project/mobile/awals/lib/app/modules/experience_and_service_step/views/steps/about_you_step.dart:547: "www.yourwebsite.com"
+/Users/user/project/mobile/awals/lib/app/modules/experience_and_service_step/views/steps/about_you_step.dart:574: "www.yourwebsite.com"
+/Users/user/project/mobile/awals/lib/app/modules/otp/views/otp_view.dart:70: "Don't get an ${controller.channel == 'email' ? 'email' : 'phone'}? "
+/Users/user/project/mobile/awals/lib/app/modules/calendar_config/controllers/calendar_config_controller.dart:55: '${parsed.year}-${parsed.month.toString().padLeft(2, '
+/Users/user/project/mobile/awals/lib/app/modules/calendar_config/controllers/calendar_config_controller.dart:74: '${date.year}-${date.month.toString().padLeft(2, '
+/Users/user/project/mobile/awals/lib/app/modules/calendar_config/controllers/calendar_config_controller.dart:92: '${date.year}-${date.month.toString().padLeft(2, '
+/Users/user/project/mobile/awals/lib/app/modules/listings/controllers/listings_controller.dart:121: 'DRAFT'
+/Users/user/project/mobile/awals/lib/app/modules/listings/controllers/listings_controller.dart:121: 'PENDING'
+/Users/user/project/mobile/awals/lib/app/modules/display_place/views/display_place_view.dart:516: 'listing_$i'
+/Users/user/project/mobile/awals/lib/app/modules/payment_method/controllers/payment_method_controller.dart:272: 'Error: Failed to create booking: $e'
+/Users/user/project/mobile/awals/lib/app/modules/payment_method/views/payment_method_view.dart:162: "USD"
+/Users/user/project/mobile/awals/lib/app/modules/payment_method/views/payment_method_view.dart:171: "Booking for ${controller.listingTitle ?? 'Listing'}"
+/Users/user/project/mobile/awals/lib/app/modules/payment_method/views/payment_method_view.dart:180: "USD"
+/Users/user/project/mobile/awals/lib/app/modules/booking_success/views/booking_success_view.dart:159: 'SAR ${controller.totalPrice.value.toStringAsFixed(0)}'
+/Users/user/project/mobile/awals/lib/app/modules/display_experience_place/views/display_experience_place_view.dart:331: 'listing_$i'
+/Users/user/project/mobile/awals/lib/app/modules/place_details/controllers/place_details_controller.dart:70: '${parsed.year}-${parsed.month.toString().padLeft(2, '
+/Users/user/project/mobile/awals/lib/app/modules/place_details/controllers/place_details_controller.dart:152: '${date.year}-${date.month.toString().padLeft(2, '
+/Users/user/project/mobile/awals/lib/app/modules/place_details/views/place_details_view.dart:88: '${listing.guests} guests · ${listing.bedRooms} bedrooms · ${listing.beds} beds · ${listing.bathRooms} baths'
+/Users/user/project/mobile/awals/lib/app/modules/place_details/views/place_details_view.dart:97: 'for ${controller.nightsCount.value} nights'
+/Users/user/project/mobile/awals/lib/app/modules/place_details/views/place_details_view.dart:339: '${controller.guestCount.value} guest${controller.guestCount.value > 1 ? '
+/Users/user/project/mobile/awals/lib/app/modules/review_booking/views/review_booking_view.dart:65: '${controller.guestCount.value} guest${controller.guestCount.value > 1 ? '
+/Users/user/project/mobile/awals/lib/app/modules/experience_details/views/experience_details_view.dart:89: '} • ${listing.city ?? '
+/Users/user/project/mobile/awals/lib/app/routes/app_pages.dart:106: 'app_routes.dart'
+/Users/user/project/mobile/awals/lib/app/routes/app_routes.dart:1: 'app_pages.dart'
+/Users/user/project/mobile/awals/lib/app/services/listing/listing_service.dart:789: "DEBUG: Error parsing ExploreCategorySection: $ex, data: $e"
