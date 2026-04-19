@@ -110,7 +110,7 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                   _FeatureItem(
                     icon: Icons.currency_exchange_rounded,
                     title: 'settings.multi_currency'.tr(),
-                    subtitle: 'Multi-currency support for all accounts',
+                    subtitle: 'settings.multi_currency_desc'.tr(),
                     delay: 300,
                   ),
                   _FeatureItem(

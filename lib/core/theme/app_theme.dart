@@ -5,6 +5,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       brightness: Brightness.light,
+
       primaryColor: const Color(0xFF6B4EFF),
       scaffoldBackgroundColor: const Color(0xFFF8F9FA),
       colorScheme: ColorScheme.light(
@@ -37,6 +38,41 @@ class AppTheme {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
       ),
+    );
+  }
+
+  static ThemeData applyLocaleFont(ThemeData theme, Locale locale) {
+    if (locale.languageCode != 'ar') return theme;
+
+    // .apply(fontFamily) silently skips styles that have an explicit fontFamily
+    // (e.g. Poppins set via GoogleFonts.poppinsTextTheme).
+    // We must copy every style individually to force Cairo on all of them.
+    TextTheme _forceFont(TextTheme base) {
+      TextStyle _cairo(TextStyle? s) =>
+          (s ?? const TextStyle()).copyWith(fontFamily: 'Cairo');
+      return base.copyWith(
+        displayLarge: _cairo(base.displayLarge),
+        displayMedium: _cairo(base.displayMedium),
+        displaySmall: _cairo(base.displaySmall),
+        headlineLarge: _cairo(base.headlineLarge),
+        headlineMedium: _cairo(base.headlineMedium),
+        headlineSmall: _cairo(base.headlineSmall),
+        titleLarge: _cairo(base.titleLarge),
+        titleMedium: _cairo(base.titleMedium),
+        titleSmall: _cairo(base.titleSmall),
+        bodyLarge: _cairo(base.bodyLarge),
+        bodyMedium: _cairo(base.bodyMedium),
+        bodySmall: _cairo(base.bodySmall),
+        labelLarge: _cairo(base.labelLarge),
+        labelMedium: _cairo(base.labelMedium),
+        labelSmall: _cairo(base.labelSmall),
+      );
+    }
+
+    return theme.copyWith(
+      textTheme: _forceFont(theme.textTheme),
+      primaryTextTheme: _forceFont(theme.primaryTextTheme),
+
     );
   }
 }

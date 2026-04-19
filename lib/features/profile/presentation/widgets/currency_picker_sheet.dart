@@ -135,7 +135,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                                     controller: _searchController,
                                     autofocus: true,
                                     decoration: InputDecoration(
-                                      hintText: 'Search currency...',
+                                      hintText: 'profile.currency_search'.tr(),
                                       border: InputBorder.none,
                                       hintStyle: TextStyle(
                                         color: cs.onSurface.withValues(
@@ -284,7 +284,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                   error:
                       (_, __) => Center(
                         child: Text(
-                          'Unable to load currencies',
+                          'profile.currency_load_error'.tr(),
                           style: TextStyle(color: cs.onSurface),
                         ),
                       ),

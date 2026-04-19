@@ -42,22 +42,22 @@ class _WalletPageState extends ConsumerState<WalletPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'My Wallets',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          'wallet.my_wallets'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
           TextButton(
             onPressed: () => _showAddWalletSheet(context),
             child: Row(
-              children: const [
+              children: [
                 Text(
-                  'Add Wallet',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'wallet.add_wallet'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(width: 4),
-                Icon(Icons.add, size: 20),
+                const SizedBox(width: 4),
+                const Icon(Icons.add, size: 20),
               ],
             ),
           ),
@@ -97,8 +97,8 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Total Balance',
+                              Text(
+                                'wallet.total_balance'.tr(),
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 13,
@@ -116,7 +116,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                             ],
                           ),
                           Text(
-                            '${wallets.length} wallet${wallets.length == 1 ? '' : 's'}',
+                            'wallet.wallet_count'.tr(args: ['${wallets.length}']),
                             style: const TextStyle(
                               color: Colors.white60,
                               fontSize: 13,
@@ -189,7 +189,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Text(
-                      'Tap a card to view actions',
+                      'wallet.tap_card_actions'.tr(),
                       style: TextStyle(
                         color: Theme.of(
                           context,
@@ -366,7 +366,7 @@ class _EmptyWallets extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No wallets yet',
+            'wallet.no_wallets_yet'.tr(),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Theme.of(
                 context,
@@ -555,9 +555,9 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Create Wallet',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              child: Text(
+                'wallet.create_wallet'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
           ),

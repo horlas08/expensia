@@ -141,7 +141,7 @@ final statisticsDataProvider = FutureProvider.autoDispose.family<_StatsData, int
   final categories = catRes.asMap().entries.map((e) {
     final row = e.value;
     return _SpendCategory(
-      row['name'] as String? ?? 'Other',
+      row['name'] as String? ?? 'wallet.other'.tr(),
       (row['total'] as num).toDouble(),
       catColors[e.key % catColors.length],
     );
@@ -168,7 +168,7 @@ final statisticsDataProvider = FutureProvider.autoDispose.family<_StatsData, int
     expense: expense,
     labels: labels,
     categories: categories.isEmpty
-        ? [_SpendCategory('No data', 1, Colors.grey.withValues(alpha: 0.3))]
+        ? [_SpendCategory('stat.no_data', 1, Colors.grey.withValues(alpha: 0.3))]
         : categories,
     installmentTotal: installmentTotal,
     activeInstallments: activeInstallments,
@@ -192,8 +192,6 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
   int _touchedIndex = -1;
   late AnimationController _progressCtrl;
   late Animation<double> _progressAnim;
-
-  final _periods = ['Week', 'Month', 'Year'];
 
   @override
   void initState() {
@@ -222,6 +220,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
     final selectedPeriod = ref.watch(_statsPeriodProvider);
     final statsAsync = ref.watch(statisticsDataProvider(selectedPeriod));
     final currencySymbol = ref.watch(currencySymbolProvider);
+    final periods = ['stat.period_week'.tr(), 'stat.period_month'.tr(), 'stat.period_year'.tr()];
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -279,7 +278,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
-                        children: List.generate(_periods.length, (i) {
+                        children: List.generate(periods.length, (i) {
                           final selected = i == selectedPeriod;
                           return Expanded(
                             child: GestureDetector(
@@ -295,7 +294,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                                       : null,
                                 ),
                                 child: Text(
-                                  _periods[i],
+                                  periods[i],
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: selected ? Colors.white : cs.onSurfaceVariant,
@@ -320,7 +319,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                         child: CircularProgressIndicator(),
                       ),
                     ),
-                    error: (err, _) => Center(child: Text('Error: $err')),
+                    error: (err, _) => Center(child: Text('common.error_prefix'.tr(args: ['$err']))),
                     data: (stats) {
                       final maxY = [...stats.income, ...stats.expense].isEmpty
                           ? 100.0
@@ -360,7 +359,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                                           tooltipRoundedRadius: 8,
                                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                             return BarTooltipItem(
-                                              rodIndex == 0 ? 'Inc\n' : 'Exp\n',
+                                              '${rodIndex == 0 ? 'stat.income_short'.tr() : 'stat.expense_short'.tr()}\n',
                                               const TextStyle(color: Colors.white70, fontSize: 10),
                                               children: [
                                                 TextSpan(
@@ -458,7 +457,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                             delay: const Duration(milliseconds: 200),
                             child: _ChartCard(
                               title: 'stat.spending_breakdown'.tr(),
-                              subtitle: 'stat.this_period'.tr(args: [_periods[selectedPeriod].toLowerCase()]),
+                              subtitle: 'stat.this_period'.tr(args: [periods[selectedPeriod]]),
                               child: totalSpent == 0
                                   ? Padding(
                                       padding: const EdgeInsets.symmetric(vertical: 32),
@@ -523,7 +522,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> with SingleTick
                                                       decoration: BoxDecoration(color: cat.color, shape: BoxShape.circle),
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    Expanded(child: Text(cat.name, style: const TextStyle(fontSize: 13))),
+                                                    Expanded(
+                                                      child: Text(
+                                                        cat.name == 'stat.no_data' ? cat.name.tr() : cat.name,
+                                                        style: const TextStyle(fontSize: 13),
+                                                      ),
+                                                    ),
                                                     Text(
                                                       '$currencySymbol ${cat.amount.toStringAsFixed(0)}',
                                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),

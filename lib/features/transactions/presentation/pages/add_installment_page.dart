@@ -163,7 +163,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             'type': 'installment',
             'direction': _isForYou ? 'plus' : 'min',
             'amount': deposit,
-            'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
+            'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
             'image_url': _imageUrl,
           });
         }
@@ -214,7 +214,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             'amount': deposit,
             'date': DateTime.now().toIso8601String(),
             'is_paid': 1,
-            'notes': 'Deposit for: ${_noteCtrl.text.trim()}',
+            'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
             'installment_id': installmentId,
             'person_id': personId,
             'person_name': _personCtrl.text.trim(),
@@ -316,12 +316,12 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Installment Plan',
+              'transaction.installment_plan'.tr(),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
-              'Preview of your monthly payments',
+              'transaction.installment_plan_preview'.tr(),
               style: TextStyle(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
@@ -342,7 +342,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       ),
                     ),
                     title: Text(
-                      'Payment ${item['month']}',
+                      'transaction.payment_number'.tr(args: ['${item['month']}']),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(DateFormat('MMMM dd, yyyy').format(date)),
@@ -427,7 +427,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         title: Text(
-          widget.initialTransaction != null ? 'Edit Installment' : 'dashboard.installment'.tr(),
+          widget.initialTransaction != null ? 'transaction.edit_installment'.tr() : 'dashboard.installment'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
@@ -577,8 +577,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             child: TextField(
                               controller: _depositCtrl,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(
-                                labelText: 'Deposit (Initial Paid)',
+                              decoration: InputDecoration(
+                                labelText: 'transaction.deposit_initial_paid'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
                               ),
@@ -608,8 +608,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                               controller: _monthsCtrl,
                               keyboardType: const TextInputType.numberWithOptions(decimal: false),
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              decoration: const InputDecoration(
-                                labelText: 'Months',
+                              decoration: InputDecoration(
+                                labelText: 'transaction.months'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
                               ),
@@ -628,7 +628,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           IconButton(
                             onPressed: _showPlanPreview,
                             icon: Icon(Icons.calendar_month_rounded, color: cs.primary, size: 18),
-                            tooltip: 'Preview Plan',
+                            tooltip: 'transaction.preview_plan'.tr(),
                           ),
                         ],
                       ),
@@ -701,7 +701,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             Expanded(
                               child: Text(
                                 _selectedCategoryId == null 
-                                    ? (_isForYou ? 'Receive Debts & Installments' : 'Pay Debts & Installments')
+                                    ? (_isForYou ? 'transaction.receive_debts_installments'.tr() : 'transaction.pay_debts_installments'.tr())
                                     : _selectedCategoryName!,
                                 style: TextStyle(
                                   color: cs.onSurface,

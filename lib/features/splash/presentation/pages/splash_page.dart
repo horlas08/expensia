@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:animated_emoji/animated_emoji.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/shared_preferences_service.dart';
 import '../../../../core/services/app_lock_service.dart';
@@ -127,8 +128,8 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             FadeInUp(
               delay: const Duration(milliseconds: 600),
               child: Text(
-                'Master Your Finances',
-                style: GoogleFonts.outfit(
+                'splash.tagline'.tr(),
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   color: Colors.white70,

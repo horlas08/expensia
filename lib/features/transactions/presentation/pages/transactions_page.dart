@@ -183,7 +183,7 @@ class TransactionsPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(child: Text('common.error_prefix'.tr(args: ['$err']))),
       ),
     );
   }
@@ -196,7 +196,7 @@ class TransactionListItem extends ConsumerWidget {
 
   static ({IconData icon, Color color}) getStyle(Map<String, dynamic> tx) {
     final type = tx['type'] as String;
-    final categoryName = tx['category_name'] as String? ?? 'Other';
+    final categoryName = tx['category_name'] as String? ?? 'wallet.other'.tr();
 
     switch (type) {
       case 'transfer':
@@ -220,7 +220,7 @@ class TransactionListItem extends ConsumerWidget {
     final amount = (tx['amount'] as num).toDouble();
     final date = DateTime.parse(tx['date'] as String);
     final notes = tx['notes'] as String? ?? '';
-    final categoryName = tx['category_name'] as String? ?? 'Other';
+    final categoryName = tx['category_name'] as String? ?? 'wallet.other'.tr();
     
     // Custom styling based on type
     final style = getStyle(tx);
@@ -232,15 +232,15 @@ class TransactionListItem extends ConsumerWidget {
 
     switch (type) {
       case 'transfer':
-        displayTitle = 'Transfer';
+        displayTitle = 'transfer.title'.tr();
         displaySubtitle = '${tx['wallet_name']} → ${tx['to_wallet_name']}';
         break;
       case 'debt':
-        displayTitle = 'Debt';
-        displaySubtitle = tx['person_name'] ?? 'Private';
+        displayTitle = 'dashboard.debt'.tr();
+        displaySubtitle = tx['person_name'] ?? 'history.private'.tr();
         break;
       case 'installment':
-        displayTitle = 'Installment Deposit';
+        displayTitle = 'history.installment_deposit'.tr();
         displaySubtitle = tx['person_name'] ?? notes;
         break;
       default: // 'transaction'
@@ -269,13 +269,13 @@ class TransactionListItem extends ConsumerWidget {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text('Delete Transaction'),
-                content: const Text('Are you sure you want to delete this transaction?'),
+                title: Text('history.delete_transaction_title'.tr()),
+                content: Text('history.delete_transaction_confirm'.tr()),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
                   ),
                 ],
               ),
@@ -432,7 +432,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                 child: FilledButton.icon(
                   onPressed: () => _confirmDelete(context),
                   icon: const Icon(Icons.delete_rounded),
-                  label: const Text('Delete Transaction'),
+                  label: Text('history.delete_transaction_title'.tr()),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
@@ -497,16 +497,16 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   
                   // ── DETAILS SECTION ──
                   _buildDetailSection(context, [
-                    _buildRow(context, 'Type', type.toUpperCase()),
+                    _buildRow(context, 'common.type'.tr(), type.toUpperCase()),
                     if (widget.tx['category_name'] != null)
-                      _buildRow(context, 'Category', widget.tx['category_name']),
-                    _buildRow(context, 'Wallet', widget.tx['wallet_name'] ?? 'N/A'),
+                      _buildRow(context, 'transaction.category'.tr(), widget.tx['category_name']),
+                    _buildRow(context, 'transaction.wallet'.tr(), widget.tx['wallet_name'] ?? 'common.na'.tr()),
                     if (widget.tx['to_wallet_name'] != null)
-                      _buildRow(context, 'To Wallet', widget.tx['to_wallet_name']),
+                      _buildRow(context, 'transfer.to_wallet'.tr(), widget.tx['to_wallet_name']),
                     if ((_fullTx['person_name'] ?? widget.tx['person_name']) != null)
                       _buildRow(
                         context, 
-                        'Person', 
+                        'common.person'.tr(), 
                         _fullTx['person_name'] ?? widget.tx['person_name'],
                         trailing: ((_fullTx['person_phone'] ?? widget.tx['person_phone']) != null && ((_fullTx['person_phone'] ?? widget.tx['person_phone']) as String).isNotEmpty)
                           ? Row(
@@ -535,10 +535,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                       ),
                     _buildRow(
                       context, 
-                      'Type Detail', 
-                      direction == 'plus' 
-                        ? (type == 'debt' ? 'dashboard.for_you'.tr() : 'categories.income'.tr())
-                        : (type == 'debt' ? 'dashboard.on_you'.tr() : 'categories.expense'.tr()),
+                        'history.detail_type'.tr(), 
+                        direction == 'plus' 
+                          ? (type == 'debt' ? 'dashboard.for_you'.tr() : 'categories.income'.tr())
+                          : (type == 'debt' ? 'dashboard.on_you'.tr() : 'categories.expense'.tr()),
                       valueColor: direction == 'plus' ? Colors.green : Colors.red,
                     ),
                   ]),
@@ -546,10 +546,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   // ── DEBT PAYMENT HISTORY ──
                   if (type == 'debt') ...[
                     const SizedBox(height: 32),
-                    _buildSectionHeader(context, 'Payment History', Icons.history_rounded),
+                    _buildSectionHeader(context, 'history.payment_history'.tr(), Icons.history_rounded),
                     const SizedBox(height: 12),
                     if (_debtPayments.isEmpty)
-                      _buildEmptyState('No payment records yet')
+                      _buildEmptyState('history.no_payment_records'.tr())
                     else
                       ..._debtPayments.map((p) => _buildDebtPaymentCard(context, p)),
                   ],
@@ -557,10 +557,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   // ── INSTALLMENT SCHEDULE ──
                   if (type == 'installment') ...[
                     const SizedBox(height: 32),
-                    _buildSectionHeader(context, 'Repayment Schedule', Icons.calendar_month_rounded),
+                    _buildSectionHeader(context, 'history.repayment_schedule'.tr(), Icons.calendar_month_rounded),
                     const SizedBox(height: 12),
                     if (_installmentDetails.isEmpty)
-                      _buildEmptyState('No schedule found')
+                      _buildEmptyState('history.no_schedule_found'.tr())
                     else
                       ..._installmentDetails.asMap().entries.map((e) => 
                         _buildInstallmentDetailCard(context, e.value, e.key + 1)),
@@ -570,7 +570,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   if (notes.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     _buildDetailSection(context, [
-                      _buildRow(context, 'Notes', notes, isMultiline: true),
+                      _buildRow(context, 'common.notes'.tr(), notes, isMultiline: true),
                     ]),
                   ],
 
@@ -580,7 +580,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader(context, 'Receipt', Icons.receipt_long_rounded),
+                        _buildSectionHeader(context, 'common.receipt'.tr(), Icons.receipt_long_rounded),
                         const SizedBox(height: 12),
                         GestureDetector(
                           onTap: () {
@@ -650,10 +650,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
   String _titleForType(String type) {
     switch (type) {
-      case 'debt': return 'Debt Detail';
-      case 'installment': return 'Installment Detail';
-      case 'transfer': return 'Transfer Detail';
-      default: return 'Transaction Detail';
+      case 'debt': return 'history.debt_detail'.tr();
+      case 'installment': return 'history.installment_detail'.tr();
+      case 'transfer': return 'history.transfer_detail'.tr();
+      default: return 'history.transaction_detail'.tr();
     }
   }
 
@@ -672,7 +672,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             child: OutlinedButton.icon(
               onPressed: () => _openDebtPaymentSheet(context, 'min'),
               icon: const Icon(Icons.arrow_upward_rounded, size: 18),
-              label: const Text('Borrowed'),
+              label: Text('transaction.borrowed'.tr()),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
@@ -686,7 +686,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             child: OutlinedButton.icon(
               onPressed: () => _openDebtPaymentSheet(context, 'plus'),
               icon: const Icon(Icons.arrow_downward_rounded, size: 18),
-              label: const Text('Lent'),
+              label: Text('transaction.lent'.tr()),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.green,
                 side: const BorderSide(color: Colors.green),
@@ -732,11 +732,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Undo Payment'),
-          content: const Text('Cancel this payment? The amount will be reversed.'),
+          title: Text('history.undo_payment'.tr()),
+          content: Text('history.undo_payment_confirm'.tr()),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm', style: TextStyle(color: Colors.red))),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('common.confirm'.tr(), style: const TextStyle(color: Colors.red))),
           ],
         ),
       );
@@ -754,13 +754,13 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete'),
-        content: const Text('Are you sure you want to delete this? This action cannot be undone.'),
+        title: Text('common.delete'.tr()),
+        content: Text('history.delete_item_confirm'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -841,7 +841,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isIncome ? 'Lent' : 'Borrowed',
+                  isIncome ? 'transaction.lent'.tr() : 'transaction.borrowed'.tr(),
                   style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurface),
                 ),
                 if (paymentDate != null)
@@ -922,7 +922,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  dDate != null ? DateFormat('MMM dd, yyyy').format(dDate) : 'N/A',
+                  dDate != null ? DateFormat('MMM dd, yyyy').format(dDate) : 'common.na'.tr(),
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: cs.onSurface,
@@ -930,7 +930,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   ),
                 ),
                 Text(
-                  isPaid ? 'Paid' : 'Pending',
+                  isPaid ? 'dashboard.paid'.tr() : 'common.pending'.tr(),
                   style: TextStyle(
                     fontSize: 11,
                     color: isPaid ? Colors.green : Colors.orange,

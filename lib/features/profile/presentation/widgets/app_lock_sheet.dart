@@ -226,7 +226,7 @@ class _AppLockSheetState extends ConsumerState<AppLockSheet> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'Requires biometrics (Face ID, fingerprint) or device PIN.',
+                                      'profile.lock_bio_note'.tr(),
                                       style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
                                     ),
                                   ),

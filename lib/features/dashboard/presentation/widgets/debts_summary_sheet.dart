@@ -118,7 +118,7 @@ class _DebtListView extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snap.hasError) {
-          return Center(child: Text('Err: ${snap.error}'));
+          return Center(child: Text('${'common.error'.tr()}: ${snap.error}'));
         }
         final data = snap.data ?? [];
         if (data.isEmpty) {
@@ -129,7 +129,7 @@ class _DebtListView extends StatelessWidget {
                 Icon(Icons.account_balance_wallet_outlined, size: 64, color: cs.onSurface.withOpacity(0.2)),
                 const SizedBox(height: 16),
                 Text(
-                  'No debts found',
+                  'dashboard.no_debts_found'.tr(),
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16),
                 ),
               ],
@@ -144,7 +144,7 @@ class _DebtListView extends StatelessWidget {
             final item = data[i];
             final isForYou = (item['income'] as num).toDouble() > 0;
             final amount = isForYou ? item['income'] : item['expense'];
-            final personName = item['person_name'] ?? 'Unknown';
+            final personName = item['person_name'] ?? 'common.unknown'.tr();
 
             return FadeInUp(
               delay: Duration(milliseconds: 50 * i),

@@ -224,7 +224,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
+        SnackBar(content: Text('${'transaction.error_picking_image'.tr()}$e')),
       );
     }
   }
@@ -288,7 +288,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         foregroundColor: Colors.white,
         title: Text(
           widget.initialTransaction != null
-              ? 'Edit Transaction'
+              ? 'transaction.edit'.tr()
               : (_isIncome
                   ? 'transaction.type_income'.tr()
                   : 'transaction.type_expense'.tr()),

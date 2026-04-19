@@ -554,9 +554,9 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                       ),
                       items: [
-                        const DropdownMenuItem<int>(
+                        DropdownMenuItem<int>(
                           value: null,
-                          child: Text("None (Root Category)"),
+                          child: Text('wallet.root_category_none'.tr()),
                         ),
                         ...roots.map((c) => DropdownMenuItem<int>(
                           value: c['id'] as int,

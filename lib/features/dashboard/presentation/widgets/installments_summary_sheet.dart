@@ -118,7 +118,7 @@ class _InstallmentListView extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snap.hasError) {
-          return Center(child: Text('Err: ${snap.error}'));
+          return Center(child: Text('${'common.error'.tr()}: ${snap.error}'));
         }
         final data = snap.data ?? [];
         if (data.isEmpty) {
@@ -129,7 +129,7 @@ class _InstallmentListView extends StatelessWidget {
                 Icon(Icons.business_center_outlined, size: 64, color: cs.onSurface.withOpacity(0.2)),
                 const SizedBox(height: 16),
                 Text(
-                  'No installments found',
+                  'dashboard.no_installments_found'.tr(),
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16),
                 ),
               ],
@@ -146,7 +146,7 @@ class _InstallmentListView extends StatelessWidget {
             final isForYou = item['type'] == 'for_you'; 
             final remainingPrice = item['remaining_price'];
             final remainingMonths = item['remaining_months'];
-            final personName = item['person_name'] ?? 'Unknown';
+            final personName = item['person_name'] ?? 'common.unknown'.tr();
 
             return FadeInUp(
               delay: Duration(milliseconds: 50 * i),

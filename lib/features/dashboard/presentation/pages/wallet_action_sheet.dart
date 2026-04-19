@@ -428,7 +428,8 @@ class _AmountFormPageState extends ConsumerState<_AmountFormPage> {
   @override
   Widget build(BuildContext context) {
     final isAdd = widget.actionType == _ActionType.addBalance;
-    final title = isAdd ? 'Add Balance' : 'Withdraw Balance';
+    final title =
+        isAdd ? 'common.add_balance'.tr() : 'common.withdraw_balance'.tr();
     final color = isAdd ? Colors.green : Colors.red;
 
     return _NestedFormPageScaffold(
@@ -439,7 +440,7 @@ class _AmountFormPageState extends ConsumerState<_AmountFormPage> {
           controller: _ctrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-            labelText: 'Amount',
+            labelText: 'transaction.amount'.tr(),
             prefixIcon: const Icon(Icons.attach_money),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -448,7 +449,7 @@ class _AmountFormPageState extends ConsumerState<_AmountFormPage> {
         TextField(
           controller: _noteCtrl,
           decoration: InputDecoration(
-            labelText: 'Note (optional)',
+            labelText: 'transaction.note_hint'.tr(),
             prefixIcon: const Icon(Icons.notes),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),

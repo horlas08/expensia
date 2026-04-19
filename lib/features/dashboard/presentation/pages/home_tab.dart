@@ -39,7 +39,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferencesService.getInstance();
     setState(() {
-      _userName = prefs.getUserName() ?? 'User';
+      _userName = prefs.getUserName() ?? 'profile.user_badge'.tr();
     });
   }
 
@@ -229,7 +229,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           ),
                       loading:
                           () => const Center(child: LinearProgressIndicator()),
-                      error: (e, _) => Text('Error: $e'),
+                      error: (e, _) => Text('common.error_prefix'.tr(args: ['$e'])),
                     ),
                   ],
                 ),
@@ -473,7 +473,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Error: $e'),
+              error: (e, _) => Text('common.error_prefix'.tr(args: ['$e'])),
             ),
           ],
         ),
@@ -704,135 +704,128 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
     final labelText =
         _showOnYou ? 'dashboard.on_you'.tr() : 'dashboard.for_you'.tr();
     final displayAmount = _showOnYou ? widget.onYouAmount : widget.forYouAmount;
+    final usesGradient = widget.gradient != null;
+    final contentColor = usesGradient ? Colors.white : widget.accentColor;
 
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: widget.onDetails ?? _toggle,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient:
-                  widget.gradient != null
-                      ? LinearGradient(
-                        colors: widget.gradient!,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                      : null,
-              color:
-                  widget.gradient == null
-                      ? widget.accentColor.withOpacity(0.08)
-                      : null,
-              borderRadius: BorderRadius.circular(20),
-              border:
-                  widget.gradient == null
-                      ? Border.all(color: widget.accentColor.withOpacity(0.2))
-                      : null,
-              boxShadow:
-                  widget.gradient != null
-                      ? [
-                        BoxShadow(
-                          color: widget.gradient![0].withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                      : null,
-            ),
-            child: Column(
+    return GestureDetector(
+      onTap: widget.onDetails ?? _toggle,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient:
+              usesGradient
+                  ? LinearGradient(
+                    colors: widget.gradient!,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : null,
+          color: usesGradient ? null : widget.accentColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+          border:
+              usesGradient
+                  ? null
+                  : Border.all(color: widget.accentColor.withOpacity(0.2)),
+          boxShadow:
+              usesGradient
+                  ? [
+                    BoxShadow(
+                      color: widget.gradient![0].withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            widget.gradient != null
-                                ? Colors.white
-                                : widget.accentColor,
-                      ),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: contentColor,
                     ),
-                    const SizedBox(width: 32),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 10),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggle,
-                  child: FadeTransition(
-                    opacity: _fade,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayAmount,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color:
-                                widget.gradient != null
-                                    ? Colors.white
-                                    : widget.accentColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                widget.gradient != null
-                                    ? Colors.white.withOpacity(0.2)
-                                    : widget.accentColor.withValues(
-                                      alpha: 0.15,
-                                    ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            labelText,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  widget.gradient != null
-                                      ? Colors.white
-                                      : widget.accentColor,
-                            ),
-                          ),
-                        ),
-                      ],
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _toggle,
+                    icon: Icon(
+                      Icons.swap_horiz_rounded,
+                      color: contentColor,
+                      size: 20,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: Material(
-            color: Colors.transparent,
-            child: IconButton(
-              onPressed: _toggle,
-              icon: Icon(
-                Icons.swap_horiz_rounded,
-                color:
-                    widget.gradient != null ? Colors.white : widget.accentColor,
-                size: 20,
+            const SizedBox(height: 10),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggle,
+              child: FadeTransition(
+                opacity: _fade,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayAmount,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: contentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            usesGradient
+                                ? Colors.white.withOpacity(0.2)
+                                : widget.accentColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        labelText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: contentColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

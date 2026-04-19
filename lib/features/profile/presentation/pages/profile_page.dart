@@ -68,9 +68,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final currencyCode = ref.watch(currencyCodeProvider);
     final isPro = ref.watch(isProProvider);
 
-    // ThemeSwitchingArea is REQUIRED for the ripple animation to cover the page
-    return ThemeSwitchingArea(
-      child: Scaffold(
+    // ThemeSwitchingArea is now global in main.dart — no wrapper needed here.
+    return Scaffold(
         backgroundColor: cs.surface,
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -260,7 +259,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ],
         ),
-      ),
     );
   }
   void _showBackupConfirm(BuildContext context) {
@@ -430,8 +428,8 @@ class _ProfileHeader extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'Expensia User',
+                  child: Text(
+                    'profile.user_badge'.tr(),
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ),

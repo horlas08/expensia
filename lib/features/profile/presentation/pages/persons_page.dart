@@ -162,7 +162,7 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (e, _) => SliverFillRemaining(
-              child: Center(child: Text('Error: $e')),
+              child: Center(child: Text('common.error_prefix'.tr(args: ['$e']))),
             ),
           ),
           

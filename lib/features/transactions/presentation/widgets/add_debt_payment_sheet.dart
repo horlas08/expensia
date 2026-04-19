@@ -57,7 +57,9 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final wallets = ref.watch(walletProvider);
-    final title = widget.direction == 'plus' ? 'Add Lent Payment' : 'Add Borrowed Payment';
+    final title = widget.direction == 'plus'
+        ? 'transaction.add_lent_payment'.tr()
+        : 'transaction.add_borrowed_payment'.tr();
 
     return Sheet(
       initialOffset: const SheetOffset(1.0),
@@ -192,7 +194,10 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: const Text('Save Record', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'transaction.save_record'.tr(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],

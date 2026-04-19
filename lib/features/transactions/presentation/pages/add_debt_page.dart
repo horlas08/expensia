@@ -487,7 +487,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                       child: _FormCard(
                         icon: Icons.calendar_today_rounded,
                         color: const Color(0xFF4ECDC4),
-                        label: 'Due Date',
+                        label: 'transaction.due_date'.tr(),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../features/dashboard/presentation/pages/home_tab.dart';
 import '../../../../features/transactions/presentation/pages/transactions_page.dart';
 import '../../../../features/statistics/presentation/pages/statistics_page.dart';
@@ -28,50 +29,44 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ThemeSwitchingArea must wrap the content that shows the ripple animation
-    return ThemeSwitchingArea(
-      child: Scaffold(
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _pages[_currentIndex],
+    // ThemeSwitchingArea is now global in main.dart — no wrapper needed here.
+    return Scaffold(
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _pages[_currentIndex],
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'add_transaction_fab',
+        onPressed: () => showTransactionTypeSheet(context),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        elevation: 6,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(56 / 2)),
         ),
-        floatingActionButton:
-
-        FloatingActionButton(
-                heroTag: 'add_transaction_fab',
-                onPressed: () => showTransactionTypeSheet(context),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                elevation: 6,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(56 / 2)),
-                ),
-                child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-              )
-           ,
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-        bottomNavigationBar: BottomAppBar(
-          height: 65,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          notchMargin: 8,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildNavDestination(0, Icons.home_rounded, Icons.home_outlined, 'bottom_bar.home'.tr()),
-              _buildNavDestination(1, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'bottom_bar.wallet'.tr()),
-              const SizedBox(width: 40), // Gap for FAB
-              _buildNavDestination(2, Icons.bar_chart_rounded, Icons.bar_chart_outlined, 'bottom_bar.stat'.tr()),
-              _buildNavDestination(3, Icons.person_rounded, Icons.person_outline, 'bottom_bar.profile'.tr()),
-            ],
-          ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        height: 65,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        notchMargin: 8,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildNavDestination(context, 0, Icons.home_rounded, Icons.home_outlined, 'bottom_bar.home'.tr()),
+            _buildNavDestination(context, 1, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'bottom_bar.wallet'.tr()),
+            const SizedBox(width: 40), // Gap for FAB
+            _buildNavDestination(context, 2, Icons.bar_chart_rounded, Icons.bar_chart_outlined, 'bottom_bar.stat'.tr()),
+            _buildNavDestination(context, 3, Icons.person_rounded, Icons.person_outline, 'bottom_bar.profile'.tr()),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNavDestination(int index, IconData selectedIcon, IconData icon, String label) {
+  Widget _buildNavDestination(BuildContext ctx, int index, IconData selectedIcon, IconData icon, String label) {
     final isSelected = _currentIndex == index;
-    final color = isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = isSelected ? Theme.of(ctx).colorScheme.primary : Theme.of(ctx).colorScheme.onSurfaceVariant;
     
     return Expanded(
       child: InkWell(

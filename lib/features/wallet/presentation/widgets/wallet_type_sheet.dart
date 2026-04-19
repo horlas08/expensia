@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants/category_icons.dart';
 
 Future<String?> showWalletTypeSheet(BuildContext context, String currentType) {
@@ -19,11 +20,11 @@ class _WalletTypeSheet extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     final options = [
-      ('cash', '💵', 'Cash'),
-      ('bank', '🏦', 'Bank'),
-      ('investment', '📈', 'Investment'),
-      ('credit_card', '💳', 'Credit Card'),
-      ('other', '🗂', 'Other'),
+      ('cash', '💵', 'wallet.cash'),
+      ('bank', '🏦', 'wallet.bank'),
+      ('investment', '📈', 'wallet.investment'),
+      ('credit_card', '💳', 'wallet.credit_card'),
+      ('other', '🗂', 'wallet.other'),
     ];
 
     return Container(
@@ -48,7 +49,7 @@ class _WalletTypeSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Select Wallet Type',
+            'wallet.select_type'.tr(),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -74,7 +75,7 @@ class _WalletTypeSheet extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            opt.$3,
+                            opt.$3.tr(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

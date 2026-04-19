@@ -23,7 +23,10 @@ class BackupRestoreSheet extends StatelessWidget {
     final title = isBackup ? 'profile.backup_title'.tr() : 'profile.restore_title'.tr();
     final actionName = isBackup ? 'profile.backup'.tr() : 'profile.restore'.tr();
     final actionIcon = isBackup ? Icons.cloud_upload_rounded : Icons.cloud_download_rounded;
-    final desc = isBackup ? 'Securely save your data.' : 'Recover your previous data.';
+    final desc =
+        isBackup
+            ? 'profile.backup_sheet_desc'.tr()
+            : 'profile.restore_sheet_desc'.tr();
 
     return Sheet(
       initialOffset: const SheetOffset(1),
@@ -72,8 +75,8 @@ class BackupRestoreSheet extends StatelessWidget {
               
               _SheetOption(
                 icon: actionIcon,
-                title: '$actionName with Google Drive',
-                subtitle: 'Sync securely with your Google cloud storage',
+                title: 'profile.drive_option_title'.tr(args: [actionName]),
+                subtitle: 'profile.drive_option_subtitle'.tr(),
                 color: const Color(0xFF4285F4),
                 onTap: () async {
                   final restored = isBackup 
@@ -91,8 +94,8 @@ class BackupRestoreSheet extends StatelessWidget {
               const SizedBox(height: 12),
               _SheetOption(
                 icon: Icons.save_rounded,
-                title: '$actionName Local File',
-                subtitle: 'Use the device local file system',
+                title: 'profile.file_option_title'.tr(args: [actionName]),
+                subtitle: 'profile.file_option_subtitle'.tr(),
                 color: const Color(0xFF00C48C),
                 onTap: () async {
                   final restored = isBackup 

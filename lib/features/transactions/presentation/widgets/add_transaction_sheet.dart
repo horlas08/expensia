@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/providers/currency_provider.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -46,8 +47,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Add Transaction',
+          Text(
+            'transaction.add'.tr(),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
@@ -79,11 +80,20 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        hint: const Text('Select Category'),
-                        items: const [
-                          DropdownMenuItem(value: 'food', child: Text('Food & Dining')),
-                          DropdownMenuItem(value: 'transport', child: Text('Transport')),
-                          DropdownMenuItem(value: 'shopping', child: Text('Shopping')),
+                        hint: Text('transaction.select_category'.tr()),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'food',
+                            child: Text('transaction.food_dining'.tr()),
+                          ),
+                          DropdownMenuItem(
+                            value: 'transport',
+                            child: Text('transaction.transport'.tr()),
+                          ),
+                          DropdownMenuItem(
+                            value: 'shopping',
+                            child: Text('transaction.shopping'.tr()),
+                          ),
                         ],
                         onChanged: (val) {},
                       ),
@@ -99,9 +109,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const TextField(
+                    child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Note (Optional)',
+                        hintText: 'transaction.note_hint'.tr(),
                         border: InputBorder.none,
                       ),
                     ),
@@ -124,7 +134,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text('Save Transaction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: Text(
+                        'common.save'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
                     ),
                   ),
                 ),

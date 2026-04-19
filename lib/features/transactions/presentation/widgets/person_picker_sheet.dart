@@ -187,7 +187,7 @@ class _PersonPickerSheetState extends ConsumerState<PersonPickerSheet> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => Center(child: Text('common.error_prefix'.tr(args: ['$e']))),
             ),
           ),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 16),

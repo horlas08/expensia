@@ -41,14 +41,14 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
   Future<void> _submit() async {
     if (_fromWalletId == null || _toWalletId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both wallets')),
+        SnackBar(content: Text('transfer.select_both_wallets'.tr())),
       );
       return;
     }
 
     if (_fromWalletId == _toWalletId) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Source and target wallets must be different')),
+        SnackBar(content: Text('transfer.same_wallet_error'.tr())),
       );
       return;
     }
@@ -56,7 +56,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
     final amount = double.tryParse(_amountCtrl.text) ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount')),
+        SnackBar(content: Text('transaction.invalid_amount'.tr())),
       );
       return;
     }
@@ -98,7 +98,10 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transfer Funds', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'transfer.title'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -108,7 +111,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
           children: [
             FadeInDown(
               child: _buildWalletSelector(
-                label: 'From Wallet',
+                label: 'transfer.from_wallet'.tr(),
                 selectedId: _fromWalletId,
                 wallets: wallets,
                 onChanged: (val) => setState(() => _fromWalletId = val),
@@ -138,7 +141,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
             FadeInDown(
               delay: const Duration(milliseconds: 100),
               child: _buildWalletSelector(
-                label: 'To Wallet',
+                label: 'transfer.to_wallet'.tr(),
                 selectedId: _toWalletId,
                 wallets: wallets,
                 onChanged: (val) => setState(() => _toWalletId = val),
@@ -155,7 +158,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                    Text(
-                    'Amount',
+                    'transaction.amount'.tr(),
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 8),
@@ -197,7 +200,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                    Text(
-                    'Notes (Optional)',
+                    'transfer.notes_optional'.tr(),
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 8),
@@ -210,8 +213,8 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                     child: TextField(
                       controller: _notesCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        hintText: 'What is this for?',
+                      decoration: InputDecoration(
+                        hintText: 'transfer.notes_hint'.tr(),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -236,7 +239,10 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                   ),
                   child: _saving 
                     ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Transfer Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    : Text(
+                      'transfer.transfer_now'.tr(),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                 ),
               ),
             ),

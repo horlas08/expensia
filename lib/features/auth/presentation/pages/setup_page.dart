@@ -519,7 +519,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     controller: _currencySearchController,
                     autofocus: true,
                     decoration: InputDecoration(
-                      hintText: 'Search currency...',
+                      hintText: 'setup.search_currency'.tr(),
                       filled: true,
                       fillColor: cs.surface,
                       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -688,7 +688,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
               error:
                   (_, __) => Center(
                     child: Text(
-                      'Unable to load currencies',
+                      'setup.currency_load_error'.tr(),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -881,7 +881,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Salary Day',
+                      'setup.salary_day'.tr(),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -902,15 +902,13 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                         child: DropdownButton<int>(
                           value: state.salaryDay,
                           isExpanded: true,
-                          hint: Text('Select day of month'),
+                          hint: Text('setup.select_salary_day'.tr()),
                           items:
                               List.generate(31, (index) => index + 1)
                                   .map(
                                     (day) => DropdownMenuItem(
                                       value: day,
-                                      child: Text(
-                                        '$day${_getDaySuffix(day)} day',
-                                      ),
+                                      child: Text(_formatSalaryDayOption(day)),
                                     ),
                                   )
                                   .toList(),
@@ -943,13 +941,13 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                       notifier.updateSalaryInfo(autoAddSalary: value);
                     },
                     title: Text(
-                      'Auto-add salary',
+                      'setup.auto_add'.tr(),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
-                      'Automatically add salary on selected day',
+                      'setup.auto_add_desc'.tr(),
                       style: Theme.of(
                         context,
                       ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -980,6 +978,14 @@ class _SetupPageState extends ConsumerState<SetupPage> {
     }
   }
 
+  String _formatSalaryDayOption(int day) {
+    if (context.locale.languageCode == 'ar') {
+      return '$day';
+    }
+
+    return '$day${_getDaySuffix(day)} day';
+  }
+
   Future<void> _completeSetup() async {
     final notifier = ref.read(setupProvider.notifier);
 
@@ -1001,7 +1007,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
 
       // Show success message
       if (mounted) {
-        _showSuccessSnackBar('Setup completed successfully!');
+        _showSuccessSnackBar('setup.complete_success'.tr());
 
         // Navigate to dashboard after short delay
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -1012,7 +1018,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Setup failed: $e');
+        _showErrorSnackBar('setup.complete_failed'.tr(args: ['$e']));
       }
     }
   }
