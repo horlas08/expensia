@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
@@ -105,9 +106,10 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                '$currencySymbol${totalBalance.toStringAsFixed(2)}',
-                                style: const TextStyle(
+                              _WalletAmountText(
+                                amount: totalBalance.toStringAsFixed(2),
+                                currencySymbol: currencySymbol,
+                                amountStyle: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -291,16 +293,22 @@ class _WalletCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              AutoSizeText(
                 wallet.name,
+                maxLines: 1,
+                minFontSize: 10,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white60, fontSize: 13),
               ),
               const SizedBox(height: 4),
-              Text(
-                (wallet.hide ?? 0) == 1
-                    ? '••••••'
-                    : '$currencySymbol${wallet.balance.toStringAsFixed(2)}',
-                style: const TextStyle(
+              _WalletAmountText(
+                amount:
+                    (wallet.hide ?? 0) == 1
+                        ? '••••••'
+                        : wallet.balance.toStringAsFixed(2),
+                currencySymbol: currencySymbol,
+                showCurrency: (wallet.hide ?? 0) != 1,
+                amountStyle: const TextStyle(
                   color: Colors.white,
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
@@ -341,6 +349,56 @@ class _WalletCard extends StatelessWidget {
       default:
         return Icons.wallet;
     }
+  }
+}
+
+class _WalletAmountText extends StatelessWidget {
+  const _WalletAmountText({
+    required this.amount,
+    required this.currencySymbol,
+    this.showCurrency = true,
+    this.amountStyle = const TextStyle(
+      color: Colors.white,
+      fontSize: 28,
+      fontWeight: FontWeight.bold,
+    ),
+  });
+
+  final String amount;
+  final String currencySymbol;
+  final bool showCurrency;
+  final TextStyle amountStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showCurrency) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 4),
+            child: Text(
+              currencySymbol,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+        Flexible(
+          child: AutoSizeText(
+            amount,
+            maxLines: 1,
+            minFontSize: 10,
+            overflow: TextOverflow.ellipsis,
+            style: amountStyle,
+          ),
+        ),
+      ],
+    );
   }
 }
 

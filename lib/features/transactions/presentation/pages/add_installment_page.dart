@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:sqflite/sqflite.dart';
 
-import '../../../../core/constants/category_icons.dart';
 import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
-import '../../../../core/providers/categories_provider.dart';
 import '../widgets/calculator_dialog.dart';
-import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
 import '../widgets/wallet_picker_sheet.dart';
 import '../../../../features/profile/presentation/pages/persons_page.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 // ---------------------------------------------------------------------------
 // Add Installment Page
@@ -35,13 +31,12 @@ class AddInstallmentPage extends ConsumerStatefulWidget {
 class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   final _totalPriceCtrl = TextEditingController();
   final _depositCtrl = TextEditingController();
+  final _lastPaidCtrl = TextEditingController();
   final _monthsCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   final _personCtrl = TextEditingController();
 
   int? _selectedWalletId;
-  int? _selectedCategoryId;
-  String? _selectedCategoryName;
   bool _saving = false;
   bool _isForYou = false;
   String? _imageUrl;
@@ -56,15 +51,15 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       final remaining = (tx['remaining_price'] as num?)?.toDouble() ?? 0.0;
       final total = deposit + remaining;
       final months = tx['total_months'] as int? ?? 1;
+      final lastPaid = (tx['last_payment'] as num?)?.toDouble() ?? 0.0;
 
       _totalPriceCtrl.text = total > 0 ? total.toStringAsFixed(2) : '';
       _depositCtrl.text = deposit > 0 ? deposit.toStringAsFixed(2) : '';
+      _lastPaidCtrl.text = lastPaid > 0 ? lastPaid.toStringAsFixed(2) : '';
       _monthsCtrl.text = months.toString();
 
       _noteCtrl.text = tx['notes']?.toString() ?? '';
       _personCtrl.text = tx['person_name']?.toString() ?? '';
-      _selectedCategoryId = tx['category_id'] as int?;
-      _selectedCategoryName = tx['category_name'] as String?;
       _selectedWalletId = tx['wallet_id'] as int?;
       _imageUrl = tx['image_url'] as String?;
       _isForYou = (tx['direction'] as String? ?? 'min') == 'plus';
@@ -75,6 +70,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   void dispose() {
     _totalPriceCtrl.dispose();
     _depositCtrl.dispose();
+    _lastPaidCtrl.dispose();
     _monthsCtrl.dispose();
     _noteCtrl.dispose();
     _personCtrl.dispose();
@@ -86,6 +82,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   Future<void> _submit() async {
     final tPrice = double.tryParse(_totalPriceCtrl.text.trim());
     final deposit = double.tryParse(_depositCtrl.text.trim()) ?? 0.0;
+    final lastPaid = double.tryParse(_lastPaidCtrl.text.trim()) ?? 0.0;
     final months = int.tryParse(_monthsCtrl.text.trim());
 
     if (tPrice == null || tPrice <= 0) {
@@ -97,6 +94,18 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     if (months == null || months <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('transaction.invalid_total_months'.tr())),
+      );
+      return;
+    }
+    if (lastPaid < 0 || deposit + lastPaid > tPrice) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.invalid_last_paid_amount'.tr())),
+      );
+      return;
+    }
+    if (lastPaid > 0 && months < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.invalid_last_paid_months'.tr())),
       );
       return;
     }
@@ -141,15 +150,51 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         await dbRaw.update('installments', {
           'person_id': personId,
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+          'category_id': _installmentCategoryId,
           'deposit': deposit,
+          'last_payment': lastPaid,
           'remaining_price': remaining,
           'total_months': months,
-          // Note: Full schedule regeneration logic could be added here if needed
           'type': _isForYou ? 'for_you' : 'on_you',
           'image_path': _imageUrl,
           'notes': _noteCtrl.text.trim(),
         }, where: 'id = ?', whereArgs: [instId]);
+
+        final paidDetailsCount = Sqflite.firstIntValue(
+              await dbRaw.rawQuery(
+                'SELECT COUNT(*) FROM installment_details WHERE installment_id = ? AND is_paid = 1',
+                [instId],
+              ),
+            ) ??
+            0;
+        if (paidDetailsCount == 0) {
+          await dbRaw.delete(
+            'installment_details',
+            where: 'installment_id = ?',
+            whereArgs: [instId],
+          );
+          final plan = _calculatePlan();
+          for (final item in plan) {
+            await dbRaw.insert('installment_details', {
+              'installment_id': instId,
+              'due_date': item['due_date'],
+              'amount': item['amount'],
+              'is_paid': 0,
+              'is_initial': 0,
+            });
+          }
+          if (deposit > 0) {
+            await dbRaw.insert('installment_details', {
+              'installment_id': instId,
+              'due_date': DateTime.now().toIso8601String(),
+              'amount': deposit,
+              'is_paid': 1,
+              'paid_at': DateTime.now().toIso8601String(),
+              'wallet_id': _selectedWalletId,
+              'is_initial': 1,
+            });
+          }
+        }
 
         // 3. Update the deposit transaction
         final mainTx = await db.getMainTransactionForInstallment(instId);
@@ -158,7 +203,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           final curr = ref.read(defaultCurrencyProvider).valueOrNull;
           await db.updateTransaction(txId, {
             'wallet_id': _selectedWalletId,
-            'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+            'category_id': _installmentCategoryId,
             'currency_id': curr?.id ?? 1,
             'type': 'installment',
             'direction': _isForYou ? 'plus' : 'min',
@@ -179,8 +224,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         final installmentId = await dbRaw.insert('installments', {
           'person_id': personId,
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+          'category_id': _installmentCategoryId,
           'deposit': deposit,
+          'last_payment': lastPaid,
           'remaining_price': remaining,
           'total_months': months,
           'remaining_months': months,
@@ -199,6 +245,19 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             'due_date': item['due_date'],
             'amount': item['amount'],
             'is_paid': 0,
+            'is_initial': 0,
+          });
+        }
+
+        if (deposit > 0) {
+          await dbRaw.insert('installment_details', {
+            'installment_id': installmentId,
+            'due_date': DateTime.now().toIso8601String(),
+            'amount': deposit,
+            'is_paid': 1,
+            'paid_at': DateTime.now().toIso8601String(),
+            'wallet_id': _selectedWalletId,
+            'is_initial': 1,
           });
         }
 
@@ -207,7 +266,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           final curr = ref.read(defaultCurrencyProvider).valueOrNull;
           await dbRaw.insert('transactions', {
             'wallet_id': _selectedWalletId,
-            'category_id': _selectedCategoryId ?? (_isForYou ? 4 : 3),
+            'category_id': _installmentCategoryId,
             'currency_id': curr?.id ?? 1,
             'type': 'installment',
             'direction': _isForYou ? 'plus' : 'min',
@@ -261,23 +320,29 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   List<Map<String, dynamic>> _calculatePlan() {
     final tPrice = double.tryParse(_totalPriceCtrl.text) ?? 0.0;
     final deposit = double.tryParse(_depositCtrl.text) ?? 0.0;
+    final lastPaid = double.tryParse(_lastPaidCtrl.text) ?? 0.0;
     final months = int.tryParse(_monthsCtrl.text) ?? 1;
 
     if (months < 1) return [];
+    if (lastPaid > 0 && months < 2) return [];
 
-    final remaining = tPrice - deposit;
-    final monthly = remaining / months;
+    final remaining = tPrice - deposit - lastPaid;
+    final normalMonths = lastPaid > 0 ? months - 1 : months;
+    final monthly = normalMonths > 0 ? remaining / normalMonths : 0.0;
     final now = DateTime.now();
 
     return List.generate(months, (i) {
       final dueDate = DateTime(now.year, now.month + i + 1, now.day);
+      final isLastMonth = i == months - 1;
       return {
         'month': i + 1,
         'due_date': dueDate.toIso8601String(),
-        'amount': monthly,
+        'amount': isLastMonth && lastPaid > 0 ? lastPaid : monthly,
       };
     });
   }
+
+  int get _installmentCategoryId => _isForYou ? 4 : 3;
 
   void _showPlanPreview() {
     if (_totalPriceCtrl.text.isEmpty || _monthsCtrl.text.isEmpty) {
@@ -410,7 +475,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transaction.error_picking_image'.tr()+'$e')),
+        SnackBar(content: Text('${'transaction.error_picking_image'.tr()}$e')),
       );
     }
   }
@@ -605,6 +670,36 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                         children: [
                           Expanded(
                             child: TextField(
+                              controller: _lastPaidCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'transaction.last_paid'.tr(),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _openCalculator(_lastPaidCtrl),
+                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 80),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
                               controller: _monthsCtrl,
                               keyboardType: const TextInputType.numberWithOptions(decimal: false),
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -638,7 +733,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
                   // Wallet
                   FadeInUp(
-                    delay: const Duration(milliseconds: 80),
+                    delay: const Duration(milliseconds: 100),
                     child: GestureDetector(
                       onTap: () async {
                         final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
@@ -658,54 +753,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                                     ? 'transaction.select_wallet'.tr()
                                     : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
                                 style: TextStyle(
-                                  color: _selectedWalletId == null ? cs.onSurface.withOpacity(0.5) : cs.onSurface,
+                                  color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
                                   fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withOpacity(0.3)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Category
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 100),
-                    child: GestureDetector(
-                      onTap: () async {
-                        final categories = await ref.read(categoriesProvider('debt').future) as List<Map<String, dynamic>>;
-                        if (!mounted) return;
-                        final selected = await showCategoryPickerSheet(
-                          context,
-                          categories: categories,
-                          locale: context.locale.languageCode,
-                        );
-                        if (selected != null) {
-                          setState(() {
-                            _selectedCategoryId = selected['id'];
-                            _selectedCategoryName = context.locale.languageCode == 'ar'
-                                ? (selected['name_ar'] ?? selected['name_en'])
-                                : selected['name_en'];
-                          });
-                        }
-                      },
-                      child: _FormCard(
-                        icon: Icons.category_rounded,
-                        color: Colors.orange,
-                        label: 'transaction.category'.tr(),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _selectedCategoryId == null 
-                                    ? (_isForYou ? 'transaction.receive_debts_installments'.tr() : 'transaction.pay_debts_installments'.tr())
-                                    : _selectedCategoryName!,
-                                style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
@@ -715,7 +764,6 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 12),
 
                   // Note

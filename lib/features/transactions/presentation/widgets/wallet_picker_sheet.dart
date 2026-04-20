@@ -24,6 +24,7 @@ class WalletPickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final wallets = ref.watch(walletProvider);
+    final currentCurrencySymbol = ref.watch(currencySymbolProvider);
 
     return Sheet(
       initialOffset: const SheetOffset(1.0),
@@ -148,7 +149,7 @@ class WalletPickerSheet extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '${wallet.currencySymbol ?? '\$'}${wallet.balance.toStringAsFixed(2)}',
+                                      '$currentCurrencySymbol${wallet.balance.toStringAsFixed(2)}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,

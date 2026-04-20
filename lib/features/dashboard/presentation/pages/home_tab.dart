@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:animated_emoji/animated_emoji.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:animations/animations.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/services/database_service.dart';
@@ -184,17 +185,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     const SizedBox(height: 12),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        _balanceVisible
-                            ? '$currencySymbol${totalBalance.toStringAsFixed(2)}'
-                            : '••••••',
+                      child: _BalanceAmountText(
+                        amount:
+                            _balanceVisible
+                                ? totalBalance.toStringAsFixed(2)
+                                : '••••••',
+                        currencySymbol: currencySymbol,
+                        showCurrency: _balanceVisible,
                         key: ValueKey(_balanceVisible),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 38,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -206,6 +204,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.income'.tr(),
                                   value: (metrics['monthly_income'] as num? ?? 0).toStringAsFixed(2),
+                                  currencySymbol: currencySymbol,
                                   icon: Icons.arrow_downward_rounded,
                                   color: const Color(0xFF69F0AE),
                                   visible: _balanceVisible,
@@ -220,6 +219,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.expenses'.tr(),
                                   value: (metrics['monthly_expense'] as num? ?? 0).toStringAsFixed(2),
+                                  currencySymbol: currencySymbol,
                                   icon: Icons.arrow_upward_rounded,
                                   color: const Color(0xFFFF6E6E),
                                   visible: _balanceVisible,
@@ -281,12 +281,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               delay: const Duration(milliseconds: 200),
                               child: _FlipMetricCard(
                                 label: 'dashboard.installment'.tr(),
-                                amount:
-                                    '${(metrics['installment_on_you'] ?? 0.0) + (metrics['installment_for_you'] ?? 0.0)}',
                                 onYouAmount:
                                     '${metrics['installment_on_you'] ?? 0.0}',
                                 forYouAmount:
                                     '${metrics['installment_for_you'] ?? 0.0}',
+                                currencySymbol: currencySymbol,
                                 accentColor: const Color(0xFFAA00FF),
                                 gradient: const [
                                   Color(0xFF8E24AA),
@@ -306,10 +305,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               delay: const Duration(milliseconds: 200),
                               child: _FlipMetricCard(
                                 label: 'dashboard.debt'.tr(),
-                                amount:
-                                    '${metrics['debt_on_you'] + metrics['debt_for_you']}', //$currencySymbol
                                 onYouAmount: '${metrics['debt_on_you']}',
                                 forYouAmount: '${metrics['debt_for_you']}',
+                                currencySymbol: currencySymbol,
                                 accentColor: const Color(0xFF0091EA),
                                 gradient: const [
                                   Color(0xFF01579B),
@@ -504,6 +502,7 @@ class _MiniBalanceStat extends StatelessWidget {
   const _MiniBalanceStat({
     required this.label,
     required this.value,
+    required this.currencySymbol,
     required this.icon,
     required this.color,
     required this.visible,
@@ -511,6 +510,7 @@ class _MiniBalanceStat extends StatelessWidget {
 
   final String label;
   final String value;
+  final String currencySymbol;
   final IconData icon;
   final Color color;
   final bool visible;
@@ -530,26 +530,38 @@ class _MiniBalanceStat extends StatelessWidget {
             child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AutoSizeText(
                 label,
+                maxLines: 1,
                 style: const TextStyle(color: Colors.white60, fontSize: 11),
+                minFontSize: 9,
+                overflow: TextOverflow.ellipsis,
               ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Text(
-                  visible ? value : '•••',
-                  key: ValueKey(visible),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _BalanceAmountText(
+                    amount: visible ? value : '•••',
+                    currencySymbol: currencySymbol,
+                    showCurrency: visible,
+                    key: ValueKey(visible),
+                    amountStyle: TextStyle(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    currencyStyle: TextStyle(
+                      color: color.withValues(alpha: 0.8),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -650,18 +662,18 @@ class _GlowingMetricCard extends StatelessWidget {
 class _FlipMetricCard extends StatefulWidget {
   const _FlipMetricCard({
     required this.label,
-    required this.amount,
     required this.onYouAmount,
     required this.forYouAmount,
+    required this.currencySymbol,
     required this.accentColor,
     this.gradient,
     this.onDetails,
   });
 
   final String label;
-  final String amount;
   final String onYouAmount;
   final String forYouAmount;
+  final String currencySymbol;
   final Color accentColor;
   final List<Color>? gradient;
   final VoidCallback? onDetails;
@@ -777,55 +789,115 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
               ],
             ),
             const SizedBox(height: 10),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _toggle,
-              child: FadeTransition(
-                opacity: _fade,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayAmount,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: contentColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            usesGradient
-                                ? Colors.white.withOpacity(0.2)
-                                : widget.accentColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        labelText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+            Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggle,
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _BalanceAmountText(
+                        amount: displayAmount,
+                        currencySymbol: widget.currencySymbol,
+                        amountStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
                           color: contentColor,
                         ),
+                        currencyStyle: TextStyle(
+                          color: contentColor.withValues(alpha: 0.85),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              usesGradient
+                                  ? Colors.white.withOpacity(0.2)
+                                  : widget.accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: AutoSizeText(
+                          labelText,
+                          maxLines: 1,
+                          minFontSize: 8,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: contentColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BalanceAmountText extends StatelessWidget {
+  const _BalanceAmountText({
+    super.key,
+    required this.amount,
+    required this.currencySymbol,
+    this.showCurrency = false,
+    this.amountStyle = const TextStyle(
+      color: Colors.white,
+      fontSize: 38,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 1,
+    ),
+    this.currencyStyle = const TextStyle(
+      color: Colors.white70,
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    ),
+  });
+
+  final String amount;
+  final String currencySymbol;
+  final bool showCurrency;
+  final TextStyle amountStyle;
+  final TextStyle currencyStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showCurrency) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 4),
+            child: Text(currencySymbol, style: currencyStyle),
+          ),
+        ],
+        Flexible(
+          child: AutoSizeText(
+            amount,
+            maxLines: 1,
+            minFontSize: 10,
+            overflow: TextOverflow.ellipsis,
+            style: amountStyle,
+          ),
+        ),
+      ],
     );
   }
 }

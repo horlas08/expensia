@@ -3,14 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
-import '../../../../core/constants/category_icons.dart';
 import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
-import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
@@ -34,8 +31,6 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   final _noteCtrl = TextEditingController();
   final _personCtrl = TextEditingController();
 
-  int? _selectedCategoryId;
-  String? _selectedCategoryName;
   int? _selectedWalletId;
   DateTime _selectedDate = DateTime.now();
   String? _imageUrl;
@@ -52,8 +47,6 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       _amountCtrl.text = tx['amount'].toString();
       _noteCtrl.text = tx['notes']?.toString() ?? '';
       _personCtrl.text = tx['person_name']?.toString() ?? '';
-      _selectedCategoryId = tx['category_id'] as int?;
-      _selectedCategoryName = tx['category_name'] as String?;
       _selectedWalletId = tx['wallet_id'] as int?;
       if (tx['date'] != null) _selectedDate = DateTime.parse(tx['date'].toString());
       _imageUrl = tx['image_url'] as String?;
@@ -109,7 +102,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         // Update transaction
         await db.updateTransaction(id, {
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? 6,
+          'category_id': _debtCategoryId,
           'amount': amount,
           'direction': _isOnYou ? 'min' : 'plus',
           'date': _selectedDate.toIso8601String(),
@@ -124,7 +117,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           await dbRaw.update('debts', {
             'person_id': personId,
             'wallet_id': _selectedWalletId,
-            'category_id': _selectedCategoryId ?? 6,
+            'category_id': _debtCategoryId,
             'income': _isOnYou ? 0 : amount,
             'expense': _isOnYou ? amount : 0,
             'due_date': _selectedDate.toIso8601String(),
@@ -142,7 +135,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         final debtId = await dbRaw.insert('debts', {
           'person_id': personId,
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? 6,
+          'category_id': _debtCategoryId,
           'income': income,
           'expense': expense,
           'status': 'active',
@@ -153,13 +146,14 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         final curr = ref.read(defaultCurrencyProvider).valueOrNull;
         await dbRaw.insert('transactions', {
           'wallet_id': _selectedWalletId,
-          'category_id': _selectedCategoryId ?? 6,
+          'category_id': _debtCategoryId,
           'currency_id': curr?.id ?? 1,
           'type': 'debt',
           'direction': _isOnYou ? 'min' : 'plus',
           'amount': amount,
           'date': _selectedDate.toIso8601String(),
           'is_paid': 1,
+          'is_opening': 1,
           'notes': _noteCtrl.text.trim(),
           'image_url': _imageUrl,
           'debt_id': debtId,
@@ -198,6 +192,8 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     if (list.isNotEmpty) return list.first['id'] as int;
     return await dbRaw.insert('persons', {'name': name});
   }
+
+  int get _debtCategoryId => _isOnYou ? 3 : 4;
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -246,31 +242,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transaction.error_picking_image'.tr()+'$e')),
+        SnackBar(content: Text('${'transaction.error_picking_image'.tr()}$e')),
       );
     }
-  }
-
-  Future<void> _pickCategory() async {
-    final categories = await DatabaseService().getCategoriesByType('debt');
-    if (!mounted) return;
-    final locale = context.locale.languageCode;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _CategoryPickerSheet(
-        categories: categories,
-        locale: locale,
-        onSelected: (id, name) {
-          setState(() {
-            _selectedCategoryId = id;
-            _selectedCategoryName = name;
-          });
-        },
-      ),
-    );
   }
 
   @override
@@ -286,7 +260,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         title: Text(
-          widget.initialTransaction != null ? 'Edit Debt' : 'dashboard.debt'.tr(),
+          'dashboard.debt'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
@@ -434,44 +408,12 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                                     ? 'transaction.select_wallet'.tr()
                                     : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
                                 style: TextStyle(
-                                  color: _selectedWalletId == null ? cs.onSurface.withOpacity(0.5) : cs.onSurface,
+                                  color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
                                   fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
                                 ),
                               ),
                             ),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withOpacity(0.3)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Category
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 100),
-                    child: GestureDetector(
-                      onTap: _pickCategory,
-                      child: _FormCard(
-                        icon: Icons.category_rounded,
-                        color: const Color(0xFF9B5DE5),
-                        label: 'transaction.category'.tr(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _selectedCategoryName ??
-                                  'transaction.select_category'.tr(),
-                              style: TextStyle(
-                                color: _selectedCategoryName != null
-                                    ? cs.onSurface
-                                    : cs.onSurface.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withValues(alpha: 0.3)),
                           ],
                         ),
                       ),
@@ -481,7 +423,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
 
                   // Date
                   FadeInUp(
-                    delay: const Duration(milliseconds: 140),
+                    delay: const Duration(milliseconds: 100),
                     child: GestureDetector(
                       onTap: _pickDate,
                       child: _FormCard(
@@ -505,7 +447,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
 
                   // Image Picker
                   FadeInUp(
-                    delay: const Duration(milliseconds: 160),
+                    delay: const Duration(milliseconds: 120),
                     child: GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -558,7 +500,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
 
                   // Note
                   FadeInUp(
-                    delay: const Duration(milliseconds: 180),
+                    delay: const Duration(milliseconds: 140),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -599,7 +541,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
 
                   // Save button
                   FadeInUp(
-                    delay: const Duration(milliseconds: 220),
+                    delay: const Duration(milliseconds: 180),
                     child: SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -637,26 +579,6 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     );
   }
 
-  Widget _buildToggleButton({required String label, required bool isActive, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? _themeColor : Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -712,108 +634,6 @@ class _FormCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Category picker bottom sheet
-// ---------------------------------------------------------------------------
-class _CategoryPickerSheet extends StatelessWidget {
-  const _CategoryPickerSheet({
-    required this.categories,
-    required this.locale,
-    required this.onSelected,
-  });
-
-  final List<Map<String, dynamic>> categories;
-  final String locale;
-  final void Function(int id, String name) onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: cs.onSurface.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'transaction.select_category'.tr(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          if (categories.isEmpty)
-            Padding(
-               padding: const EdgeInsets.all(24),
-              child: Text(
-                'categories.empty'.tr(),
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
-              ),
-            )
-          else
-            SizedBox(
-              height: 300,
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: categories.length,
-                itemBuilder: (_, i) {
-                  final cat = categories[i];
-                  final nameEn = cat['name_en'] as String? ?? '';
-                  final displayName = locale == 'ar'
-                      ? (cat['name_ar'] as String? ?? nameEn)
-                      : nameEn;
-                  final icon = CategoryIcons.getIcon(nameEn);
-                  final color = CategoryIcons.getColor(nameEn);
-                  return GestureDetector(
-                    onTap: () {
-                      onSelected(cat['id'] as int, displayName);
-                      Navigator.of(context).pop();
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(icon, color: color, size: 22),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          displayName,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: cs.onSurface),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
         ],
       ),
     );

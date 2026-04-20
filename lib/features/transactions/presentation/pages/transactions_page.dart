@@ -194,9 +194,24 @@ class TransactionListItem extends ConsumerWidget {
 
   const TransactionListItem({super.key, required this.tx});
 
-  static ({IconData icon, Color color}) getStyle(Map<String, dynamic> tx) {
+  static String _categoryNameForDisplay(BuildContext context, Map<String, dynamic> tx) {
+    final isArabic = context.locale.languageCode == 'ar';
+    return (isArabic
+            ? tx['category_name_ar'] as String?
+            : tx['category_name_en'] as String?) ??
+        tx['category_name'] as String? ??
+        'wallet.other'.tr();
+  }
+
+  static String _categoryNameForMeta(Map<String, dynamic> tx) {
+    return tx['category_name_en'] as String? ??
+        tx['category_name'] as String? ??
+        'wallet.other'.tr();
+  }
+
+  static ({IconData icon, Color color}) getStyle(BuildContext context, Map<String, dynamic> tx) {
     final type = tx['type'] as String;
-    final categoryName = tx['category_name'] as String? ?? 'wallet.other'.tr();
+    final categoryName = _categoryNameForMeta(tx);
 
     switch (type) {
       case 'transfer':
@@ -220,10 +235,10 @@ class TransactionListItem extends ConsumerWidget {
     final amount = (tx['amount'] as num).toDouble();
     final date = DateTime.parse(tx['date'] as String);
     final notes = tx['notes'] as String? ?? '';
-    final categoryName = tx['category_name'] as String? ?? 'wallet.other'.tr();
+    final categoryName = _categoryNameForDisplay(context, tx);
     
     // Custom styling based on type
-    final style = getStyle(tx);
+    final style = getStyle(context, tx);
     final iconData = style.icon;
     final iconColor = style.color;
     
@@ -370,16 +385,18 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     List<Map<String, dynamic>> installments = [];
     
     if (type == 'debt') {
-      final res = await dbRaw.query('debts', where: 'id = ?', whereArgs: [id]);
-      if (res.isNotEmpty) _fullTx.addAll(res.first);
-      
       final debtId = widget.tx['debt_id'] as int? ?? id;
+      final res = await dbRaw.query('debts', where: 'id = ?', whereArgs: [debtId]);
+      if (res.isNotEmpty) _fullTx.addAll(res.first);
       debts = await dbService.getDebtTransactions(debtId);
     } else if (type == 'installment') {
-      final res = await dbRaw.query('installments', where: 'id = ?', whereArgs: [id]);
-      if (res.isNotEmpty) _fullTx.addAll(res.first);
-      
       final instId = widget.tx['installment_id'] as int? ?? id;
+      final res = await dbRaw.query('installments', where: 'id = ?', whereArgs: [instId]);
+      if (res.isNotEmpty) {
+        _fullTx.addAll(res.first);
+        _fullTx['installment_type'] = res.first['type'];
+        _fullTx['type'] = 'installment';
+      }
       installments = await dbService.getInstallmentDetails(instId);
     } else {
       final res = await dbRaw.query('transactions', where: 'id = ?', whereArgs: [id]);
@@ -402,9 +419,21 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
     final cs = Theme.of(context).colorScheme;
     final date = DateTime.parse((_fullTx['date'] ?? widget.tx['date']) as String);
-    final type = (_fullTx['type'] ?? widget.tx['type']) as String;
-    final amount = ((_fullTx['amount'] ?? widget.tx['amount']) as num).toDouble();
-    final direction = _fullTx['direction'] as String? ?? widget.tx['direction'] as String? ?? 'min';
+    final type = (widget.tx['type'] as String? ?? _fullTx['type'] as String? ?? 'expense');
+    final debtIncome = (_fullTx['income'] as num?)?.toDouble() ?? 0.0;
+    final debtExpense = (_fullTx['expense'] as num?)?.toDouble() ?? 0.0;
+    final installmentRemaining = (_fullTx['remaining_price'] as num?)?.toDouble();
+    final installmentType = _fullTx['type'] as String? ?? widget.tx['installment_type'] as String?;
+    final amount = type == 'debt'
+        ? (debtIncome > 0 ? debtIncome : debtExpense)
+        : type == 'installment' && installmentRemaining != null
+            ? installmentRemaining
+            : ((_fullTx['amount'] ?? widget.tx['amount']) as num).toDouble();
+    final direction = type == 'debt'
+        ? (debtIncome > 0 ? 'plus' : 'min')
+        : type == 'installment'
+            ? ((installmentType == 'for_you') ? 'plus' : 'min')
+            : (_fullTx['direction'] as String? ?? widget.tx['direction'] as String? ?? 'min');
     final notes = _fullTx['notes'] as String? ?? '';
     final imageUrl = _fullTx['image_url'] as String? ?? _fullTx['image_path'] as String?;
     
@@ -498,8 +527,12 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   // ── DETAILS SECTION ──
                   _buildDetailSection(context, [
                     _buildRow(context, 'common.type'.tr(), type.toUpperCase()),
-                    if (widget.tx['category_name'] != null)
-                      _buildRow(context, 'transaction.category'.tr(), widget.tx['category_name']),
+                    if ((widget.tx['category_name'] ?? widget.tx['category_name_en'] ?? widget.tx['category_name_ar']) != null)
+                      _buildRow(
+                        context,
+                        'transaction.category'.tr(),
+                        TransactionListItem._categoryNameForDisplay(context, widget.tx),
+                      ),
                     _buildRow(context, 'transaction.wallet'.tr(), widget.tx['wallet_name'] ?? 'common.na'.tr()),
                     if (widget.tx['to_wallet_name'] != null)
                       _buildRow(context, 'transfer.to_wallet'.tr(), widget.tx['to_wallet_name']),
@@ -701,11 +734,15 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   }
 
   void _openDebtPaymentSheet(BuildContext context, String direction) {
+    final debtId =
+        _fullTx['debt_id'] as int? ??
+        widget.tx['debt_id'] as int? ??
+        widget.tx['id'] as int;
     Navigator.push(
       context,
       ModalSheetRoute(
         builder: (ctx) => AddDebtPaymentSheet(
-          debtId: widget.tx['id'] as int,
+          debtId: debtId,
           direction: direction,
           onSaved: () {
             ref.invalidate(filteredTransactionsProvider);
@@ -869,6 +906,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     final cs = Theme.of(context).colorScheme;
     final dDate = DateTime.tryParse(detail['due_date'] as String? ?? '');
     final isPaid = detail['is_paid'] == 1;
+    final isInitial = detail['is_initial'] == 1;
     final detailAmount = (detail['amount'] as num?)?.toDouble() ?? 0;
 
     return Container(
@@ -922,7 +960,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  dDate != null ? DateFormat('MMM dd, yyyy').format(dDate) : 'common.na'.tr(),
+                  isInitial
+                      ? 'transaction.deposit_initial_paid'.tr()
+                      : dDate != null
+                          ? DateFormat('MMM dd, yyyy').format(dDate)
+                          : 'common.na'.tr(),
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: cs.onSurface,
@@ -930,7 +972,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   ),
                 ),
                 Text(
-                  isPaid ? 'dashboard.paid'.tr() : 'common.pending'.tr(),
+                  isInitial && dDate != null
+                      ? '${isPaid ? 'dashboard.paid'.tr() : 'common.pending'.tr()} • ${DateFormat('MMM dd, yyyy').format(dDate)}'
+                      : (isPaid ? 'dashboard.paid'.tr() : 'common.pending'.tr()),
                   style: TextStyle(
                     fontSize: 11,
                     color: isPaid ? Colors.green : Colors.orange,

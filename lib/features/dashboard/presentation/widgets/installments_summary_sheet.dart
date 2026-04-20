@@ -34,10 +34,12 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
   }
 
   Future<List<Map<String, dynamic>>> _fetchInstallments(String status) async {
-    final db = await DatabaseService().database;
+    final service = DatabaseService();
+    final db = await service.database;
+    await service.normalizeDebtAndInstallmentStates(database: db);
     return db.rawQuery(
-      'SELECT t.*, p.name as person_name FROM installments t LEFT JOIN persons p ON t.person_id = p.id WHERE t.status = ? ORDER BY t.id DESC',
-      [status],
+      "SELECT t.*, p.name as person_name FROM installments t LEFT JOIN persons p ON t.person_id = p.id WHERE ${status == 'active' ? "t.status IN ('active', 'partial')" : 't.status = ?'} ORDER BY t.id DESC",
+      status == 'active' ? [] : [status],
     );
   }
 
@@ -90,10 +92,16 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
             _InstallmentListView(
               future: _activeInstallmentsFuture,
               symbol: widget.currencySymbol,
+              onRefresh: () {
+                setState(_loadData);
+              },
             ),
             _InstallmentListView(
               future: _paidInstallmentsFuture,
               symbol: widget.currencySymbol,
+              onRefresh: () {
+                setState(_loadData);
+              },
             ),
           ],
         ),
@@ -103,9 +111,14 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
 }
 
 class _InstallmentListView extends StatelessWidget {
-  const _InstallmentListView({required this.future, required this.symbol});
+  const _InstallmentListView({
+    required this.future,
+    required this.symbol,
+    required this.onRefresh,
+  });
   final Future<List<Map<String, dynamic>>> future;
   final String symbol;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +157,9 @@ class _InstallmentListView extends StatelessWidget {
             final item = data[i];
             // Usually 'type' = 'for_you' or 'on_you'
             final isForYou = item['type'] == 'for_you'; 
-            final remainingPrice = item['remaining_price'];
+            final remainingPrice =
+                (item['remaining_price'] as num?)?.toDouble() ?? 0.0;
+            final remainingPriceText = remainingPrice.toStringAsFixed(2);
             final remainingMonths = item['remaining_months'];
             final personName = item['person_name'] ?? 'common.unknown'.tr();
 
@@ -161,8 +176,8 @@ class _InstallmentListView extends StatelessWidget {
                   onTap: () async {
                     final tx = await DatabaseService().getMainTransactionForInstallment(item['id']);
                     if (tx != null && context.mounted) {
-                      final style = TransactionListItem.getStyle(tx);
-                      Navigator.push(
+                      final style = TransactionListItem.getStyle(context, tx);
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => TransactionDetailPage(
@@ -172,6 +187,9 @@ class _InstallmentListView extends StatelessWidget {
                           ),
                         ),
                       );
+                      if (context.mounted) {
+                        onRefresh();
+                      }
                     }
                   },
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -191,12 +209,20 @@ class _InstallmentListView extends StatelessWidget {
                     personName,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  subtitle: Text(
-                    '${isForYou ? 'dashboard.for_you'.tr() : 'dashboard.on_you'.tr()} • $remainingMonths mos left',
-                    style: TextStyle(color: cs.onSurfaceVariant),
+                  subtitle: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${isForYou ? 'dashboard.for_you'.tr() : 'dashboard.on_you'.tr()} • $remainingMonths mos left',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _StatusBadge(status: item['status'] as String? ?? 'active'),
+                    ],
                   ),
                   trailing: Text(
-                    '$symbol$remainingPrice',
+                    '$symbol$remainingPriceText',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -209,6 +235,35 @@ class _InstallmentListView extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isPartial = status == 'partial';
+    final color = isPartial ? Colors.orange : cs.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isPartial ? 'dashboard.partial'.tr() : 'dashboard.active'.tr(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }

@@ -34,7 +34,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -79,6 +79,27 @@ class DatabaseService {
       final hasScheduledDate = reminderCols.any((c) => c['name'] == 'scheduled_date');
       if (!hasScheduledDate) {
         await db.execute('ALTER TABLE reminders ADD COLUMN scheduled_date TEXT');
+      }
+    }
+    if (oldVersion < 8) {
+      final installmentDetailCols = await db.rawQuery('PRAGMA table_info(installment_details)');
+      final hasWalletId = installmentDetailCols.any((c) => c['name'] == 'wallet_id');
+      if (!hasWalletId) {
+        await db.execute('ALTER TABLE installment_details ADD COLUMN wallet_id INTEGER');
+      }
+    }
+    if (oldVersion < 9) {
+      final installmentCols = await db.rawQuery('PRAGMA table_info(installments)');
+      final hasLastPayment = installmentCols.any((c) => c['name'] == 'last_payment');
+      if (!hasLastPayment) {
+        await db.execute('ALTER TABLE installments ADD COLUMN last_payment REAL NOT NULL DEFAULT 0');
+      }
+    }
+    if (oldVersion < 10) {
+      final installmentDetailCols = await db.rawQuery('PRAGMA table_info(installment_details)');
+      final hasIsInitial = installmentDetailCols.any((c) => c['name'] == 'is_initial');
+      if (!hasIsInitial) {
+        await db.execute('ALTER TABLE installment_details ADD COLUMN is_initial INTEGER NOT NULL DEFAULT 0');
       }
     }
   }
@@ -184,6 +205,12 @@ class DatabaseService {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  Future<void> normalizeDebtAndInstallmentStates({Database? database}) async {
+    final db = database ?? await this.database;
+    await _normalizeAllDebtStates(db);
+    await _normalizeAllInstallmentStates(db);
   }
 
   // --- WALLET METHODS ---
@@ -380,6 +407,7 @@ class DatabaseService {
 
   Future<Map<String, dynamic>> getDashboardMetrics() async {
     final db = await database;
+    await normalizeDebtAndInstallmentStates(database: db);
 
     // Get total income and expense for the current month
     final now = DateTime.now();
@@ -402,13 +430,16 @@ class DatabaseService {
     );
 
     final debtResult = await db.rawQuery('''
-      SELECT SUM(income) as for_you, SUM(expense) as on_you FROM debts
+      SELECT
+        COALESCE(SUM(income), 0) as for_you,
+        COALESCE(SUM(expense), 0) as on_you
+      FROM debts
     ''');
 
     final installmentResult = await db.rawQuery('''
       SELECT 
-        COALESCE(SUM(CASE WHEN type = 'on_you' OR type IS NULL THEN deposit ELSE 0 END), 0) as on_you,
-        COALESCE(SUM(CASE WHEN type = 'for_you' THEN deposit ELSE 0 END), 0) as for_you
+        COALESCE(SUM(CASE WHEN type = 'on_you' OR type IS NULL THEN remaining_price ELSE 0 END), 0) as on_you,
+        COALESCE(SUM(CASE WHEN type = 'for_you' THEN remaining_price ELSE 0 END), 0) as for_you
       FROM installments
     ''');
 
@@ -442,6 +473,8 @@ class DatabaseService {
         t.wallet_id,
         t.debt_id,
         t.installment_id,
+        c.name_ar as category_name_ar,
+        c.name_en as category_name_en,
         c.name_en as category_name,
         w.name as wallet_name,
         NULL as to_wallet_name,
@@ -464,6 +497,8 @@ class DatabaseService {
         tr.from_wallet_id as wallet_id,
         NULL as debt_id,
         NULL as installment_id,
+        'تحويل' as category_name_ar,
+        'Transfer' as category_name_en,
         'Transfer' as category_name,
         w1.name as wallet_name,
         w2.name as to_wallet_name,
@@ -494,6 +529,8 @@ class DatabaseService {
         t.wallet_id,
         t.debt_id,
         t.installment_id,
+        c.name_ar as category_name_ar,
+        c.name_en as category_name_en,
         c.name_en as category_name,
         w.name as wallet_name,
         NULL as to_wallet_name,
@@ -516,6 +553,8 @@ class DatabaseService {
         tr.from_wallet_id as wallet_id,
         NULL as debt_id,
         NULL as installment_id,
+        'تحويل' as category_name_ar,
+        'Transfer' as category_name_en,
         'Transfer' as category_name,
         w1.name as wallet_name,
         w2.name as to_wallet_name,
@@ -556,8 +595,9 @@ class DatabaseService {
       if (toDate != null) {
         final txDate = DateTime.tryParse(tx['date'] as String? ?? '');
         if (txDate == null ||
-            txDate.isAfter(toDate.add(const Duration(days: 1))))
+            txDate.isAfter(toDate.add(const Duration(days: 1)))) {
           return false;
+        }
       }
       return true;
     }).toList();
@@ -566,7 +606,7 @@ class DatabaseService {
   Future<Map<String, dynamic>?> getMainTransactionForDebt(int debtId) async {
     final db = await database;
     final results = await db.rawQuery('''
-      SELECT t.*, c.name_en as category_name, w.name as wallet_name, p.name as person_name
+      SELECT t.*, c.name_ar as category_name_ar, c.name_en as category_name_en, c.name_en as category_name, w.name as wallet_name, p.name as person_name
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
@@ -581,7 +621,7 @@ class DatabaseService {
   Future<Map<String, dynamic>?> getMainTransactionForInstallment(int installmentId) async {
     final db = await database;
     final results = await db.rawQuery('''
-      SELECT t.*, c.name_en as category_name, w.name as wallet_name, p.name as person_name
+      SELECT t.*, c.name_ar as category_name_ar, c.name_en as category_name_en, c.name_en as category_name, w.name as wallet_name, p.name as person_name
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
@@ -684,13 +724,50 @@ class DatabaseService {
 
   Future<void> deleteAnyTransaction(int id, String type) async {
     final db = await database;
+    if (type == 'debt') {
+      final txRows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (txRows.isNotEmpty) {
+        final tx = txRows.first;
+        final debtId = tx['debt_id'] as int?;
+        if (debtId != null) {
+          final openingRows = await db.query(
+            'transactions',
+            where: 'debt_id = ?',
+            whereArgs: [debtId],
+            orderBy: 'is_opening DESC, id ASC',
+            limit: 1,
+          );
+          final openingId = openingRows.isNotEmpty ? openingRows.first['id'] as int : null;
+          final isOpening = (tx['is_opening'] == 1) || openingId == id;
+
+          if (!isOpening) {
+            final walletId = tx['wallet_id'] as int?;
+            final amount = (tx['amount'] as num?)?.toDouble() ?? 0;
+            final direction = tx['direction'] as String? ?? 'min';
+
+            if (walletId != null && amount > 0) {
+              if (direction == 'min') {
+                await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+              } else {
+                await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+              }
+            }
+
+            await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+            await _recalculateDebtState(db, debtId);
+            return;
+          }
+
+          await db.delete('debts', where: 'id = ?', whereArgs: [debtId]);
+          return;
+        }
+      }
+    }
+
     String table;
     switch (type) {
       case 'transfer':
         table = 'transfers';
-        break;
-      case 'debt':
-        table = 'debts';
         break;
       case 'installment':
         table = 'installments';
@@ -704,7 +781,7 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getDebtTransactions(int debtId) async {
     final db = await database;
     return await db.rawQuery(
-      'SELECT * FROM transactions WHERE debt_id = ? ORDER BY date DESC',
+      'SELECT * FROM transactions WHERE debt_id = ? ORDER BY date DESC, id DESC',
       [debtId],
     );
   }
@@ -713,8 +790,14 @@ class DatabaseService {
     int installmentId,
   ) async {
     final db = await database;
+    await _ensureInitialInstallmentDetailExists(db, installmentId);
     return await db.rawQuery(
-      'SELECT * FROM installment_details WHERE installment_id = ? ORDER BY due_date ASC',
+      '''
+      SELECT *
+      FROM installment_details
+      WHERE installment_id = ?
+      ORDER BY is_initial DESC, due_date ASC, id ASC
+      ''',
       [installmentId],
     );
   }
@@ -818,39 +901,88 @@ class DatabaseService {
       whereArgs: [detailId],
     );
     if (detail.isEmpty) return;
-    final isPaid = detail.first['is_paid'] == 1;
+    final row = detail.first;
+    final isPaid = row['is_paid'] == 1;
+    final amount = (row['amount'] as num).toDouble();
+    final installmentId = row['installment_id'] as int;
+    final installmentRows = await db.query(
+      'installments',
+      columns: ['type'],
+      where: 'id = ?',
+      whereArgs: [installmentId],
+      limit: 1,
+    );
+    final installmentType = installmentRows.isNotEmpty
+        ? installmentRows.first['type'] as String?
+        : null;
+    final isForYou = installmentType == 'for_you';
+
     if (isPaid) {
-      // Unpay: reverse the wallet balance
-      final amount = (detail.first['amount'] as num).toDouble();
+      final paidWalletId = row['wallet_id'] as int?;
       await db.update(
         'installment_details',
-        {'is_paid': 0, 'paid_at': null},
+        {'is_paid': 0, 'paid_at': null, 'wallet_id': null},
         where: 'id = ?',
         whereArgs: [detailId],
       );
-      // Reverse: add back to any wallet (walletId=0 means skip)
-      if (walletId > 0) {
+      if (paidWalletId != null && paidWalletId > 0) {
         await db.rawUpdate(
-          'UPDATE wallets SET balance = balance + ? WHERE id = ?',
-          [amount, walletId],
+          'UPDATE wallets SET balance = balance ${isForYou ? '-' : '+'} ? WHERE id = ?',
+          [amount, paidWalletId],
         );
       }
     } else {
-      // Pay: deduct from wallet
-      final amount = (detail.first['amount'] as num).toDouble();
+      if (walletId <= 0) return;
       await db.update(
         'installment_details',
-        {'is_paid': 1, 'paid_at': DateTime.now().toIso8601String()},
+        {
+          'is_paid': 1,
+          'paid_at': DateTime.now().toIso8601String(),
+          'wallet_id': walletId,
+        },
         where: 'id = ?',
         whereArgs: [detailId],
       );
-      if (walletId > 0) {
-        await db.rawUpdate(
-          'UPDATE wallets SET balance = balance - ? WHERE id = ?',
-          [amount, walletId],
-        );
-      }
+      await db.rawUpdate(
+        'UPDATE wallets SET balance = balance ${isForYou ? '+' : '-'} ? WHERE id = ?',
+        [amount, walletId],
+      );
     }
+
+    await _recalculateInstallmentState(db, installmentId);
+  }
+
+  Future<void> _ensureInitialInstallmentDetailExists(Database db, int installmentId) async {
+    final installmentRows = await db.query(
+      'installments',
+      columns: ['deposit', 'created_at', 'wallet_id'],
+      where: 'id = ?',
+      whereArgs: [installmentId],
+      limit: 1,
+    );
+    if (installmentRows.isEmpty) return;
+
+    final installment = installmentRows.first;
+    final deposit = (installment['deposit'] as num?)?.toDouble() ?? 0.0;
+    if (deposit <= 0) return;
+
+    final existingRows = await db.query(
+      'installment_details',
+      where: 'installment_id = ? AND is_initial = 1',
+      whereArgs: [installmentId],
+      limit: 1,
+    );
+    if (existingRows.isNotEmpty) return;
+
+    await db.insert('installment_details', {
+      'installment_id': installmentId,
+      'due_date': (installment['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+      'amount': deposit,
+      'is_paid': 1,
+      'paid_at': (installment['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+      'wallet_id': installment['wallet_id'],
+      'is_initial': 1,
+    });
   }
 
   Future<void> addDebtPayment({
@@ -861,21 +993,18 @@ class DatabaseService {
     String? notes,
   }) async {
     final db = await database;
-    // Get debt info to find person_id and category_id
     final debt = await db.query('debts', where: 'id = ?', whereArgs: [debtId]);
     if (debt.isEmpty) return;
 
     final personId = debt.first['person_id'] as int;
-    final categoryId = debt.first['category_id'] as int;
+    final categoryId = debt.first['category_id'] as int? ?? 6;
 
-    // Get default currency
     final settings = await db.query('settings', limit: 1);
     final currencyId =
         settings.isNotEmpty
             ? (settings.first['default_currency_id'] as int?) ?? 1
             : 1;
 
-    // Insert transaction linked to debt
     await db.insert('transactions', {
       'wallet_id': walletId,
       'category_id': categoryId,
@@ -890,7 +1019,6 @@ class DatabaseService {
       'notes': notes,
     });
 
-    // Update wallet balance
     if (direction == 'min') {
       await db.rawUpdate(
         'UPDATE wallets SET balance = balance - ? WHERE id = ?',
@@ -903,17 +1031,114 @@ class DatabaseService {
       );
     }
 
-    // Update debt totals
-    if (direction == 'plus') {
-      await db.rawUpdate('UPDATE debts SET income = income + ? WHERE id = ?', [
-        amount,
-        debtId,
-      ]);
-    } else {
-      await db.rawUpdate(
-        'UPDATE debts SET expense = expense + ? WHERE id = ?',
-        [amount, debtId],
-      );
+    await _recalculateDebtState(db, debtId);
+  }
+
+  Future<void> _recalculateInstallmentState(Database db, int installmentId) async {
+    await _ensureInitialInstallmentDetailExists(db, installmentId);
+    final result = await db.rawQuery(
+      '''
+      SELECT
+        COALESCE(SUM(CASE WHEN is_paid = 0 THEN amount ELSE 0 END), 0) AS remaining_price,
+        COALESCE(SUM(CASE WHEN is_initial = 0 AND is_paid = 0 THEN 1 ELSE 0 END), 0) AS remaining_months,
+        COALESCE(SUM(CASE WHEN is_initial = 0 THEN 1 ELSE 0 END), 0) AS total_months,
+        COALESCE(SUM(CASE WHEN is_initial = 0 AND is_paid = 1 THEN 1 ELSE 0 END), 0) AS paid_regular_months
+      FROM installment_details
+      WHERE installment_id = ?
+      ''',
+      [installmentId],
+    );
+
+    if (result.isEmpty) return;
+
+    final row = result.first;
+    final remainingPrice = (row['remaining_price'] as num?)?.toDouble() ?? 0.0;
+    final remainingMonths = (row['remaining_months'] as num?)?.toInt() ?? 0;
+    final totalMonths = (row['total_months'] as num?)?.toInt() ?? 0;
+    final paidRegularMonths = (row['paid_regular_months'] as num?)?.toInt() ?? 0;
+
+    String status = 'active';
+    if (remainingPrice == 0) {
+      status = 'paid';
+    } else if (paidRegularMonths > 0 && remainingMonths < totalMonths) {
+      status = 'partial';
+    }
+
+    await db.update(
+      'installments',
+      {
+        'remaining_price': remainingPrice,
+        'remaining_months': remainingMonths,
+        'status': status,
+      },
+      where: 'id = ?',
+      whereArgs: [installmentId],
+    );
+  }
+
+  Future<void> _recalculateDebtState(Database db, int debtId) async {
+    final txRows = await db.query(
+      'transactions',
+      where: 'debt_id = ?',
+      whereArgs: [debtId],
+      orderBy: 'is_opening DESC, id ASC',
+    );
+    if (txRows.isEmpty) return;
+
+    final openingDirection = txRows.first['direction'] as String? ?? 'min';
+    double totalPlus = 0.0;
+    double totalMin = 0.0;
+
+    for (final row in txRows) {
+      final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
+      if ((row['direction'] as String?) == 'plus') {
+        totalPlus += amount;
+      } else {
+        totalMin += amount;
+      }
+    }
+
+    final oppositeMovement = openingDirection == 'min' ? totalPlus : totalMin;
+    final outstanding = openingDirection == 'min'
+        ? (totalMin - totalPlus).clamp(0, double.infinity).toDouble()
+        : (totalPlus - totalMin).clamp(0, double.infinity).toDouble();
+
+    String status = 'active';
+    if (outstanding == 0) {
+      status = 'paid';
+    } else if (oppositeMovement > 0) {
+      status = 'partial';
+    }
+
+    await db.update(
+      'debts',
+      {
+        'income': openingDirection == 'plus' ? outstanding : 0.0,
+        'expense': openingDirection == 'min' ? outstanding : 0.0,
+        'status': status,
+      },
+      where: 'id = ?',
+      whereArgs: [debtId],
+    );
+  }
+
+  Future<void> _normalizeAllInstallmentStates(Database db) async {
+    final rows = await db.query('installments', columns: ['id']);
+    for (final row in rows) {
+      final id = row['id'] as int?;
+      if (id != null) {
+        await _recalculateInstallmentState(db, id);
+      }
+    }
+  }
+
+  Future<void> _normalizeAllDebtStates(Database db) async {
+    final rows = await db.query('debts', columns: ['id']);
+    for (final row in rows) {
+      final id = row['id'] as int?;
+      if (id != null) {
+        await _recalculateDebtState(db, id);
+      }
     }
   }
 
@@ -999,6 +1224,7 @@ class DatabaseService {
       wallet_id INTEGER NOT NULL,
       category_id INTEGER NOT NULL,
       deposit REAL NOT NULL,
+      last_payment REAL NOT NULL DEFAULT 0,
       remaining_price REAL NOT NULL,
       total_months INTEGER NOT NULL,
       remaining_months INTEGER NOT NULL,
@@ -1109,6 +1335,8 @@ class DatabaseService {
       amount REAL NOT NULL,
       is_paid INTEGER DEFAULT 0,
       paid_at TEXT,
+      wallet_id INTEGER,
+      is_initial INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (installment_id) REFERENCES installments(id) ON DELETE CASCADE
     );
   ''';
