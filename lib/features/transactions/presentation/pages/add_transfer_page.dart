@@ -83,8 +83,11 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().contains('insufficient_balance')
+          ? 'transaction.insufficient_balance'.tr()
+          : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

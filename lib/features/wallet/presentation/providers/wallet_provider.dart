@@ -41,8 +41,17 @@ class WalletNotifier extends StateNotifier<List<WalletEntity>> {
     await loadWallets();
   }
 
-  /// Withdraw balance from a wallet
+  /// Withdraw balance from a wallet.
+  /// Throws [Exception('insufficient_balance')] if the wallet doesn't have enough funds.
   Future<void> withdrawBalance(int id, double amount) async {
+    // Guard: no negative balances allowed
+    final wallet = state.firstWhere(
+      (w) => w.id == id,
+      orElse: () => throw Exception('wallet_not_found'),
+    );
+    if (wallet.balance < amount) {
+      throw Exception('insufficient_balance');
+    }
     final db = await _dbService.database;
     await db.rawUpdate(
       'UPDATE wallets SET balance = balance - ? WHERE id = ?',

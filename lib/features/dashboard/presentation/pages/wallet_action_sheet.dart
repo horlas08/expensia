@@ -20,6 +20,8 @@ void showWalletActionSheet(BuildContext context, WalletEntity wallet) {
   Navigator.of(context, rootNavigator: true).push(
     ModalSheetRoute<void>(
       swipeDismissible: true,
+      
+      
       builder: (context) => _WalletSheetShell(wallet: wallet),
     ),
   );
@@ -70,12 +72,18 @@ class _WalletSheetShellState extends State<_WalletSheetShell> {
         if (builder == null) return null;
         return PagedSheetRoute<void>(
           settings: settings,
+          scrollConfiguration: SheetScrollConfiguration(
+            scrollSyncMode: SheetScrollHandlingBehavior.onlyFromTop,
+            delegateUnhandledOverscrollToChild: true,
+          ),
+          initialOffset: SheetOffset(0.7),
           builder: builder,
         );
       },
     );
 
     return PagedSheet(
+      physics: ClampingSheetPhysics(),
       decoration: MaterialSheetDecoration(
         size: SheetSize.fit,
         clipBehavior: Clip.antiAlias,
@@ -176,68 +184,82 @@ class _WalletActionsRoot extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            physics: PageScrollPhysics(),
+            child: Column(
+              children: [
+                // Actions list
+                FadeInUp(
+                  delay: const Duration(milliseconds: 0),
+                  child: _ActionTile(
+                    icon: Icons.add_circle_rounded,
+                    title: 'common.add_balance'.tr(),
+                    subtitle: 'wallet.add_balance_desc'.tr(),
+                    iconColor: Colors.green,
+                    onTap: () => _navigate('/add-balance'),
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 50),
+                  child: _ActionTile(
+                    icon: Icons.remove_circle_rounded,
+                    title: 'common.withdraw_balance'.tr(),
+                    subtitle: 'wallet.withdraw_balance_desc'.tr(),
+                    iconColor: Colors.red,
+                    onTap: () => _navigate('/withdraw'),
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 100),
+                  child: _ActionTile(
+                    icon: Icons.swap_horiz_rounded,
+                    title: 'wallet.transfer'.tr(),
+                    subtitle: 'wallet.transfer_desc'.tr(),
+                    iconColor: Colors.blue,
+                    onTap: () => _navigate('/transfer-balance'),
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 150),
+                  child: _ActionTile(
+                    icon: Icons.receipt_long_rounded,
+                    title: 'wallet.move_transactions'.tr(),
+                    subtitle: 'wallet.move_transactions_desc'.tr(),
+                    iconColor: Colors.purple,
+                    onTap: () => _navigate('/transfer-transactions'),
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  child: _ActionTile(
+                    icon: Icons.edit_rounded,
+                    title: 'wallet.edit_wallet'.tr(),
+                    subtitle: 'wallet.edit_wallet_desc'.tr(),
+                    iconColor: Colors.orange,
+                    onTap: () => _navigate('/edit'),
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 250),
+                  child: _ActionTile(
+                    icon: Icons.delete_rounded,
+                    title: 'wallet.delete_wallet'.tr(),
+                    subtitle: 'wallet.delete_wallet_desc_short'.tr(),
+                    iconColor: Colors.redAccent,
+                    onTap: () => _navigate('/delete'),
+                  ),
+                ),
 
-          // Actions list
-          FadeInUp(
-            delay: const Duration(milliseconds: 0),
-            child: _ActionTile(
-              icon: Icons.add_circle_rounded,
-              title: 'common.add_balance'.tr(),
-              subtitle: 'wallet.add_balance_desc'.tr(),
-              iconColor: Colors.green,
-              onTap: () => _navigate('/add-balance'),
+
+
+
+
+
+              ],
             ),
-          ),
-          FadeInUp(
-            delay: const Duration(milliseconds: 50),
-            child: _ActionTile(
-              icon: Icons.remove_circle_rounded,
-              title: 'common.withdraw_balance'.tr(),
-              subtitle: 'wallet.withdraw_balance_desc'.tr(),
-              iconColor: Colors.red,
-              onTap: () => _navigate('/withdraw'),
-            ),
-          ),
-          FadeInUp(
-            delay: const Duration(milliseconds: 100),
-            child: _ActionTile(
-              icon: Icons.swap_horiz_rounded,
-              title: 'wallet.transfer'.tr(),
-              subtitle: 'wallet.transfer_desc'.tr(),
-              iconColor: Colors.blue,
-              onTap: () => _navigate('/transfer-balance'),
-            ),
-          ),
-          FadeInUp(
-            delay: const Duration(milliseconds: 150),
-            child: _ActionTile(
-              icon: Icons.receipt_long_rounded,
-              title: 'wallet.move_transactions'.tr(),
-              subtitle: 'wallet.move_transactions_desc'.tr(),
-              iconColor: Colors.purple,
-              onTap: () => _navigate('/transfer-transactions'),
-            ),
-          ),
-          FadeInUp(
-            delay: const Duration(milliseconds: 200),
-            child: _ActionTile(
-              icon: Icons.edit_rounded,
-              title: 'wallet.edit_wallet'.tr(),
-              subtitle: 'wallet.edit_wallet_desc'.tr(),
-              iconColor: Colors.orange,
-              onTap: () => _navigate('/edit'),
-            ),
-          ),
-          FadeInUp(
-            delay: const Duration(milliseconds: 250),
-            child: _ActionTile(
-              icon: Icons.delete_rounded,
-              title: 'wallet.delete_wallet'.tr(),
-              subtitle: 'wallet.delete_wallet_desc_short'.tr(),
-              iconColor: Colors.redAccent,
-              onTap: () => _navigate('/delete'),
-            ),
-          ),
+          )
+
         ],
       ),
     );
@@ -270,8 +292,8 @@ class _ActionTile extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(16),
@@ -441,7 +463,16 @@ class _AmountFormPageState extends ConsumerState<_AmountFormPage> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
             labelText: 'transaction.amount'.tr(),
-            prefixIcon: const Icon(Icons.attach_money),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(widget.wallet.currencySymbol ?? '\$', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
@@ -526,7 +557,16 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
           onChanged: _onAmountChanged,
           decoration: InputDecoration(
             labelText: 'Amount',
-            prefixIcon: const Icon(Icons.attach_money),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(widget.wallet.currencySymbol ?? '\$', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),

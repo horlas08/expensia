@@ -179,6 +179,7 @@
     "add": "Add Category",
     "edit_title": "Edit Category",
     "empty": "No categories yet",
+    "category_name": "Category Name",
     "name_en": "Name (English)",
     "name_ar": "Name (Arabic)",
     "pick_icon": "Pick an icon",
@@ -260,7 +261,8 @@
     "edit_installment": "Edit Installment",
     "deposit_for": "Deposit for: {}",
     "lent": "Lent",
-    "borrowed": "Borrowed"
+    "borrowed": "Borrowed",
+    "insufficient_balance": "Insufficient balance. The wallet does not have enough funds for this transaction."
   },
   "history": {
     "title": "History",

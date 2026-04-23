@@ -34,7 +34,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -101,6 +101,51 @@ class DatabaseService {
       if (!hasIsInitial) {
         await db.execute('ALTER TABLE installment_details ADD COLUMN is_initial INTEGER NOT NULL DEFAULT 0');
       }
+    }
+    if (oldVersion < 11) {
+      // Expand wallets.type CHECK constraint to include 'investment'
+      // SQLite doesn't support ALTER TABLE to change constraints, so we recreate the table.
+      await db.execute('ALTER TABLE wallets RENAME TO wallets_old');
+      await db.execute(_sqlWallets);
+      await db.execute('''
+        INSERT INTO wallets (id, name, type, balance, currency_id, hide, bloc, is_visible, created_at)
+        SELECT id, name,
+          CASE WHEN type IN (\'cash\', \'bank\', \'investment\', \'credit_card\', \'other\') THEN type ELSE \'other\' END,
+          balance, currency_id,
+          COALESCE(hide, 0),
+          COALESCE(bloc, 0),
+          COALESCE(is_visible, 1),
+          COALESCE(created_at, CURRENT_TIMESTAMP)
+        FROM wallets_old
+      ''');
+      await db.execute('DROP TABLE wallets_old');
+    }
+    if (oldVersion < 12) {
+      // 1. Rename existing categories table
+      await db.execute('ALTER TABLE categories RENAME TO categories_old');
+      
+      // 2. Recreate categories table with updated constraints ('installment' added)
+      await db.execute(_sqlCategories);
+      
+      // 3. Copy data over
+      await db.execute('''
+        INSERT INTO categories (id, name_ar, name_en, image_name, type, parent_id)
+        SELECT id, name_ar, name_en, image_name, type, parent_id FROM categories_old
+      ''');
+      
+      // 4. Drop the old table
+      await db.execute('DROP TABLE categories_old');
+      
+      // 5. Update old combined Debt/Installment default categories to just Debt
+      await db.execute("UPDATE categories SET name_en = 'Pay Debts', name_ar = 'دفع ديون' WHERE id = 3");
+      await db.execute("UPDATE categories SET name_en = 'Receive Debts', name_ar = 'استلام ديون' WHERE id = 4");
+      
+      // 6. Insert new Installment default categories
+      await db.execute('''
+        INSERT OR IGNORE INTO categories (id, name_ar, name_en, type, parent_id, image_name) VALUES 
+        (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+        (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment')
+      ''');
     }
   }
 
@@ -231,6 +276,13 @@ class DatabaseService {
     required double amount,
   }) async {
     final db = await database;
+
+    // Guard: check source wallet has sufficient balance
+    final fromRows = await db.query('wallets', where: 'id = ?', whereArgs: [fromId], limit: 1);
+    if (fromRows.isEmpty) throw Exception('source_wallet_not_found');
+    final currentBalance = (fromRows.first['balance'] as num?)?.toDouble() ?? 0.0;
+    if (currentBalance < amount) throw Exception('insufficient_balance');
+
     await db.transaction((txn) async {
       await txn.rawUpdate(
         'UPDATE wallets SET balance = balance - ? WHERE id = ?',
@@ -341,30 +393,46 @@ class DatabaseService {
 
       // 5. Handle Salary if enabled
       if (hasSalary && salaryAmount > 0) {
+        // Create salary wallet pre-credited with the salary amount
         final salaryWalletId = await txn.insert('wallets', {
           'name': 'Salary Account',
           'type': 'bank',
-          'balance': 0.0,
+          'balance': salaryAmount,   // ← credit initial salary immediately
           'currency_id': defaultCurrencyId,
           'is_visible': 1,
         });
 
-        // Add Recurring Salary
-        final transactionId = await txn.insert('transactions', {
+        // Opening income transaction (one-time, shows the initial credit)
+        await txn.insert('transactions', {
           'wallet_id': salaryWalletId,
           'category_id': 5, // Salary
           'currency_id': defaultCurrencyId,
           'type': 'income',
           'direction': 'plus',
           'amount': salaryAmount,
-          'is_repeat': 1,
+          'is_paid': 1,
+          'is_opening': 1,
+          'is_repeat': 0,
           'date': DateTime.now().toIso8601String(),
+          'notes': 'Initial Salary',
         });
 
+        // Recurring salary template for future months
         if (autoAddSalary) {
+          final recurringId = await txn.insert('transactions', {
+            'wallet_id': salaryWalletId,
+            'category_id': 5,
+            'currency_id': defaultCurrencyId,
+            'type': 'income',
+            'direction': 'plus',
+            'amount': salaryAmount,
+            'is_paid': 0,
+            'is_repeat': 1,
+            'date': DateTime.now().toIso8601String(),
+          });
           final nextDate = _calculateNextSalaryDate(salaryDay);
           await txn.insert('recurring_transactions', {
-            'transaction_id': transactionId,
+            'transaction_id': recurringId,
             'start_date': DateTime.now().toIso8601String(),
             'next_execution_date': nextDate.toIso8601String(),
             'repeat_type': 'monthly',
@@ -416,7 +484,7 @@ class DatabaseService {
     final incomeResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'income' AND date >= ?
+      WHERE type = 'income' AND is_repeat = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -424,7 +492,7 @@ class DatabaseService {
     final expenseResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'expense' AND date >= ?
+      WHERE type = 'expense' AND is_repeat = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -485,6 +553,7 @@ class DatabaseService {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       LEFT JOIN persons p ON t.person_id = p.id
+      WHERE t.is_repeat = 0
       UNION ALL
       SELECT
         tr.id,
@@ -541,6 +610,7 @@ class DatabaseService {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       LEFT JOIN persons p ON t.person_id = p.id
+      WHERE t.is_repeat = 0
       UNION ALL
       SELECT
         tr.id,
@@ -664,12 +734,28 @@ class DatabaseService {
 
   Future<List<Map<String, dynamic>>> getCategoriesByType(String type) async {
     final db = await database;
-    return await db.query(
+    final res = await db.query(
       'categories',
       where: 'type = ?',
       whereArgs: [type],
       orderBy: 'id ASC',
     );
+    
+    if (res.isEmpty && type == 'installment') {
+      await db.execute('''
+        INSERT OR IGNORE INTO categories (id, name_ar, name_en, type, parent_id, image_name) VALUES 
+        (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+        (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment')
+      ''');
+      return await db.query(
+        'categories',
+        where: 'type = ?',
+        whereArgs: [type],
+        orderBy: 'id ASC',
+      );
+    }
+    
+    return res;
   }
 
   Future<int> addCategory({
@@ -724,6 +810,7 @@ class DatabaseService {
 
   Future<void> deleteAnyTransaction(int id, String type) async {
     final db = await database;
+
     if (type == 'debt') {
       final txRows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
       if (txRows.isNotEmpty) {
@@ -764,18 +851,49 @@ class DatabaseService {
       }
     }
 
-    String table;
-    switch (type) {
-      case 'transfer':
-        table = 'transfers';
-        break;
-      case 'installment':
-        table = 'installments';
-        break;
-      default:
-        table = 'transactions';
+    if (type == 'transfer') {
+      // Reverse both wallet balances before deleting the transfer record
+      final rows = await db.query('transfers', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (rows.isNotEmpty) {
+        final transfer = rows.first;
+        final fromId  = transfer['from_wallet_id'] as int?;
+        final toId    = transfer['to_wallet_id']   as int?;
+        final amount  = (transfer['amount'] as num?)?.toDouble() ?? 0;
+        if (fromId != null && toId != null && amount > 0) {
+          await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, fromId]);
+          await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, toId]);
+        }
+      }
+      await db.delete('transfers', where: 'id = ?', whereArgs: [id]);
+      return;
     }
-    await db.delete(table, where: 'id = ?', whereArgs: [id]);
+
+    if (type == 'installment') {
+      await db.delete('installments', where: 'id = ?', whereArgs: [id]);
+      return;
+    }
+
+    // Default: income / expense transaction — reverse the wallet balance effect
+    final txRows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (txRows.isNotEmpty) {
+      final tx       = txRows.first;
+      final walletId = tx['wallet_id'] as int?;
+      final amount   = (tx['amount'] as num?)?.toDouble() ?? 0;
+      final dir      = tx['direction'] as String? ?? 'min';
+      // Skip reversal for the opening transaction of the salary wallet
+      // to avoid double-counting (the wallet's balance was set directly).
+      // We still reverse any regular (non-opening) income/expense.
+      if (walletId != null && amount > 0) {
+        if (dir == 'min') {
+          // It was an expense → restore the deducted amount
+          await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+        } else {
+          // It was an income → remove the credited amount
+          await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+        }
+      }
+    }
+    await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Map<String, dynamic>>> getDebtTransactions(int debtId) async {
@@ -1170,11 +1288,13 @@ class DatabaseService {
       name_ar TEXT NOT NULL,
       name_en TEXT NOT NULL,
       image_name TEXT,
-      type TEXT CHECK(type IN ('income', 'expense', 'debt')) NOT NULL,
+      type TEXT CHECK(type IN ('income', 'expense', 'debt', 'installment')) NOT NULL,
       parent_id INTEGER,
       FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
     );
   ''';
+
+  static const int _dbVersion = 12;
 
   static const _sqlPersons = '''
     CREATE TABLE IF NOT EXISTS persons (
@@ -1188,7 +1308,7 @@ class DatabaseService {
     CREATE TABLE IF NOT EXISTS wallets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      type TEXT CHECK(type IN ('cash', 'bank', 'other','credit_card')) DEFAULT 'cash',
+      type TEXT CHECK(type IN ('cash', 'bank', 'investment', 'other', 'credit_card')) DEFAULT 'cash',
       balance REAL DEFAULT 0,
       currency_id INTEGER,
       hide INTEGER DEFAULT 0, 
@@ -1372,8 +1492,14 @@ class DatabaseService {
     INSERT OR IGNORE INTO categories (id , name_ar, name_en, type, parent_id, image_name) VALUES 
     (1, 'سحب رصيد', 'Withdraw Balance', 'expense', NULL, 'with_draw'),
     (2, 'تحويل رصيد', 'Transfer Balance', 'expense', NULL, 'transfer'),
-    (3, 'دفع ديون وأقساط', 'Pay Debts & Installments', 'debt', NULL, 'debt'),
-    (4, 'استلام ديون وأقساط', 'Receive Debts & Installments', 'debt', NULL, 'receive_debt'),
+    
+    -- Debts
+    (3, 'دفع ديون', 'Pay Debts', 'debt', NULL, 'debt'),
+    (4, 'استلام ديون', 'Receive Debts', 'debt', NULL, 'receive_debt'),
+    
+    -- Installments
+    (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+    (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment'),
     
     -- Income
     (5, 'الراتب', 'Salary', 'income', NULL, 'salary'),

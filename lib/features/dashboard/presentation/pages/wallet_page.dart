@@ -559,21 +559,34 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _balanceCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (val) {
-              if (_balanceError != null) setState(() => _balanceError = null);
-            },
-            decoration: InputDecoration(
-              labelText: 'wallet.initial_balance'.tr(),
-              prefixIcon: const Icon(Icons.attach_money),
-              errorText: _balanceError,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+          Consumer(builder: (context, ref, child) {
+            final currency = ref.watch(defaultCurrencyProvider).valueOrNull;
+            final symbol = currency?.currencySymbol ?? '\$';
+            return TextField(
+              controller: _balanceCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (val) {
+                if (_balanceError != null) setState(() => _balanceError = null);
+              },
+              decoration: InputDecoration(
+                labelText: 'wallet.initial_balance'.tr(),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(symbol, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
+                errorText: _balanceError,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () async {

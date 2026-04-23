@@ -12,6 +12,7 @@ import '../../../../core/utils/url_launcher_utils.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/transaction_filter_provider.dart';
 import '../widgets/transaction_filter_sheet.dart';
 import '../widgets/wallet_picker_sheet.dart';
@@ -297,6 +298,7 @@ class TransactionListItem extends ConsumerWidget {
             );
             if (confirm == true) {
               await DatabaseService().deleteAnyTransaction(tx['id'] as int, tx['type'] as String);
+              ref.invalidate(walletProvider);
               ref.invalidate(filteredTransactionsProvider);
               ref.invalidate(dashboardMetricsProvider);
               ref.invalidate(recentTransactionsProvider);
@@ -807,6 +809,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         widget.tx['id'] as int, 
         widget.tx['type'] as String,
       );
+      ref.invalidate(walletProvider);
       ref.invalidate(filteredTransactionsProvider);
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);

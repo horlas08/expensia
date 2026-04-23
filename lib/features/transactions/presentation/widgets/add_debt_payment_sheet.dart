@@ -62,6 +62,11 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
         ? 'transaction.add_lent_payment'.tr()
         : 'transaction.add_borrowed_payment'.tr();
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
+    final selectedWallet = _selectedWalletId != null 
+        ? wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.isNotEmpty ? wallets.first : wallets.first) // Just ensuring we get something
+        : (wallets.isNotEmpty ? wallets.first : null);
+    final symbol = selectedWallet?.currencySymbol ?? '\$';
 
     return Sheet(
       initialOffset: const SheetOffset(1.0),
@@ -132,7 +137,7 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.attach_money_rounded, color: cs.primary),
+                                Text(symbol, style: TextStyle(color: cs.primary, fontSize: 20, fontWeight: FontWeight.bold)),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: TextField(

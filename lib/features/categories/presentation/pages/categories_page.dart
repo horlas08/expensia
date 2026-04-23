@@ -20,7 +20,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-  static const _tabs = ['expense', 'income', 'debt'];
+  static const _tabs = ['expense', 'income', 'debt', 'installment'];
 
   @override
   void initState() {
@@ -56,10 +56,13 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          isScrollable: true,
+          tabAlignment: TabAlignment.center,
           tabs: [
             Tab(text: 'categories.expense'.tr()),
             Tab(text: 'categories.income'.tr()),
             Tab(text: 'categories.debt'.tr()),
+            Tab(text: 'dashboard.installment'.tr()),
           ],
         ),
       ),
@@ -406,23 +409,29 @@ class _CategoryFormSheet extends ConsumerStatefulWidget {
 }
 
 class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
-  final _nameEnCtrl = TextEditingController();
-  final _nameArCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
   String _selectedIconKey = 'other';
   int? _selectedParentId;
   bool _saving = false;
 
   bool get _isEdit => widget.category != null;
 
+  bool _isInit = false;
+
   @override
-  void initState() {
-    super.initState();
-    if (_isEdit) {
-      _nameEnCtrl.text = widget.category!['name_en'] as String? ?? '';
-      _nameArCtrl.text = widget.category!['name_ar'] as String? ?? '';
-      _selectedIconKey = widget.category!['image_name'] as String? ?? 'other';
-      _selectedParentId = widget.category!['parent_id'] as int?;
-      if (_selectedParentId == 0) _selectedParentId = null;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      _isInit = true;
+      if (_isEdit) {
+        final locale = context.locale.languageCode;
+        _nameCtrl.text = (locale == 'ar'
+            ? widget.category!['name_ar'] as String?
+            : widget.category!['name_en'] as String?) ?? '';
+        _selectedIconKey = widget.category!['image_name'] as String? ?? 'other';
+        _selectedParentId = widget.category!['parent_id'] as int?;
+        if (_selectedParentId == 0) _selectedParentId = null;
+      }
     }
   }
 
@@ -438,21 +447,23 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
 
   @override
   void dispose() {
-    _nameEnCtrl.dispose();
-    _nameArCtrl.dispose();
+    _nameCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
-    final nameEn = _nameEnCtrl.text.trim();
-    if (nameEn.isEmpty) return;
+  Future<void> _save(bool isAr) async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
     setState(() => _saving = true);
+    
+    final nameEn = isAr ? (widget.category?['name_en'] as String? ?? name) : name;
+    final nameAr = isAr ? name : (widget.category?['name_ar'] as String? ?? name);
     
     if (_isEdit) {
       await DatabaseService().updateCategory(
         widget.category!['id'] as int,
         nameEn,
-        _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
+        nameAr,
         widget.type,
         _selectedIconKey,
         parentId: _selectedParentId,
@@ -460,7 +471,7 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
     } else {
       await DatabaseService().addCategory(
         nameEn: nameEn,
-        nameAr: _nameArCtrl.text.trim().isEmpty ? nameEn : _nameArCtrl.text.trim(),
+        nameAr: nameAr,
         type: widget.type,
         iconKey: _selectedIconKey,
         parentId: _selectedParentId,
@@ -573,32 +584,13 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
               error: (_, __) => const SizedBox.shrink(),
             ),
 
-            // Name EN
-            TextField(
-              controller: _nameEnCtrl,
-              decoration: InputDecoration(
-                labelText: 'categories.name_en'.tr(),
-                filled: true,
-                fillColor: cs.surfaceContainerLow,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: cs.primary, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Name AR
+            // Single Category Name field depending on locale
             Directionality(
-              textDirection: TextDirection.rtl,
+              textDirection: locale == 'ar' ? TextDirection.rtl : TextDirection.ltr,
               child: TextField(
-                controller: _nameArCtrl,
-
+                controller: _nameCtrl,
                 decoration: InputDecoration(
-                  labelText: 'categories.name_ar'.tr(),
+                  labelText: 'categories.category_name'.tr(),
                   filled: true,
                   fillColor: cs.surfaceContainerLow,
                   border: OutlineInputBorder(
@@ -660,7 +652,7 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _saving ? null : _save,
+                onPressed: _saving ? null : () => _save(locale == 'ar'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
