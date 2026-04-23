@@ -10,10 +10,14 @@ class CategoryIcons {
 
   static const Map<String, IconData> map = {
     // System & General
-    'with_draw':    Icons.account_balance_wallet_rounded,
-    'transfer':     Icons.swap_horiz_rounded,
-    'debt':         Icons.money_off_rounded,
-    'receive_debt': Icons.monetization_on_rounded,
+    'with_draw':           Icons.account_balance_wallet_rounded,
+    'transfer':            Icons.swap_horiz_rounded,
+    'debt':                Icons.money_off_rounded,
+    'receive_debt':        Icons.monetization_on_rounded,
+
+    // Installments
+    'installment':         Icons.credit_score_rounded,
+    'receive_installment': Icons.payments_rounded,
 
     // Income
     'salary':       Icons.work_rounded,

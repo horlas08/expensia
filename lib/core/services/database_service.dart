@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'currency_catalog_service.dart';
 
@@ -34,7 +35,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 12,
+      version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -143,9 +144,12 @@ class DatabaseService {
       // 6. Insert new Installment default categories
       await db.execute('''
         INSERT OR IGNORE INTO categories (id, name_ar, name_en, type, parent_id, image_name) VALUES 
-        (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
-        (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment')
+        (1001, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+        (1002, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment')
       ''');
+    }
+    if (oldVersion < 13) {
+      await _repairInstallmentCategoryData(db);
     }
   }
 
@@ -174,6 +178,46 @@ class DatabaseService {
       batch.execute(modifiedScript);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> _repairInstallmentCategoryData(Database db) async {
+    await db.execute('ALTER TABLE categories RENAME TO categories_old');
+    await db.execute(_sqlCategories);
+    await db.execute('''
+      INSERT INTO categories (id, name_ar, name_en, image_name, type, parent_id)
+      SELECT
+        CASE
+          WHEN id = 101 AND type = 'installment' THEN 1001
+          WHEN id = 102 AND type = 'installment' THEN 1002
+          ELSE id
+        END,
+        name_ar,
+        name_en,
+        image_name,
+        type,
+        parent_id
+      FROM categories_old
+    ''');
+    await db.execute('DROP TABLE categories_old');
+
+    await db.execute('''
+      UPDATE installments
+      SET category_id = CASE
+        WHEN type = 'for_you' THEN 1002
+        ELSE 1001
+      END
+    ''');
+
+    await db.execute('''
+      UPDATE transactions
+      SET category_id = CASE
+        WHEN direction = 'plus' THEN 1002
+        ELSE 1001
+      END
+      WHERE type = 'installment'
+    ''');
+
+    await _forceReseedCategories(db);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -742,17 +786,21 @@ class DatabaseService {
     );
     
     if (res.isEmpty && type == 'installment') {
-      await db.execute('''
-        INSERT OR IGNORE INTO categories (id, name_ar, name_en, type, parent_id, image_name) VALUES 
-        (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
-        (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment')
-      ''');
-      return await db.query(
-        'categories',
-        where: 'type = ?',
-        whereArgs: [type],
-        orderBy: 'id ASC',
-      );
+      try {
+        await db.execute('''
+          INSERT OR IGNORE INTO categories (id, name_ar, name_en, type, parent_id, image_name) VALUES 
+          (1001, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+          (1002, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'receive_installment')
+        ''');
+        return await db.query(
+          'categories',
+          where: 'type = ?',
+          whereArgs: [type],
+          orderBy: 'id ASC',
+        );
+      } catch (e) {
+        debugPrint('Error inserting default installment categories: $e');
+      }
     }
     
     return res;
@@ -1294,7 +1342,7 @@ class DatabaseService {
     );
   ''';
 
-  static const int _dbVersion = 12;
+  static const int _dbVersion = 13;
 
   static const _sqlPersons = '''
     CREATE TABLE IF NOT EXISTS persons (
@@ -1498,8 +1546,8 @@ class DatabaseService {
     (4, 'استلام ديون', 'Receive Debts', 'debt', NULL, 'receive_debt'),
     
     -- Installments
-    (101, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
-    (102, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment'),
+    (1001, 'دفع أقساط', 'Pay Installments', 'installment', NULL, 'installment'),
+    (1002, 'استلام أقساط', 'Receive Installments', 'installment', NULL, 'installment'),
     
     -- Income
     (5, 'الراتب', 'Salary', 'income', NULL, 'salary'),
