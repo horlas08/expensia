@@ -191,6 +191,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                                 ? totalBalance.toStringAsFixed(2)
                                 : '••••••',
                         currencySymbol: currencySymbol,
+
                         showCurrency: _balanceVisible,
                         key: ValueKey(_balanceVisible),
                       ),
@@ -859,7 +860,7 @@ class _BalanceAmountText extends StatelessWidget {
     this.showCurrency = false,
     this.amountStyle = const TextStyle(
       color: Colors.white,
-      fontSize: 38,
+      fontSize: 30,
       fontWeight: FontWeight.bold,
       letterSpacing: 1,
     ),

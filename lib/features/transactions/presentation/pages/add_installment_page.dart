@@ -342,7 +342,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     });
   }
 
-  int get _installmentCategoryId => _isForYou ? 1002 : 1001;
+  int get _installmentCategoryId => _isForYou ? 102 : 101;
 
   void _showPlanPreview() {
     if (_totalPriceCtrl.text.isEmpty || _monthsCtrl.text.isEmpty) {

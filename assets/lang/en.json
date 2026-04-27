@@ -29,6 +29,8 @@
     "personal_desc": "Tell us a bit about yourself to personalize your experience",
     "full_name": "Full Name",
     "initial_cash": "Initial Cash Balance",
+    "cash_wallet_name": "Cash",
+    "salary_account_name": "Salary Account",
     "currency_choice": "Currency Choice",
     "select_currency": "Select Your Currency",
     "currency_desc": "Choose the primary currency you'll use for tracking",

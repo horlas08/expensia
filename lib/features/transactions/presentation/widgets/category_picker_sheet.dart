@@ -45,6 +45,17 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
   void initState() {
     super.initState();
     _activeParentId = widget.initialParentId;
+    if (_activeParentId != null) {
+      try {
+        final parentCat = widget.categories.firstWhere((c) => c['id'] == _activeParentId);
+        final nameEn = parentCat['name_en'] as String? ?? '';
+        _activeParentName = widget.locale == 'ar' 
+            ? (parentCat['name_ar'] as String? ?? nameEn) 
+            : nameEn;
+      } catch (_) {
+        _activeParentName = 'Sub-category';
+      }
+    }
   }
 
   @override

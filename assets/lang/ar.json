@@ -29,6 +29,8 @@
     "personal_desc": "أخبرنا قليلاً عن نفسك لتخصيص تجربتك",
     "full_name": "الاسم الكامل",
     "initial_cash": "رصيد الكاش الأولي",
+    "cash_wallet_name": "نقدية",
+    "salary_account_name": "حساب الراتب",
     "currency_choice": "اختيار العملة",
     "select_currency": "اختر عملتك",
     "currency_desc": "اختر العملة الأساسية التي ستستخدمها للتتبع",

@@ -35,7 +35,10 @@ class Setup extends _$Setup {
     );
   }
 
-  Future<void> completeSetup() async {
+  Future<void> completeSetup({
+    String cashWalletName = 'Cash',
+    String salaryWalletName = 'Salary Account',
+  }) async {
     if (state.isLoading) return;
 
     state = state.copyWith(isLoading: true, errorMessage: null);
@@ -67,6 +70,8 @@ class Setup extends _$Setup {
         salaryDay: userSetup.dayOfSalary,
         hasSalary: userSetup.isOptions,
         autoAddSalary: userSetup.autoAddSalary,
+        cashWalletName: cashWalletName,
+        salaryWalletName: salaryWalletName,
       );
 
       // Save user name separately

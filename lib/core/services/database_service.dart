@@ -386,6 +386,8 @@ class DatabaseService {
     required int salaryDay,
     required bool hasSalary,
     required bool autoAddSalary,
+    String cashWalletName = 'Cash',
+    String salaryWalletName = 'Salary Account',
   }) async {
     final db = await database;
 
@@ -412,7 +414,7 @@ class DatabaseService {
 
       // 3. Create Cash Wallet
       final cashWalletId = await txn.insert('wallets', {
-        'name': 'Cash',
+        'name': cashWalletName,
         'type': 'cash',
         'balance': cashBalance,
         'currency_id': defaultCurrencyId,
@@ -439,7 +441,7 @@ class DatabaseService {
       if (hasSalary && salaryAmount > 0) {
         // Create salary wallet pre-credited with the salary amount
         final salaryWalletId = await txn.insert('wallets', {
-          'name': 'Salary Account',
+          'name': salaryWalletName,
           'type': 'bank',
           'balance': salaryAmount,   // ← credit initial salary immediately
           'currency_id': defaultCurrencyId,
@@ -1251,7 +1253,6 @@ class DatabaseService {
     );
     if (txRows.isEmpty) return;
 
-    final openingDirection = txRows.first['direction'] as String? ?? 'min';
     double totalPlus = 0.0;
     double totalMin = 0.0;
 
@@ -1264,23 +1265,21 @@ class DatabaseService {
       }
     }
 
-    final oppositeMovement = openingDirection == 'min' ? totalPlus : totalMin;
-    final outstanding = openingDirection == 'min'
-        ? (totalMin - totalPlus).clamp(0, double.infinity).toDouble()
-        : (totalPlus - totalMin).clamp(0, double.infinity).toDouble();
+    final netBalance = totalPlus - totalMin;
+    final outstanding = netBalance.abs();
 
     String status = 'active';
     if (outstanding == 0) {
       status = 'paid';
-    } else if (oppositeMovement > 0) {
+    } else if (totalPlus > 0 && totalMin > 0) {
       status = 'partial';
     }
 
     await db.update(
       'debts',
       {
-        'income': openingDirection == 'plus' ? outstanding : 0.0,
-        'expense': openingDirection == 'min' ? outstanding : 0.0,
+        'income': netBalance > 0 ? outstanding : 0.0,
+        'expense': netBalance < 0 ? outstanding : 0.0,
         'status': status,
       },
       where: 'id = ?',

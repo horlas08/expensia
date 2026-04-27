@@ -1003,7 +1003,10 @@ class _SetupPageState extends ConsumerState<SetupPage> {
     }
 
     try {
-      await notifier.completeSetup();
+      await notifier.completeSetup(
+        cashWalletName: 'setup.cash_wallet_name'.tr(),
+        salaryWalletName: 'setup.salary_account_name'.tr(),
+      );
 
       // Show success message
       if (mounted) {

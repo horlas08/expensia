@@ -14,8 +14,8 @@ class TwoOptionsSelector extends StatelessWidget {
     required this.leftLabel,
     required this.rightLabel,
     required this.onChanged,
-    this.leftColor = const Color(0xFF00C48C),
-    this.rightColor = const Color(0xFFFF4757),
+    this.leftColor = const Color(0xFFFF4757),
+    this.rightColor = const Color(0xFF00C48C),
   });
 
   @override

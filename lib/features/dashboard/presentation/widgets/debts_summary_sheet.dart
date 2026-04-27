@@ -61,11 +61,12 @@ class _DebtsSummarySheetState extends ConsumerState<DebtsSummarySheet>
       SELECT
         d.*,
         p.name AS person_name,
-        o.direction AS opening_direction,
         CASE
-          WHEN o.direction = 'plus' THEN MAX(l.total_plus - l.total_min, 0)
-          ELSE MAX(l.total_min - l.total_plus, 0)
-        END AS current_amount
+          WHEN l.total_plus > l.total_min THEN 'plus'
+          WHEN l.total_min > l.total_plus THEN 'min'
+          ELSE o.direction
+        END AS opening_direction,
+        ABS(l.total_plus - l.total_min) AS current_amount
       FROM debts d
       LEFT JOIN persons p ON d.person_id = p.id
       LEFT JOIN debt_ledger l ON l.debt_id = d.id

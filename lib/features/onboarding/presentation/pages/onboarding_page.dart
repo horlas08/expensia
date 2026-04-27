@@ -68,8 +68,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       FadeInUp(
                         child: Text(
                           _onboardingData[index]['title']!.tr(),
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
+                            fontSize: 20,
                           ),
                           textAlign: TextAlign.center,
                         ),

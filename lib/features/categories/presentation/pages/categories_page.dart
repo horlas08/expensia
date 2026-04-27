@@ -255,10 +255,13 @@ class _CategoryCard extends StatelessWidget {
     final displayName = locale == 'ar' ? nameAr : nameEn;
     final icon = CategoryIcons.getIcon(category['image_name'] ?? '');
     final color = CategoryIcons.getColor(category['image_name'] ?? '');
+    
+    final int catId = category['id'] as int? ?? 0;
+    final isDefaultDebtOrInstallment = [3, 4, 101, 102].contains(catId);
 
     return GestureDetector(
       onTap: onTap,
-      onLongPress: () => _showDeleteDialog(context),
+      onLongPress: isDefaultDebtOrInstallment ? null : () => _showDeleteDialog(context),
       child: Container(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
@@ -317,15 +320,16 @@ class _CategoryCard extends StatelessWidget {
                   child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 8),
                 ),
               ),
-            Positioned(
-              top: 4,
-              left: 4,
-              child: IconButton(
-                icon: Icon(Icons.edit_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.3)),
-                onPressed: onEdit,
-                visualDensity: VisualDensity.compact,
+            if (!isDefaultDebtOrInstallment)
+              Positioned(
+                top: 4,
+                left: 4,
+                child: IconButton(
+                  icon: Icon(Icons.edit_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.3)),
+                  onPressed: onEdit,
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
-            ),
           ],
         ),
       ),

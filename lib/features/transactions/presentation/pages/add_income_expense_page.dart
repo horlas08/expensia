@@ -576,7 +576,8 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
                   const SizedBox(height: 12),
 
-                  // Priority
+                  // Priority (Commented out for now)
+                  /*
                   FadeInUp(
                     delay: const Duration(milliseconds: 200),
                     child: ModernPrioritySelector(
@@ -585,6 +586,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  */
 
                   // Repeat
                   FadeInUp(

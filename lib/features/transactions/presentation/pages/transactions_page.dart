@@ -5,6 +5,7 @@ import 'package:animations/animations.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 import '../../../../core/constants/category_icons.dart';
 import '../../../../core/utils/transaction_grouper.dart';
@@ -252,11 +253,11 @@ class TransactionListItem extends ConsumerWidget {
         displaySubtitle = '${tx['wallet_name']} → ${tx['to_wallet_name']}';
         break;
       case 'debt':
-        displayTitle = 'dashboard.debt'.tr();
+        displayTitle = categoryName;
         displaySubtitle = tx['person_name'] ?? 'history.private'.tr();
         break;
       case 'installment':
-        displayTitle = 'history.installment_deposit'.tr();
+        displayTitle = categoryName;
         displaySubtitle = tx['person_name'] ?? notes;
         break;
       default: // 'transaction'
@@ -313,7 +314,13 @@ class TransactionListItem extends ConsumerWidget {
             ),
             child: Icon(iconData, color: iconColor, size: 24),
           ),
-          title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: AutoSizeText(
+            displayTitle,
+            maxLines: 1,
+            minFontSize: 12,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           subtitle: Text(
             displaySubtitle,
             maxLines: 1,
