@@ -34,9 +34,11 @@ class _SetupPageState extends ConsumerState<SetupPage> {
 
     _pageController = PageController(initialPage: setupState.currentPage);
     _nameController = TextEditingController(text: setupState.name);
-    _cashController = TextEditingController(text: setupState.cash.toString());
+    _cashController = TextEditingController(
+      text: setupState.cash > 0 ? setupState.cash.toString() : '',
+    );
     _salaryController = TextEditingController(
-      text: setupState.salary.toString(),
+      text: setupState.salary > 0 ? setupState.salary.toString() : '',
     );
     _currencySearchController = TextEditingController();
     _currencySearchController.addListener(() => setState(() {}));
@@ -170,12 +172,6 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                                       return;
                                     }
                                   } else if (state.currentPage == 1) {
-                                    if (_nameController.text.trim().isEmpty) {
-                                      _showErrorSnackBar(
-                                        'setup.error_name'.tr(),
-                                      );
-                                      return;
-                                    }
                                     notifier.updatePersonalInfo(
                                       _nameController.text,
                                       double.tryParse(_cashController.text) ??
@@ -413,9 +409,22 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                           width: 2,
                         ),
                       ),
-                      prefixText:
-                          '${state.selectedCurrency?.currencySymbol ?? r'$'} ',
-                      // prefixStyle: Theme.of(context).textTheme.titleMedium,
+                      prefixIcon: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              state.selectedCurrency?.currencySymbol ?? r'$',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      prefixIconConstraints: BoxConstraints(minWidth: 40.w, minHeight: 0),
                     ),
                   ),
                 ],
@@ -865,9 +874,22 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                             width: 2,
                           ),
                         ),
-                        prefixText:
-                            '${state.selectedCurrency?.currencySymbol ?? r'$'} ',
-                        prefixStyle: Theme.of(context).textTheme.titleMedium,
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 14.w),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                state.selectedCurrency?.currencySymbol ?? r'$',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        prefixIconConstraints: BoxConstraints(minWidth: 40.w, minHeight: 0),
                       ),
                     ),
                   ],

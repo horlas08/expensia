@@ -246,8 +246,8 @@
     "enter_amount_and_months": "Please enter amount and months",
     "total_price": "Total Price",
     "entity_hint": "Enter person or entity name",
-    "add_borrowed_payment": "Add Borrowed Payment",
-    "add_lent_payment": "Add Lent Payment",
+    "add_borrowed_payment": "Receive Amount",
+    "add_lent_payment": "Pay Amount",
     "save_record": "Save Record",
     "installment_plan": "Installment Plan",
     "installment_plan_preview": "Preview of your monthly payments",
@@ -262,8 +262,8 @@
     "receive_debts_installments": "Receive Debts & Installments",
     "edit_installment": "Edit Installment",
     "deposit_for": "Deposit for: {}",
-    "lent": "Lent",
-    "borrowed": "Borrowed",
+    "lent": "Pay",
+    "borrowed": "Receive",
     "insufficient_balance": "Insufficient balance. The wallet does not have enough funds for this transaction."
   },
   "history": {

@@ -246,8 +246,8 @@
     "enter_amount_and_months": "يرجى إدخال المبلغ وعدد الأشهر",
     "total_price": "السعر الإجمالي",
     "entity_hint": "أدخل اسم الشخص أو الجهة",
-    "add_borrowed_payment": "إضافة دفعة مسجلة عليك",
-    "add_lent_payment": "إضافة دفعة مستلمة لك",
+    "add_borrowed_payment": "استلام مبلغ",
+    "add_lent_payment": "دفع مبلغ",
     "save_record": "حفظ السجل",
     "installment_plan": "خطة الأقساط",
     "installment_plan_preview": "معاينة دفعاتك الشهرية",
@@ -262,8 +262,8 @@
     "receive_debts_installments": "تحصيل الديون والأقساط",
     "edit_installment": "تعديل القسط",
     "deposit_for": "دفعة مقدمة لـ: {}",
-    "lent": "أقرضت",
-    "borrowed": "اقترضت",
+    "lent": "دفع",
+    "borrowed": "استلام",
     "insufficient_balance": "رصيد غير كافٍ. المحفظة المختارة لا تحتوي على أموال كافية لإتمام هذه العملية."
   },
   "history": {
