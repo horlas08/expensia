@@ -18,6 +18,12 @@ EXCLUDE_KEYWORDS = [
     'assets/', 'asset/', 'http://', 'https://', 'services/', 'service/',
     'model/', 'models/'
 ]
+EXCLUDE_STRING_CONTENTS = {
+    'Initial Balance',
+    'الرصيد الأولي',
+    'Initial Salary',
+    'الراتب الأولي',
+}
 EXCLUDE_FILES = ['api_service', 'service_', 'date', 'firebase_options', 'app_translations']
 EXCLUDE_FILE_SUFFIXES = ('.g.dart', '.freezed.dart')
 LITERAL_SCAN_EXCLUDE_PATHS = [
@@ -134,6 +140,8 @@ def find_untranslated_strings():
                         if '.tr(' in line:
                             continue
                         if any(keyword in text for keyword in EXCLUDE_KEYWORDS):
+                            continue
+                        if content in EXCLUDE_STRING_CONTENTS:
                             continue
                         if ASSET_EXT_PATTERN.search(content):
                             continue

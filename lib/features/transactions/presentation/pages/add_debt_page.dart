@@ -8,6 +8,7 @@ import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
@@ -85,6 +86,12 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       );
       return;
     }
+    if (_isOnYou && !_hasSufficientBalanceForOnYou(amount)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.insufficient_balance'.tr())),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
 
@@ -96,9 +103,14 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         final id = widget.initialTransaction!['id'] as int;
         final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
+        final oldWasOnYou =
+            (widget.initialTransaction!['direction'] as String? ?? 'min') == 'min';
         // Revert old balance
-        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount); }
-        else { await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount); }
+        if (oldWasOnYou) {
+          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
+        } else {
+          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount);
+        }
         // Update transaction
         await db.updateTransaction(id, {
           'wallet_id': _selectedWalletId,
@@ -193,7 +205,32 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     return await dbRaw.insert('persons', {'name': name});
   }
 
-  int get _debtCategoryId => _isOnYou ? 3 : 4;
+  bool _hasSufficientBalanceForOnYou(double amount) {
+    if (_selectedWalletId == null) return false;
+
+    final wallets = ref.read(walletProvider);
+    final matches = wallets.where((w) => w.id == _selectedWalletId);
+    if (matches.isEmpty) return false;
+    final selectedWallet = matches.first;
+
+    var availableBalance = selectedWallet.balance;
+
+    if (widget.initialTransaction != null) {
+      final oldWalletId = widget.initialTransaction!['wallet_id'] as int?;
+      final oldAmount =
+          (widget.initialTransaction!['amount'] as num?)?.toDouble() ?? 0.0;
+      final oldWasOnYou =
+          (widget.initialTransaction!['direction'] as String? ?? 'min') == 'min';
+
+      if (oldWalletId == _selectedWalletId) {
+        availableBalance += oldWasOnYou ? oldAmount : -oldAmount;
+      }
+    }
+
+    return availableBalance >= amount;
+  }
+
+  int get _debtCategoryId => _isOnYou ? 4 : 3;
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -406,7 +443,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                               child: Text(
                                 _selectedWalletId == null
                                     ? 'transaction.select_wallet'.tr()
-                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
+                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context),
                                 style: TextStyle(
                                   color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
                                   fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,

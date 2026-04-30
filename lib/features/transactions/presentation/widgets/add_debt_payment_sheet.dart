@@ -6,6 +6,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import 'wallet_picker_sheet.dart';
 
 class AddDebtPaymentSheet extends ConsumerStatefulWidget {
@@ -190,7 +191,7 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                                         Text(
                                           _selectedWalletId == null 
                                             ? 'transaction.select_wallet'.tr() 
-                                            : wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.first).name,
+                                            : wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.first).displayName(context),
                                           style: TextStyle(
                                             fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
                                             color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,

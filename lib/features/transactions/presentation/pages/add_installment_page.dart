@@ -9,6 +9,7 @@ import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
@@ -196,20 +197,32 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           }
         }
 
-        // 3. Update the deposit transaction
+        // 3. Update or backfill the main installment transaction.
         final mainTx = await db.getMainTransactionForInstallment(instId);
+        final curr = ref.read(defaultCurrencyProvider).valueOrNull;
+        final mainTxData = {
+          'wallet_id': _selectedWalletId,
+          'category_id': _installmentCategoryId,
+          'currency_id': curr?.id ?? 1,
+          'type': 'installment',
+          'direction': _isForYou ? 'plus' : 'min',
+          'amount': deposit,
+          'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
+          'image_url': _imageUrl,
+        };
         if (mainTx != null) {
           final txId = mainTx['id'] as int;
-          final curr = ref.read(defaultCurrencyProvider).valueOrNull;
-          await db.updateTransaction(txId, {
-            'wallet_id': _selectedWalletId,
-            'category_id': _installmentCategoryId,
-            'currency_id': curr?.id ?? 1,
-            'type': 'installment',
-            'direction': _isForYou ? 'plus' : 'min',
-            'amount': deposit,
-            'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
-            'image_url': _imageUrl,
+          await db.updateTransaction(txId, mainTxData);
+        } else {
+          await dbRaw.insert('transactions', {
+            ...mainTxData,
+            'date': DateTime.now().toIso8601String(),
+            'is_paid': 1,
+            'is_repeat': 0,
+            'is_opening': 1,
+            'installment_id': instId,
+            'person_id': personId,
+            'person_name': _personCtrl.text.trim(),
           });
         }
 
@@ -261,25 +274,28 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           });
         }
 
-        // The initial 'deposit' is a cash flow
-        if (deposit > 0) {
-          final curr = ref.read(defaultCurrencyProvider).valueOrNull;
-          await dbRaw.insert('transactions', {
-            'wallet_id': _selectedWalletId,
-            'category_id': _installmentCategoryId,
-            'currency_id': curr?.id ?? 1,
-            'type': 'installment',
-            'direction': _isForYou ? 'plus' : 'min',
-            'amount': deposit,
-            'date': DateTime.now().toIso8601String(),
-            'is_paid': 1,
-            'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
-            'installment_id': installmentId,
-            'person_id': personId,
-            'person_name': _personCtrl.text.trim(),
-            'image_url': _imageUrl,
-          });
+        // Always create a main installment transaction so the record appears
+        // in transaction history, even when the initial deposit is zero.
+        final curr = ref.read(defaultCurrencyProvider).valueOrNull;
+        await dbRaw.insert('transactions', {
+          'wallet_id': _selectedWalletId,
+          'category_id': _installmentCategoryId,
+          'currency_id': curr?.id ?? 1,
+          'type': 'installment',
+          'direction': _isForYou ? 'plus' : 'min',
+          'amount': deposit,
+          'date': DateTime.now().toIso8601String(),
+          'is_paid': 1,
+          'is_repeat': 0,
+          'is_opening': 1,
+          'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
+          'installment_id': installmentId,
+          'person_id': personId,
+          'person_name': _personCtrl.text.trim(),
+          'image_url': _imageUrl,
+        });
 
+        if (deposit > 0) {
           if (_isForYou) {
             await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, deposit);
           } else {
@@ -342,7 +358,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     });
   }
 
-  int get _installmentCategoryId => _isForYou ? 102 : 101;
+  int get _installmentCategoryId => _isForYou ? 1001 : 1002;
 
   void _showPlanPreview() {
     if (_totalPriceCtrl.text.isEmpty || _monthsCtrl.text.isEmpty) {
@@ -751,7 +767,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                               child: Text(
                                 _selectedWalletId == null
                                     ? 'transaction.select_wallet'.tr()
-                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).name,
+                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context),
                                 style: TextStyle(
                                   color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
                                   fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,

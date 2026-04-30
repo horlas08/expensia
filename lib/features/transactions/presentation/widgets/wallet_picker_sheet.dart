@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../core/providers/currency_provider.dart';
 
 Future<WalletEntity?> showWalletPickerSheet(BuildContext context, WidgetRef ref, {int? selectedId}) {
@@ -129,12 +130,12 @@ class WalletPickerSheet extends ConsumerWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        wallet.name,
+                                        wallet.displayName(context),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        wallet.type.toUpperCase(),
+                                        _walletTypeLabel(wallet.type),
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
@@ -198,6 +199,21 @@ class WalletPickerSheet extends ConsumerWidget {
         return const Color(0xFFFFA726);
       default:
         return const Color(0xFF9CCC65);
+    }
+  }
+
+  String _walletTypeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'wallet.cash'.tr();
+      case 'bank':
+        return 'wallet.bank'.tr();
+      case 'investment':
+        return 'wallet.investment'.tr();
+      case 'credit_card':
+        return 'wallet.credit_card'.tr();
+      default:
+        return 'wallet.other'.tr();
     }
   }
 }

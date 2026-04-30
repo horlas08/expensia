@@ -38,6 +38,8 @@ class Setup extends _$Setup {
   Future<void> completeSetup({
     String cashWalletName = 'Cash',
     String salaryWalletName = 'Salary Account',
+    String cashNote = 'Initial Balance',
+    String salaryNote = 'Initial Salary',
   }) async {
     if (state.isLoading) return;
 
@@ -72,6 +74,8 @@ class Setup extends _$Setup {
         autoAddSalary: userSetup.autoAddSalary,
         cashWalletName: cashWalletName,
         salaryWalletName: salaryWalletName,
+        cashNote: cashNote,
+        salaryNote: salaryNote,
       );
 
       // Save user name separately

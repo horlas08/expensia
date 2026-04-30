@@ -8,6 +8,7 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../core/providers/categories_provider.dart';
 import '../widgets/calculator_dialog.dart';
@@ -404,7 +405,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                               wallets.isEmpty
                                   ? 'transaction.no_wallet'.tr()
                                   : (wallets.any((w) => w.id == _selectedWalletId)
-                                      ? wallets.firstWhere((w) => w.id == _selectedWalletId).name
+                                      ? wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context)
                                       : 'transaction.select_wallet'.tr()),
                               style: TextStyle(
                                 color: _selectedWalletId != null

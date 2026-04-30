@@ -14,6 +14,7 @@ import '../../../../core/services/database_service.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
+import '../../../wallet/presentation/utils/wallet_localization.dart';
 import '../providers/transaction_filter_provider.dart';
 import '../widgets/transaction_filter_sheet.dart';
 import '../widgets/wallet_picker_sheet.dart';
@@ -230,13 +231,30 @@ class TransactionListItem extends ConsumerWidget {
     }
   }
 
+  static String _getTranslatedNote(String? rawNote) {
+    if (rawNote == null) return '';
+    if (rawNote == 'setup.initial_balance_note' || rawNote == 'Initial Balance' || rawNote == 'الرصيد الأولي') {
+      return 'setup.initial_balance_note'.tr();
+    }
+    if (rawNote == 'setup.initial_salary_note' || rawNote == 'Initial Salary' || rawNote == 'الراتب الأولي') {
+      return 'setup.initial_salary_note'.tr();
+    }
+    return rawNote;
+  }
+
+  static String _localizedWalletName(BuildContext context, String? rawName) {
+    if (rawName == null || rawName.isEmpty) return '';
+    return localizedWalletDisplayName(context, rawName);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final type = tx['type'] as String;
     final amount = (tx['amount'] as num).toDouble();
     final date = DateTime.parse(tx['date'] as String);
-    final notes = tx['notes'] as String? ?? '';
+    final rawNotes = tx['notes'] as String? ?? '';
+    final notes = _getTranslatedNote(rawNotes);
     final categoryName = _categoryNameForDisplay(context, tx);
     
     // Custom styling based on type
@@ -250,7 +268,8 @@ class TransactionListItem extends ConsumerWidget {
     switch (type) {
       case 'transfer':
         displayTitle = 'transfer.title'.tr();
-        displaySubtitle = '${tx['wallet_name']} → ${tx['to_wallet_name']}';
+        displaySubtitle =
+            '${_localizedWalletName(context, tx['wallet_name'] as String?)} → ${_localizedWalletName(context, tx['to_wallet_name'] as String?)}';
         break;
       case 'debt':
         displayTitle = categoryName;
@@ -262,7 +281,9 @@ class TransactionListItem extends ConsumerWidget {
         break;
       default: // 'transaction'
         displayTitle = categoryName;
-        displaySubtitle = notes.isNotEmpty ? notes : (tx['wallet_name'] ?? '');
+        displaySubtitle = notes.isNotEmpty
+            ? notes
+            : _localizedWalletName(context, tx['wallet_name'] as String?);
     }
 
     final direction = tx['direction'] as String? ?? 'min';
@@ -298,7 +319,9 @@ class TransactionListItem extends ConsumerWidget {
               ),
             );
             if (confirm == true) {
-              await DatabaseService().deleteAnyTransaction(tx['id'] as int, tx['type'] as String);
+              final type = tx['type'] as String;
+              final id = (type == 'installment') ? (tx['installment_id'] ?? tx['id']) : tx['id'];
+              await DatabaseService().deleteAnyTransaction(id as int, type);
               ref.invalidate(walletProvider);
               ref.invalidate(filteredTransactionsProvider);
               ref.invalidate(dashboardMetricsProvider);
@@ -443,8 +466,27 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         : type == 'installment'
             ? ((installmentType == 'for_you') ? 'plus' : 'min')
             : (_fullTx['direction'] as String? ?? widget.tx['direction'] as String? ?? 'min');
-    final notes = _fullTx['notes'] as String? ?? '';
+    String getTranslatedNote(String? rawNote) {
+      if (rawNote == null) return '';
+      if (rawNote == 'setup.initial_balance_note' || rawNote == 'Initial Balance' || rawNote == 'الرصيد الأولي') {
+        return 'setup.initial_balance_note'.tr();
+      }
+      if (rawNote == 'setup.initial_salary_note' || rawNote == 'Initial Salary' || rawNote == 'الراتب الأولي') {
+        return 'setup.initial_salary_note'.tr();
+      }
+      return rawNote;
+    }
+    
+    final notes = getTranslatedNote(_fullTx['notes'] as String?);
     final imageUrl = _fullTx['image_url'] as String? ?? _fullTx['image_path'] as String?;
+    final walletName = TransactionListItem._localizedWalletName(
+      context,
+      (_fullTx['wallet_name'] ?? widget.tx['wallet_name']) as String?,
+    );
+    final toWalletName = TransactionListItem._localizedWalletName(
+      context,
+      (_fullTx['to_wallet_name'] ?? widget.tx['to_wallet_name']) as String?,
+    );
     
     return Scaffold(
       appBar: AppBar(
@@ -535,16 +577,20 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   
                   // ── DETAILS SECTION ──
                   _buildDetailSection(context, [
-                    _buildRow(context, 'common.type'.tr(), type.toUpperCase()),
+                    _buildRow(context, 'common.type'.tr(), _localizedTypeValue(type)),
                     if ((widget.tx['category_name'] ?? widget.tx['category_name_en'] ?? widget.tx['category_name_ar']) != null)
                       _buildRow(
                         context,
                         'transaction.category'.tr(),
                         TransactionListItem._categoryNameForDisplay(context, widget.tx),
                       ),
-                    _buildRow(context, 'transaction.wallet'.tr(), widget.tx['wallet_name'] ?? 'common.na'.tr()),
-                    if (widget.tx['to_wallet_name'] != null)
-                      _buildRow(context, 'transfer.to_wallet'.tr(), widget.tx['to_wallet_name']),
+                    _buildRow(
+                      context,
+                      'transaction.wallet'.tr(),
+                      walletName.isNotEmpty ? walletName : 'common.na'.tr(),
+                    ),
+                    if (toWalletName.isNotEmpty)
+                      _buildRow(context, 'transfer.to_wallet'.tr(), toWalletName),
                     if ((_fullTx['person_name'] ?? widget.tx['person_name']) != null)
                       _buildRow(
                         context, 
@@ -699,6 +745,23 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     }
   }
 
+  String _localizedTypeValue(String type) {
+    switch (type) {
+      case 'income':
+        return 'transaction.type_income'.tr();
+      case 'expense':
+        return 'transaction.type_expense'.tr();
+      case 'debt':
+        return 'transaction.type_debt'.tr();
+      case 'installment':
+        return 'transaction.type_installment'.tr();
+      case 'transfer':
+        return 'transfer.title'.tr();
+      default:
+        return type;
+    }
+  }
+
   // ── DEBT ACTIONS (bottom bar) ──
   Widget _buildDebtActions(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -812,9 +875,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       ),
     );
     if (confirm == true) {
+      final type = widget.tx['type'] as String;
+      final id = (type == 'installment') ? (widget.tx['installment_id'] ?? widget.tx['id']) : widget.tx['id'];
       await DatabaseService().deleteAnyTransaction(
-        widget.tx['id'] as int, 
-        widget.tx['type'] as String,
+        id as int, 
+        type,
       );
       ref.invalidate(walletProvider);
       ref.invalidate(filteredTransactionsProvider);

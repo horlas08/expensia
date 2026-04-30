@@ -11,6 +11,9 @@ import '../../../../core/models/user_setup_model.dart' as models;
 import '../providers/setup_state.dart';
 import 'package:expensia/features/profile/presentation/widgets/language_sheet.dart';
 
+import '../../../wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+
 class SetupPage extends ConsumerStatefulWidget {
   const SetupPage({super.key});
 
@@ -385,7 +388,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   SizedBox(height: 8.h),
                   TextField(
                     controller: _cashController,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       hintText: '0.00',
                       filled: true,
@@ -850,7 +853,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     SizedBox(height: 8.h),
                     TextField(
                       controller: _salaryController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         hintText: '0.00',
                         filled: true,
@@ -1028,11 +1031,20 @@ class _SetupPageState extends ConsumerState<SetupPage> {
       await notifier.completeSetup(
         cashWalletName: 'setup.cash_wallet_name'.tr(),
         salaryWalletName: 'setup.salary_account_name'.tr(),
+        cashNote: 'setup.initial_balance_note'.tr(),
+        salaryNote: 'setup.initial_salary_note'.tr(),
       );
 
       // Show success message
       if (mounted) {
         _showSuccessSnackBar('setup.complete_success'.tr());
+
+        // Invalidate state to ensure dashboard fetches fresh data
+        ref.invalidate(walletProvider);
+        ref.invalidate(recentTransactionsProvider);
+        ref.invalidate(dashboardMetricsProvider);
+        // Also invalidate settings so the new currency and profile data are loaded immediately
+        ref.invalidate(defaultCurrencyProvider);
 
         // Navigate to dashboard after short delay
         Future.delayed(const Duration(milliseconds: 500), () {

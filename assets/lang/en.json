@@ -46,7 +46,9 @@
     "error": "An error occurred. Please try again.",
     "success": "Saved successfully!",
     "complete_success": "Setup completed successfully!",
-    "complete_failed": "Setup failed: {}"
+    "complete_failed": "Setup failed: {}",
+    "initial_balance_note": "Initial Balance",
+    "initial_salary_note": "Initial Salary"
   },
   "dashboard": {
     "welcome": "Welcome again",

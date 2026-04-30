@@ -46,7 +46,9 @@
     "error": "حدث خطأ. يرجى المحاولة مرة أخرى.",
     "success": "تم الحفظ بنجاح!",
     "complete_success": "تم إكمال الإعداد بنجاح!",
-    "complete_failed": "فشل الإعداد: {}"
+    "complete_failed": "فشل الإعداد: {}",
+    "initial_balance_note": "الرصيد الأولي",
+    "initial_salary_note": "الراتب الأولي"
   },
   "dashboard": {
     "welcome": "مرحباً بك مجدداً",

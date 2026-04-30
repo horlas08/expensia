@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../widgets/calculator_dialog.dart';
 
@@ -292,7 +293,10 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                     children: [
                       Icon(icon, color: iconColor, size: 20),
                       const SizedBox(width: 12),
-                      Text(wallet.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        localizedWalletDisplayName(context, wallet.name),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 );

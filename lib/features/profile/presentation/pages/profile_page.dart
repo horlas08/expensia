@@ -19,9 +19,9 @@ import 'persons_page.dart';
 import '../widgets/subscription_sheet.dart';
 import '../../../../core/services/database_service.dart';
 import 'package:go_router/go_router.dart';
-
-
-// Persists the chosen theme to SharedPreferences
+import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+// import '../../../../features/transactions/presentation/providers/transactions_provider.dart';// Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
   final prefs = await SharedPreferencesService.getInstance();
   await prefs.setDarkMode(isDark);
@@ -306,6 +306,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 
                 // 4. Reset DB singleton
                 DatabaseService().resetInstance();
+
+                // 4.5. Invalidate global providers so no stale data is shown on restart
+                ref.invalidate(walletProvider);
+                ref.invalidate(recentTransactionsProvider);
+                ref.invalidate(dashboardMetricsProvider);
+                ref.invalidate(allTransactionsProvider);
 
                 if (!mounted) return;
                 

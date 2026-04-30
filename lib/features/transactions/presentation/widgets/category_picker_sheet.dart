@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:animate_do/animate_do.dart';
 import '../../../../core/constants/category_icons.dart';
 
 /// Shows a modernized, high-fidelity category picker sheet.
@@ -53,7 +52,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
             ? (parentCat['name_ar'] as String? ?? nameEn) 
             : nameEn;
       } catch (_) {
-        _activeParentName = 'Sub-category';
+        _activeParentName = 'transaction.sub_category'.tr();
       }
     }
   }

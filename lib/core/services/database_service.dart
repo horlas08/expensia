@@ -36,6 +36,9 @@ class DatabaseService {
     return await openDatabase(
       path,
       version: _dbVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -151,6 +154,15 @@ class DatabaseService {
     if (oldVersion < 13) {
       await _repairInstallmentCategoryData(db);
     }
+    if (oldVersion < 14) {
+      await _repairDebtAndInstallmentCategoryData(db);
+    }
+    if (oldVersion < 15) {
+      await _repairDebtAndInstallmentCategoryData(db);
+    }
+    if (oldVersion < 16) {
+      await _ensureInstallmentHistoryRows(db);
+    }
   }
 
   Future<void> _forceReseedCategories(Database db) async {
@@ -203,21 +215,102 @@ class DatabaseService {
     await db.execute('''
       UPDATE installments
       SET category_id = CASE
-        WHEN type = 'for_you' THEN 1002
-        ELSE 1001
+        WHEN type = 'for_you' THEN 1001
+        ELSE 1002
       END
     ''');
 
     await db.execute('''
       UPDATE transactions
       SET category_id = CASE
-        WHEN direction = 'plus' THEN 1002
-        ELSE 1001
+        WHEN direction = 'plus' THEN 1001
+        ELSE 1002
       END
       WHERE type = 'installment'
     ''');
 
     await _forceReseedCategories(db);
+  }
+
+  Future<void> _repairDebtAndInstallmentCategoryData(Database db) async {
+    await db.execute('''
+      UPDATE debts
+      SET category_id = CASE
+        WHEN COALESCE(income, 0) > 0 THEN 3
+        ELSE 4
+      END
+    ''');
+
+    await db.execute('''
+      UPDATE transactions
+      SET category_id = CASE
+        WHEN direction = 'plus' THEN 3
+        ELSE 4
+      END
+      WHERE type = 'debt'
+    ''');
+
+    await db.execute('''
+      UPDATE installments
+      SET category_id = CASE
+        WHEN type = 'for_you' THEN 1001
+        ELSE 1002
+      END
+    ''');
+
+    await db.execute('''
+      UPDATE transactions
+      SET category_id = CASE
+        WHEN direction = 'plus' THEN 1001
+        ELSE 1002
+      END
+      WHERE type = 'installment'
+    ''');
+  }
+
+  Future<void> _ensureInstallmentHistoryRows(Database db) async {
+    await db.execute('''
+      INSERT INTO transactions (
+        wallet_id,
+        category_id,
+        person_id,
+        currency_id,
+        type,
+        direction,
+        amount,
+        date,
+        is_paid,
+        person_name,
+        notes,
+        image_url,
+        installment_id,
+        is_repeat,
+        is_opening
+      )
+      SELECT
+        i.wallet_id,
+        i.category_id,
+        i.person_id,
+        COALESCE((SELECT default_currency_id FROM settings LIMIT 1), 1),
+        'installment',
+        CASE WHEN i.type = 'for_you' THEN 'plus' ELSE 'min' END,
+        COALESCE(i.deposit, 0),
+        COALESCE(i.created_at, CURRENT_TIMESTAMP),
+        1,
+        p.name,
+        i.notes,
+        i.image_path,
+        i.id,
+        0,
+        1
+      FROM installments i
+      LEFT JOIN persons p ON p.id = i.person_id
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM transactions t
+        WHERE t.installment_id = i.id
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -364,16 +457,16 @@ class DatabaseService {
   Future<void> deleteAllData() async {
     final db = await database;
     await db.transaction((txn) async {
+      await txn.delete('settings');
+      await txn.delete('transfers');
       await txn.delete('recurring_transactions');
-      await txn.delete('wallets');
+      await txn.delete('installment_details');
       await txn.delete('transactions');
-      await txn.delete('persons');
       await txn.delete('debts');
       await txn.delete('installments');
-      await txn.delete('installment_details');
-      await txn.delete('transfers');
+      await txn.delete('persons');
+      await txn.delete('wallets');
       await txn.delete('reminders');
-      await txn.delete('settings');
       await txn.delete('scheduled_notifications');
     });
   }
@@ -388,14 +481,22 @@ class DatabaseService {
     required bool autoAddSalary,
     String cashWalletName = 'Cash',
     String salaryWalletName = 'Salary Account',
+    String cashNote = 'Initial Balance',
+    String salaryNote = 'Initial Salary',
   }) async {
     final db = await database;
 
     await db.transaction((txn) async {
       // 1. Clear existing dynamic data (for a fresh setup)
+      await txn.delete('settings');
+      await txn.delete('transfers');
       await txn.delete('recurring_transactions');
-      await txn.delete('wallets');
+      await txn.delete('installment_details');
       await txn.delete('transactions');
+      await txn.delete('debts');
+      await txn.delete('installments');
+      await txn.delete('persons');
+      await txn.delete('wallets');
       // Categories and Currencies stay as they are seed data
 
       // 2. Set default currency
@@ -433,7 +534,7 @@ class DatabaseService {
           'date': DateTime.now().toIso8601String(),
           'is_paid': 1,
           'is_opening': 1,
-          'notes': 'Initial Balance',
+          'notes': cashNote,
         });
       }
 
@@ -460,7 +561,7 @@ class DatabaseService {
           'is_opening': 1,
           'is_repeat': 0,
           'date': DateTime.now().toIso8601String(),
-          'notes': 'Initial Salary',
+          'notes': salaryNote,
         });
 
         // Recurring salary template for future months
@@ -530,7 +631,7 @@ class DatabaseService {
     final incomeResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'income' AND is_repeat = 0 AND date >= ?
+      WHERE type = 'income' AND is_repeat = 0 AND COALESCE(is_opening, 0) = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -538,7 +639,7 @@ class DatabaseService {
     final expenseResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'expense' AND is_repeat = 0 AND date >= ?
+      WHERE type = 'expense' AND is_repeat = 0 AND COALESCE(is_opening, 0) = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -895,6 +996,21 @@ class DatabaseService {
             return;
           }
 
+          // Delete entire debt: reverse all related transactions first
+          final allTxRows = await db.query('transactions', where: 'debt_id = ?', whereArgs: [debtId]);
+          for (final row in allTxRows) {
+            final wId = row['wallet_id'] as int?;
+            final amt = (row['amount'] as num?)?.toDouble() ?? 0;
+            final dir = row['direction'] as String? ?? 'min';
+            if (wId != null && amt > 0) {
+              if (dir == 'min') {
+                await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amt, wId]);
+              } else {
+                await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amt, wId]);
+              }
+            }
+          }
+          await db.delete('transactions', where: 'debt_id = ?', whereArgs: [debtId]);
           await db.delete('debts', where: 'id = ?', whereArgs: [debtId]);
           return;
         }
@@ -919,6 +1035,22 @@ class DatabaseService {
     }
 
     if (type == 'installment') {
+      // Find all transactions associated with this installment and reverse their wallet impact
+      final allTxRows = await db.query('transactions', where: 'installment_id = ?', whereArgs: [id]);
+      for (final row in allTxRows) {
+        final wId = row['wallet_id'] as int?;
+        final amt = (row['amount'] as num?)?.toDouble() ?? 0;
+        final dir = row['direction'] as String? ?? 'min';
+        if (wId != null && amt > 0) {
+          if (dir == 'min') {
+            await db.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amt, wId]);
+          } else {
+            await db.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amt, wId]);
+          }
+        }
+      }
+      await db.delete('installment_details', where: 'installment_id = ?', whereArgs: [id]);
+      await db.delete('transactions', where: 'installment_id = ?', whereArgs: [id]);
       await db.delete('installments', where: 'id = ?', whereArgs: [id]);
       return;
     }
@@ -1165,7 +1297,7 @@ class DatabaseService {
     if (debt.isEmpty) return;
 
     final personId = debt.first['person_id'] as int;
-    final categoryId = debt.first['category_id'] as int? ?? 6;
+    final categoryId = direction == 'plus' ? 3 : 4;
 
     final settings = await db.query('settings', limit: 1);
     final currencyId =
@@ -1341,7 +1473,7 @@ class DatabaseService {
     );
   ''';
 
-  static const int _dbVersion = 13;
+  static const int _dbVersion = 16;
 
   static const _sqlPersons = '''
     CREATE TABLE IF NOT EXISTS persons (

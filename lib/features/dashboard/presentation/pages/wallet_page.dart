@@ -8,6 +8,7 @@ import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/pages/wallet_action_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
 
 class WalletPage extends ConsumerStatefulWidget {
@@ -262,12 +263,11 @@ class _WalletCard extends StatelessWidget {
                   Icon(_iconFor(wallet.type), color: Colors.white, size: 28),
                   const SizedBox(width: 10),
                   Text(
-                    wallet.type.toUpperCase(),
+                    _localizedWalletType(context, wallet.type),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      letterSpacing: 2,
                     ),
                   ),
                 ],
@@ -294,7 +294,7 @@ class _WalletCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AutoSizeText(
-                wallet.name,
+                wallet.displayName(context),
                 maxLines: 1,
                 minFontSize: 10,
                 overflow: TextOverflow.ellipsis,
@@ -348,6 +348,21 @@ class _WalletCard extends StatelessWidget {
         return Icons.credit_card_rounded;
       default:
         return Icons.wallet;
+    }
+  }
+
+  String _localizedWalletType(BuildContext context, String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'wallet.cash'.tr();
+      case 'bank':
+        return 'wallet.bank'.tr();
+      case 'investment':
+        return 'wallet.investment'.tr();
+      case 'credit_card':
+        return 'wallet.credit_card'.tr();
+      default:
+        return 'wallet.other'.tr();
     }
   }
 }

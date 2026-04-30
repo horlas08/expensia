@@ -6,6 +6,7 @@ import 'package:animate_do/animate_do.dart';
 
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
+import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
 
@@ -164,7 +165,7 @@ class _WalletActionsRoot extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          wallet.name,
+                          wallet.displayName(context),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

@@ -7,4 +7,7 @@ None
 
 Potential untranslated literal strings in Dart files
 --------------------------------------------------------------------------------
-None
+/Users/user/project/mobile/expensia/lib/features/dashboard/presentation/widgets/debts_summary_sheet.dart
+  line 74: "d.status = ?"
+  line 76: ', status == '
+
