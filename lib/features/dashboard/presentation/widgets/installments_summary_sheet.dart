@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -212,22 +213,28 @@ class _InstallmentListView extends StatelessWidget {
                   subtitle: Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: AutoSizeText(
                           '${isForYou ? 'dashboard.for_you'.tr() : 'dashboard.on_you'.tr()} • $remainingMonths mos left',
                           style: TextStyle(color: cs.onSurfaceVariant),
+                          maxLines: 1,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      _StatusBadge(status: item['status'] as String? ?? 'active'),
+
                     ],
                   ),
-                  trailing: Text(
-                    '$symbol$remainingPriceText',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.orange,
-                    ),
+                  trailing: Column(
+                    children: [
+                      Text(
+                        '$symbol$remainingPriceText',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      _StatusBadge(status: item['status'] as String? ?? 'active'),
+
+                    ],
                   ),
                 ),
               ),
@@ -251,7 +258,7 @@ class _StatusBadge extends StatelessWidget {
     final color = isPartial ? Colors.orange : cs.primary;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
