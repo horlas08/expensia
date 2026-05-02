@@ -4,12 +4,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 
+import '../../../../core/config/premium_config.dart';
+import '../../../../core/services/subscription_service.dart';
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/pages/wallet_action_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
+import '../../../../features/profile/presentation/widgets/subscription_sheet.dart';
 
 class WalletPage extends ConsumerStatefulWidget {
   const WalletPage({super.key});
@@ -119,7 +122,9 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                             ],
                           ),
                           Text(
-                            'wallet.wallet_count'.tr(args: ['${wallets.length}']),
+                            'wallet.wallet_count'.tr(
+                              args: ['${wallets.length}'],
+                            ),
                             style: const TextStyle(
                               color: Colors.white60,
                               fontSize: 13,
@@ -452,7 +457,10 @@ class _EmptyWallets extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('wallet.add_wallet'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  'wallet.add_wallet'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(width: 8),
                 const Icon(Icons.add, size: 18),
               ],
@@ -493,6 +501,8 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
     final name = _nameCtrl.text.trim();
     final balanceText = _balanceCtrl.text.trim();
     final balance = double.tryParse(balanceText);
+    final isPro = ref.read(isProProvider);
+    final walletCount = ref.read(walletProvider).length;
 
     setState(() {
       _nameError = name.isEmpty ? 'wallet.name_required'.tr() : null;
@@ -506,6 +516,22 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
     });
 
     if (_nameError != null || _balanceError != null) return;
+    if (PremiumConfig.hasReachedWalletLimit(
+      isPro: isPro,
+      currentCount: walletCount,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'wallet.free_limit_reached'.tr(
+              args: ['${PremiumConfig.maxFreeWallets}'],
+            ),
+          ),
+        ),
+      );
+      SubscriptionSheet.show(context);
+      return;
+    }
 
     // Read currency from global provider — static symbol, not translated
     final currency = ref.read(defaultCurrencyProvider).valueOrNull;
@@ -574,34 +600,49 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          Consumer(builder: (context, ref, child) {
-            final currency = ref.watch(defaultCurrencyProvider).valueOrNull;
-            final symbol = currency?.currencySymbol ?? '\$';
-            return TextField(
-              controller: _balanceCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (val) {
-                if (_balanceError != null) setState(() => _balanceError = null);
-              },
-              decoration: InputDecoration(
-                labelText: 'wallet.initial_balance'.tr(),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(symbol, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
+          Consumer(
+            builder: (context, ref, child) {
+              final currency = ref.watch(defaultCurrencyProvider).valueOrNull;
+              final symbol = currency?.currencySymbol ?? '\$';
+              return TextField(
+                controller: _balanceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                onChanged: (val) {
+                  if (_balanceError != null) {
+                    setState(() => _balanceError = null);
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'wallet.initial_balance'.tr(),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          symbol,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 0,
+                  ),
+                  errorText: _balanceError,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
-                errorText: _balanceError,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () async {
@@ -613,12 +654,17 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).colorScheme.outline),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  Text('wallet.wallet_type'.tr(), style: const TextStyle(fontSize: 16)),
+                  Text(
+                    'wallet.wallet_type'.tr(),
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const Spacer(),
                   Text(
                     _type.toUpperCase(),
@@ -643,7 +689,10 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
               ),
               child: Text(
                 'wallet.create_wallet'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),

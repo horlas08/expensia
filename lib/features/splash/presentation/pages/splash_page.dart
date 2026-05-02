@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:animated_emoji/animated_emoji.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/shared_preferences_service.dart';
 import '../../../../core/services/app_lock_service.dart';
 import '../../../../core/services/subscription_service.dart';
 import '../../../../core/services/notification_service.dart';
+
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
@@ -30,6 +30,9 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       // 1. Initialize core services
       prefs = await SharedPreferencesService.getInstance();
       await ref.read(subscriptionServiceProvider).init();
+      final isPro =
+          await ref.read(subscriptionServiceProvider).checkEntitlements();
+      ref.read(isProProvider.notifier).state = isPro;
       final appLock = ref.read(appLockServiceProvider);
       await NotificationService().init();
 
@@ -46,7 +49,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
       // 4. Check for App Lock
       final isLockEnabled = await appLock.isLockEnabled();
-      final isPro = ref.read(isProProvider);
+      if (!mounted) return;
 
       if (isLockEnabled && isPro) {
         final authenticated = await appLock.authenticate();
@@ -79,7 +82,10 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Theme.of(context).colorScheme.primary, Colors.deepPurple.shade900],
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Colors.deepPurple.shade900,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -95,7 +101,10 @@ class _SplashPageState extends ConsumerState<SplashPage> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.white.withOpacity(0.1),

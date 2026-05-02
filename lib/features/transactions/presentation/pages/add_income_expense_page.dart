@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../core/constants/category_icons.dart';
+import '../../../../core/config/premium_config.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
+import '../../../../core/services/subscription_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
-import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../core/providers/categories_provider.dart';
+import '../../../../features/profile/presentation/widgets/subscription_sheet.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
-import '../widgets/modern_priority_selector.dart';
 import '../widgets/wallet_picker_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -22,7 +23,11 @@ import '../widgets/wallet_picker_sheet.dart';
 // Replaces the old add_income_expense_screen.dart
 // ---------------------------------------------------------------------------
 class AddIncomeExpensePage extends ConsumerStatefulWidget {
-  const AddIncomeExpensePage({super.key, required this.transactionType, this.initialTransaction});
+  const AddIncomeExpensePage({
+    super.key,
+    required this.transactionType,
+    this.initialTransaction,
+  });
 
   /// 'income' or 'expense'
   final String transactionType;
@@ -94,24 +99,53 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       return;
     }
     if (_selectedWalletId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transaction.select_wallet'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('transaction.select_wallet'.tr())));
       return;
     }
 
-    setState(() => _saving = true);
-
     try {
+      final isPro = ref.read(isProProvider);
       final currency = ref.read(defaultCurrencyProvider).valueOrNull;
       final db = DatabaseService();
       final dbRaw = await db.database;
 
-      final wallet = ref.read(walletProvider).firstWhere((w) => w.id == _selectedWalletId);
+      if (widget.initialTransaction == null) {
+        final countResult = await dbRaw.rawQuery(
+          'SELECT COUNT(*) as count FROM transactions',
+        );
+        final currentCount = (countResult.first['count'] as num?)?.toInt() ?? 0;
+        if (PremiumConfig.hasReachedTransactionLimit(
+          isPro: isPro,
+          currentCount: currentCount,
+        )) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'transaction.free_limit_reached'.tr(
+                  args: ['${PremiumConfig.maxFreeTransactions}'],
+                ),
+              ),
+            ),
+          );
+          SubscriptionSheet.show(context);
+          return;
+        }
+      }
+
+      setState(() => _saving = true);
+
+      final wallet = ref
+          .read(walletProvider)
+          .firstWhere((w) => w.id == _selectedWalletId);
 
       final transactionData = {
         'wallet_id': _selectedWalletId,
-        'category_id': _selectedCategoryId ?? (_isIncome ? 5 : 11), // Default to Salary(5) or Housing(11)
+        'category_id':
+            _selectedCategoryId ??
+            (_isIncome ? 5 : 11), // Default to Salary(5) or Housing(11)
         'currency_id': currency?.id ?? wallet.currencyId,
         'type': widget.transactionType,
         'direction': _isIncome ? 'plus' : 'min',
@@ -126,36 +160,65 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
       if (widget.initialTransaction != null) {
         final id = widget.initialTransaction!['id'] as int;
-        final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
+        final oldAmount =
+            (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
-        
+
         // Revert old wallet balance
         if (_isIncome) {
-          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount);
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(oldWalletId, oldAmount);
         } else {
-          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(oldWalletId, oldAmount);
         }
 
         await db.updateTransaction(id, transactionData);
 
         // Apply new wallet balance
         if (_isIncome) {
-          await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(_selectedWalletId!, amount);
         } else {
-          await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(_selectedWalletId!, amount);
         }
       } else {
-        final transactionId = await dbRaw.insert('transactions', transactionData);
+        final transactionId = await dbRaw.insert(
+          'transactions',
+          transactionData,
+        );
 
         // Handle recurring transaction
         if (_isRepeat) {
           DateTime nextDate;
           switch (_repeatType) {
-            case 'daily': nextDate = _selectedDate.add(const Duration(days: 1)); break;
-            case 'weekly': nextDate = _selectedDate.add(const Duration(days: 7)); break;
-            case 'monthly': nextDate = DateTime(_selectedDate.year, _selectedDate.month + 1, _selectedDate.day); break;
-            case 'yearly': nextDate = DateTime(_selectedDate.year + 1, _selectedDate.month, _selectedDate.day); break;
-            default: nextDate = _selectedDate.add(const Duration(days: 30));
+            case 'daily':
+              nextDate = _selectedDate.add(const Duration(days: 1));
+              break;
+            case 'weekly':
+              nextDate = _selectedDate.add(const Duration(days: 7));
+              break;
+            case 'monthly':
+              nextDate = DateTime(
+                _selectedDate.year,
+                _selectedDate.month + 1,
+                _selectedDate.day,
+              );
+              break;
+            case 'yearly':
+              nextDate = DateTime(
+                _selectedDate.year + 1,
+                _selectedDate.month,
+                _selectedDate.day,
+              );
+              break;
+            default:
+              nextDate = _selectedDate.add(const Duration(days: 30));
           }
 
           await dbRaw.insert('recurring_transactions', {
@@ -170,9 +233,13 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
         // Update wallet balance
         if (_isIncome) {
-          await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount);
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(_selectedWalletId!, amount);
         } else {
-          await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount);
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(_selectedWalletId!, amount);
         }
       }
 
@@ -191,12 +258,13 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().contains('insufficient_balance')
-          ? 'transaction.insufficient_balance'.tr()
-          : e.toString();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
-      );
+      final msg =
+          e.toString().contains('insufficient_balance')
+              ? 'transaction.insufficient_balance'.tr()
+              : e.toString();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -247,22 +315,26 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   }
 
   Future<void> _pickCategory() async {
-    final categories = await ref.read(categoriesProvider(widget.transactionType).future) as List<Map<String, dynamic>>;
+    final categories = await ref.read(
+      categoriesProvider(widget.transactionType).future,
+    );
     if (!mounted) return;
 
     final selected = await showCategoryPickerSheet(
       context,
       categories: categories,
       locale: context.locale.languageCode,
-      initialParentId: _selectedCategoryId == null ? null : _getInitialParentId(categories),
+      initialParentId:
+          _selectedCategoryId == null ? null : _getInitialParentId(categories),
     );
 
     if (selected != null) {
       setState(() {
         _selectedCategoryId = selected['id'];
-        _selectedCategoryName = context.locale.languageCode == 'ar'
-            ? (selected['name_ar'] ?? selected['name_en'])
-            : selected['name_en'];
+        _selectedCategoryName =
+            context.locale.languageCode == 'ar'
+                ? (selected['name_ar'] ?? selected['name_en'])
+                : selected['name_en'];
       });
     }
   }
@@ -270,7 +342,9 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   int? _getInitialParentId(List<Map<String, dynamic>> categories) {
     if (_selectedCategoryId == null) return null;
     try {
-      final current = categories.firstWhere((c) => c['id'] == _selectedCategoryId);
+      final current = categories.firstWhere(
+        (c) => c['id'] == _selectedCategoryId,
+      );
       final pId = current['parent_id'] as int?;
       return (pId == 0) ? null : pId;
     } catch (_) {
@@ -347,7 +421,13 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                           child: TextField(
                             controller: _amountCtrl,
                             keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
+                            ],
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 48,
@@ -356,8 +436,9 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                             textAlign: TextAlign.center,
                             decoration: InputDecoration(
                               hintText: '0.00',
-                              hintStyle:
-                                  TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                              ),
                               border: InputBorder.none,
                             ),
                             cursorColor: Colors.white,
@@ -389,7 +470,11 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                     delay: const Duration(milliseconds: 60),
                     child: GestureDetector(
                       onTap: () async {
-                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        final wallet = await showWalletPickerSheet(
+                          context,
+                          ref,
+                          selectedId: _selectedWalletId,
+                        );
                         if (wallet != null) {
                           setState(() => _selectedWalletId = wallet.id);
                         }
@@ -404,14 +489,24 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                             Text(
                               wallets.isEmpty
                                   ? 'transaction.no_wallet'.tr()
-                                  : (wallets.any((w) => w.id == _selectedWalletId)
-                                      ? wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context)
+                                  : (wallets.any(
+                                        (w) => w.id == _selectedWalletId,
+                                      )
+                                      ? wallets
+                                          .firstWhere(
+                                            (w) => w.id == _selectedWalletId,
+                                          )
+                                          .displayName(context)
                                       : 'transaction.select_wallet'.tr()),
                               style: TextStyle(
-                                color: _selectedWalletId != null
-                                    ? cs.onSurface
-                                    : cs.onSurface.withValues(alpha: 0.4),
-                                fontWeight: _selectedWalletId != null ? FontWeight.bold : FontWeight.normal,
+                                color:
+                                    _selectedWalletId != null
+                                        ? cs.onSurface
+                                        : cs.onSurface.withValues(alpha: 0.4),
+                                fontWeight:
+                                    _selectedWalletId != null
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                               ),
                             ),
                             Icon(
@@ -441,9 +536,10 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                               _selectedCategoryName ??
                                   'transaction.select_category'.tr(),
                               style: TextStyle(
-                                color: _selectedCategoryName != null
-                                    ? cs.onSurface
-                                    : cs.onSurface.withValues(alpha: 0.4),
+                                color:
+                                    _selectedCategoryName != null
+                                        ? cs.onSurface
+                                        : cs.onSurface.withValues(alpha: 0.4),
                               ),
                             ),
                             Icon(
@@ -495,7 +591,9 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFBE0B).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFFFBE0B,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -529,46 +627,74 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: _imageUrl == null ? cs.surfaceContainerLow : cs.primary.withValues(alpha: 0.1),
+                          color:
+                              _imageUrl == null
+                                  ? cs.surfaceContainerLow
+                                  : cs.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
-                          border: _imageUrl == null ? Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.5),
-                            style: BorderStyle.none,
-                          ) : Border.all(color: cs.primary),
+                          border:
+                              _imageUrl == null
+                                  ? Border.all(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    style: BorderStyle.none,
+                                  )
+                                  : Border.all(color: cs.primary),
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: (_imageUrl == null ? cs.onSurface : cs.primary).withValues(alpha: 0.1),
+                                color: (_imageUrl == null
+                                        ? cs.onSurface
+                                        : cs.primary)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.image_rounded,
-                                color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
+                                color:
+                                    _imageUrl == null
+                                        ? cs.onSurface.withValues(alpha: 0.5)
+                                        : cs.primary,
                                 size: 20,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null 
-                                    ? 'transaction.attach_image'.tr() 
+                                _imageUrl == null
+                                    ? 'transaction.attach_image'.tr()
                                     : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
-                                  color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
-                                  fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,
+                                  color:
+                                      _imageUrl == null
+                                          ? cs.onSurface.withValues(alpha: 0.5)
+                                          : cs.primary,
+                                  fontWeight:
+                                      _imageUrl == null
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                 ),
                               ),
                             ),
                             if (_imageUrl != null)
                               GestureDetector(
                                 onTap: () => setState(() => _imageUrl = null),
-                                child: Icon(Icons.close_rounded, color: cs.primary, size: 20),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: cs.primary,
+                                  size: 20,
+                                ),
                               )
                             else
-                              Icon(Icons.add_a_photo_rounded, color: cs.onSurface.withValues(alpha: 0.3), size: 20),
+                              Icon(
+                                Icons.add_a_photo_rounded,
+                                color: cs.onSurface.withValues(alpha: 0.3),
+                                size: 20,
+                              ),
                           ],
                         ),
                       ),
@@ -614,15 +740,20 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                           backgroundColor: _typeColor,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        icon: _saving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : Icon(_typeIcon, color: Colors.white),
+                        icon:
+                            _saving
+                                ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : Icon(_typeIcon, color: Colors.white),
                         label: Text(
                           'common.save'.tr(),
                           style: const TextStyle(
@@ -732,11 +863,16 @@ class _ModernRepeatSection extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isRepeat ? cs.primary.withOpacity(0.08) : cs.surfaceContainerLow,
+              color:
+                  isRepeat
+                      ? cs.primary.withOpacity(0.08)
+                      : cs.surfaceContainerLow,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: (isRepeat ? cs.primary : Colors.black).withOpacity(0.05),
+                  color: (isRepeat ? cs.primary : Colors.black).withOpacity(
+                    0.05,
+                  ),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -747,12 +883,15 @@ class _ModernRepeatSection extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (isRepeat ? cs.primary : cs.onSurface).withOpacity(0.1),
+                    color: (isRepeat ? cs.primary : cs.onSurface).withOpacity(
+                      0.1,
+                    ),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.replay_rounded,
-                    color: isRepeat ? cs.primary : cs.onSurface.withOpacity(0.5),
+                    color:
+                        isRepeat ? cs.primary : cs.onSurface.withOpacity(0.5),
                     size: 22,
                   ),
                 ),
@@ -763,10 +902,15 @@ class _ModernRepeatSection extends StatelessWidget {
                     children: [
                       Text(
                         'transaction.repeat_title'.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       Text(
-                        isRepeat ? 'transaction.repeat_enabled'.tr() : 'transaction.repeat_disabled'.tr(),
+                        isRepeat
+                            ? 'transaction.repeat_enabled'.tr()
+                            : 'transaction.repeat_disabled'.tr(),
                         style: TextStyle(
                           fontSize: 12,
                           color: cs.onSurface.withOpacity(0.5),
@@ -787,99 +931,104 @@ class _ModernRepeatSection extends StatelessWidget {
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          child: !isRepeat
-              ? const SizedBox.shrink()
-              : Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerLow.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'transaction.frequency'.tr(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: cs.onSurface.withOpacity(0.5),
-                          letterSpacing: 0.5,
+          child:
+              !isRepeat
+                  ? const SizedBox.shrink()
+                  : Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerLow.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'transaction.frequency'.tr(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface.withOpacity(0.5),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _FrequencyChip(
+                                label: 'transaction.daily'.tr(),
+                                isSelected: repeatType == 'daily',
+                                onTap: () => onTypeChanged('daily'),
+                              ),
+                              const SizedBox(width: 8),
+                              _FrequencyChip(
+                                label: 'transaction.weekly'.tr(),
+                                isSelected: repeatType == 'weekly',
+                                onTap: () => onTypeChanged('weekly'),
+                              ),
+                              const SizedBox(width: 8),
+                              _FrequencyChip(
+                                label: 'transaction.monthly'.tr(),
+                                isSelected: repeatType == 'monthly',
+                                onTap: () => onTypeChanged('monthly'),
+                              ),
+                              const SizedBox(width: 8),
+                              _FrequencyChip(
+                                label: 'transaction.yearly'.tr(),
+                                isSelected: repeatType == 'yearly',
+                                onTap: () => onTypeChanged('yearly'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Divider(color: cs.outlineVariant.withOpacity(0.3)),
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
-                            _FrequencyChip(
-                              label: 'transaction.daily'.tr(),
-                              isSelected: repeatType == 'daily',
-                              onTap: () => onTypeChanged('daily'),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'transaction.auto_add'.tr(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'transaction.auto_add_hint'.tr(),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurface.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            _FrequencyChip(
-                              label: 'transaction.weekly'.tr(),
-                              isSelected: repeatType == 'weekly',
-                              onTap: () => onTypeChanged('weekly'),
-                            ),
-                            const SizedBox(width: 8),
-                            _FrequencyChip(
-                              label: 'transaction.monthly'.tr(),
-                              isSelected: repeatType == 'monthly',
-                              onTap: () => onTypeChanged('monthly'),
-                            ),
-                            const SizedBox(width: 8),
-                            _FrequencyChip(
-                              label: 'transaction.yearly'.tr(),
-                              isSelected: repeatType == 'yearly',
-                              onTap: () => onTypeChanged('yearly'),
+                            Checkbox(
+                              value: autoAdd,
+                              onChanged: (v) => onAutoAddChanged(v ?? false),
+                              activeColor: cs.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Divider(color: cs.outlineVariant.withOpacity(0.3)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'transaction.auto_add'.tr(),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  'transaction.auto_add_hint'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: cs.onSurface.withOpacity(0.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Checkbox(
-                            value: autoAdd,
-                            onChanged: (v) => onAutoAddChanged(v ?? false),
-                            activeColor: cs.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
         ),
       ],
     );
@@ -906,23 +1055,27 @@ class _FrequencyChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? cs.primary : cs.surfaceContainerHighest.withOpacity(0.35),
+          color:
+              isSelected
+                  ? cs.primary
+                  : cs.surfaceContainerHighest.withOpacity(0.35),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cs.primary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: cs.primary.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
         ),
         child: Text(
           label,

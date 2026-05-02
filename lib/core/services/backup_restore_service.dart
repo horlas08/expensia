@@ -12,8 +12,6 @@ import 'shared_preferences_service.dart';
 import 'database_service.dart';
 import '../models/user_setup_model.dart';
 
-
-
 class BackupRestoreService {
   static const String _dbName = 'expensia.db';
   static const String _backupFileName = 'expensia_backup.db';
@@ -31,15 +29,17 @@ class BackupRestoreService {
   static Future<drive.DriveApi?> _getDriveApi() async {
     try {
       await _ensureInitialized();
-      
+
       // 1. Authenticate (Sign In)
       final account = await _googleSignIn.authenticate();
       // Note: In gsi 7.x, authenticate() returns non-nullable or throws
 
       // 2. Authorize Scopes
       final scopes = [drive.DriveApi.driveAppdataScope];
-      final authorization = await account.authorizationClient.authorizeScopes(scopes);
-      
+      final authorization = await account.authorizationClient.authorizeScopes(
+        scopes,
+      );
+
       // 3. Get Authenticated Client
       final client = authorization.authClient(scopes: scopes);
       return drive.DriveApi(client);
@@ -94,13 +94,13 @@ class BackupRestoreService {
         await DatabaseService().closeConnection();
 
         await pickedFile.copy(dbFile.path);
-        
+
         // Reset singleton to pick up new file
         DatabaseService().resetInstance();
 
         // Sync settings from restored DB to SharedPreferences
         await _syncSettingsWithPrefs();
-        
+
         return true;
       }
     } catch (e) {
@@ -112,7 +112,12 @@ class BackupRestoreService {
   static Future<bool> restoreFromGoogleDrive(BuildContext context) async {
     try {
       final drive.DriveApi? driveApi = await _getDriveApi();
-      if (driveApi == null) return false;
+      if (driveApi == null) {
+        if (context.mounted) {
+          _showError(context, 'get_started.drive_signin_failed'.tr());
+        }
+        return false;
+      }
 
       // Find the backup file in AppData folder
       final drive.FileList fileList = await driveApi.files.list(
@@ -121,25 +126,29 @@ class BackupRestoreService {
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) {
-        if (context.mounted) _showError(context, 'get_started.drive_no_backup'.tr());
+        if (context.mounted) {
+          _showError(context, 'get_started.drive_no_backup'.tr());
+        }
         return false;
       }
 
       final drive.File file = fileList.files!.first;
-      final drive.Media media = await driveApi.files.get(
-        file.id!,
-        downloadOptions: drive.DownloadOptions.fullMedia,
-      ) as drive.Media;
+      final drive.Media media =
+          await driveApi.files.get(
+                file.id!,
+                downloadOptions: drive.DownloadOptions.fullMedia,
+              )
+              as drive.Media;
 
       final List<int> dataBuffer = [];
       await media.stream.forEach((chunk) => dataBuffer.addAll(chunk));
 
       final appDir = await getDatabasesPath();
       final dbFile = File(p.join(appDir, _dbName));
-      
+
       // Close existing connection before overwriting
       await DatabaseService().closeConnection();
-      
+
       await dbFile.writeAsBytes(dataBuffer);
 
       // Reset singleton to pick up new file
@@ -158,19 +167,45 @@ class BackupRestoreService {
   static Future<bool> backupToGoogleDrive(BuildContext context) async {
     try {
       final driveApi = await _getDriveApi();
-      if (driveApi == null) return false;
+      if (driveApi == null) {
+        if (context.mounted) {
+          _showError(context, 'get_started.drive_signin_failed'.tr());
+        }
+        return false;
+      }
 
       final dbPath = await getDatabasesPath();
       final file = File(p.join(dbPath, _dbName));
+      if (!await file.exists()) {
+        if (context.mounted) _showError(context, 'setup.error'.tr());
+        return false;
+      }
 
       final driveFile = drive.File();
       driveFile.name = _backupFileName;
       driveFile.parents = ['appDataFolder'];
 
-      final response = await driveApi.files.create(
-        driveFile,
-        uploadMedia: drive.Media(file.openRead(), file.lengthSync()),
+      final existingFiles = await driveApi.files.list(
+        spaces: 'appDataFolder',
+        q: "name = '$_backupFileName'",
       );
+
+      final existingId =
+          existingFiles.files != null && existingFiles.files!.isNotEmpty
+              ? existingFiles.files!.first.id
+              : null;
+
+      final response =
+          existingId == null
+              ? await driveApi.files.create(
+                driveFile,
+                uploadMedia: drive.Media(file.openRead(), file.lengthSync()),
+              )
+              : await driveApi.files.update(
+                driveFile,
+                existingId,
+                uploadMedia: drive.Media(file.openRead(), file.lengthSync()),
+              );
 
       if (response.id != null && context.mounted) {
         _showSuccess(context, 'setup.success'.tr());
@@ -200,14 +235,16 @@ class BackupRestoreService {
       // Ensure we are working with the fresh database from file
       final db = await dbService.database;
       final settingsList = await db.query('settings', limit: 1);
-      
+
       if (settingsList.isNotEmpty) {
         final settings = settingsList.first;
         final prefs = await SharedPreferencesService.getInstance();
-        
+
         final int? currencyId = settings['default_currency_id'] as int?;
         final String? userName = settings['user_name'] as String?;
-        debugPrint('Restored settings currencyId: $currencyId, userName: $userName');
+        debugPrint(
+          'Restored settings currencyId: $currencyId, userName: $userName',
+        );
 
         // 1. Mark onboarding completed
         await prefs.setFirstPageCompleted();
@@ -220,29 +257,32 @@ class BackupRestoreService {
         // 3. Sync Default Currency
         if (currencyId != null) {
           final currencies = await db.query(
-            'all_currencies', 
-            where: 'id = ?', 
+            'all_currencies',
+            where: 'id = ?',
             whereArgs: [currencyId],
-            limit: 1
+            limit: 1,
           );
-          
+
           if (currencies.isNotEmpty) {
             final currencyModel = CurrencyModel.fromMap(currencies.first);
             await prefs.setDefaultCurrency(currencyModel);
-            debugPrint('Synced currency: ${currencyModel.currencyCode} (${currencyModel.currencySymbol})');
+            debugPrint(
+              'Synced currency: ${currencyModel.currencyCode} (${currencyModel.currencySymbol})',
+            );
           }
         }
 
         // 4. Fetch actual cash balance from wallets table
         final wallets = await db.query(
-          'wallets', 
-          where: 'type = ?', 
+          'wallets',
+          where: 'type = ?',
           whereArgs: ['cash'],
-          limit: 1
+          limit: 1,
         );
-        final double cashBalance = wallets.isNotEmpty 
-            ? (wallets.first['balance'] as num?)?.toDouble() ?? 0.0 
-            : 0.0;
+        final double cashBalance =
+            wallets.isNotEmpty
+                ? (wallets.first['balance'] as num?)?.toDouble() ?? 0.0
+                : 0.0;
 
         // 5. Sync User Setup Model
         final userSetup = UserSetupModel(
@@ -253,11 +293,14 @@ class BackupRestoreService {
           dayOfSalary: settings['salary_day'] as int? ?? 1,
           autoAddSalary: (settings['auto_add_salary'] as int? ?? 0) == 1,
           startThisMonth: false,
-          isOptions: ((settings['salary_amount'] as num?)?.toDouble() ?? 0.0) > 0,
+          isOptions:
+              ((settings['salary_amount'] as num?)?.toDouble() ?? 0.0) > 0,
         );
         await prefs.setUserSetup(userSetup.toMap());
 
-        debugPrint('Settings synced from restored database successfully for $userName.');
+        debugPrint(
+          'Settings synced from restored database successfully for $userName.',
+        );
       } else {
         debugPrint('No settings found in restored database.');
       }

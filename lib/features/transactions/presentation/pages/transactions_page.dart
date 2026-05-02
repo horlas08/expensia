@@ -464,7 +464,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     final direction = type == 'debt'
         ? (debtIncome > 0 ? 'plus' : 'min')
         : type == 'installment'
-            ? ((installmentType == 'for_you') ? 'plus' : 'min')
+            ? ((installmentType == 'for_you') ? 'min' : 'plus')
             : (_fullTx['direction'] as String? ?? widget.tx['direction'] as String? ?? 'min');
     String getTranslatedNote(String? rawNote) {
       if (rawNote == null) return '';
@@ -625,8 +625,8 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                       context, 
                         'history.detail_type'.tr(), 
                         direction == 'plus' 
-                          ? (type == 'debt' ? 'dashboard.for_you'.tr() : 'categories.income'.tr())
-                          : (type == 'debt' ? 'dashboard.on_you'.tr() : 'categories.expense'.tr()),
+                          ? (type == 'debt' ? 'dashboard.on_you'.tr() : 'categories.income'.tr())
+                          : (type == 'debt' ? 'dashboard.for_you'.tr() : 'categories.expense'.tr()),
                       valueColor: direction == 'plus' ? Colors.green : Colors.red,
                     ),
                   ]),
@@ -777,7 +777,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             child: OutlinedButton.icon(
               onPressed: () => _openDebtPaymentSheet(context, 'min'),
               icon: const Icon(Icons.arrow_upward_rounded, size: 18),
-              label: Text('transaction.borrowed'.tr()),
+              label: Text('transaction.lent'.tr()),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
@@ -791,7 +791,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             child: OutlinedButton.icon(
               onPressed: () => _openDebtPaymentSheet(context, 'plus'),
               icon: const Icon(Icons.arrow_downward_rounded, size: 18),
-              label: Text('transaction.lent'.tr()),
+              label: Text('transaction.borrowed'.tr()),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.green,
                 side: const BorderSide(color: Colors.green),
@@ -817,9 +817,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           debtId: debtId,
           direction: direction,
           onSaved: () {
+            ref.invalidate(walletProvider);
             ref.invalidate(filteredTransactionsProvider);
             ref.invalidate(dashboardMetricsProvider);
             ref.invalidate(recentTransactionsProvider);
+            ref.invalidate(allTransactionsProvider);
             _loadData();
           },
         ),
@@ -835,7 +837,18 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       // Need to pick a wallet to pay from
       final wallet = await showWalletPickerSheet(context, ref, selectedId: null);
       if (wallet == null) return;
-      await DatabaseService().toggleInstallmentDetailPaid(detail['id'] as int, wallet.id);
+      try {
+        await DatabaseService().toggleInstallmentDetailPaid(detail['id'] as int, wallet.id);
+      } catch (e) {
+        if (!mounted) return;
+        final message = e.toString().contains('insufficient_balance')
+            ? 'transaction.insufficient_balance'.tr()
+            : e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+        return;
+      }
     } else {
       // Confirm unpay
       final confirm = await showDialog<bool>(
@@ -853,8 +866,11 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       await DatabaseService().toggleInstallmentDetailPaid(detail['id'] as int, 0);
     }
     
+    await ref.read(walletProvider.notifier).loadWallets();
     ref.invalidate(filteredTransactionsProvider);
     ref.invalidate(dashboardMetricsProvider);
+    ref.invalidate(recentTransactionsProvider);
+    ref.invalidate(allTransactionsProvider);
     _loadData();
   }
 
@@ -953,7 +969,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isIncome ? 'transaction.lent'.tr() : 'transaction.borrowed'.tr(),
+                  isIncome ? 'transaction.borrowed'.tr() : 'transaction.lent'.tr(),
                   style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurface),
                 ),
                 if (paymentDate != null)

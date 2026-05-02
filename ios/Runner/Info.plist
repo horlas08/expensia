@@ -47,6 +47,8 @@
 		<true/>
 		<key>NSContactsUsageDescription</key>
 		<string>Expensia needs access to your contacts to help you manage debts and installments easily.</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Expensia uses Face ID to protect your app with biometric lock.</string>
 		<key>UIStatusBarHidden</key>
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>

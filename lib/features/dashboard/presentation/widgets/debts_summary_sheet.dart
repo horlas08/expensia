@@ -193,8 +193,8 @@ class _DebtListView extends StatelessWidget {
           itemCount: data.length,
           itemBuilder: (context, i) {
             final item = data[i];
-            final isForYou =
-                (item['opening_direction'] as String? ?? 'min') == 'plus';
+            final isOnYou =
+                (item['opening_direction'] as String? ?? 'plus') == 'plus';
             final amount = (item['current_amount'] as num?)?.toDouble() ?? 0.0;
             final amountText = amount.toStringAsFixed(2);
             final personName = item['person_name'] ?? 'common.unknown'.tr();
@@ -238,14 +238,14 @@ class _DebtListView extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: (isForYou ? Colors.green : Colors.red).withOpacity(
+                      color: (isOnYou ? Colors.green : Colors.red).withOpacity(
                         0.15,
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       Icons.person_rounded,
-                      color: isForYou ? Colors.green : Colors.red,
+                      color: isOnYou ? Colors.green : Colors.red,
                     ),
                   ),
                   title: Text(
@@ -256,9 +256,9 @@ class _DebtListView extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    isForYou
-                        ? 'dashboard.for_you'.tr()
-                        : 'dashboard.on_you'.tr(),
+                    isOnYou
+                        ? 'dashboard.on_you'.tr()
+                        : 'dashboard.for_you'.tr(),
                     style: TextStyle(color: cs.onSurfaceVariant),
                   ),
                   trailing: Column(
@@ -270,7 +270,7 @@ class _DebtListView extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: isForYou ? Colors.green : Colors.red,
+                          color: isOnYou ? Colors.green : Colors.red,
                         ),
                       ),
                       const SizedBox(height: 4),

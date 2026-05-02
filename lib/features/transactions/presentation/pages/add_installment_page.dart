@@ -47,7 +47,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     super.initState();
     if (widget.initialTransaction != null) {
       final tx = widget.initialTransaction!;
-      
+
       final deposit = (tx['deposit'] as num?)?.toDouble() ?? 0.0;
       final remaining = (tx['remaining_price'] as num?)?.toDouble() ?? 0.0;
       final total = deposit + remaining;
@@ -63,7 +63,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       _personCtrl.text = tx['person_name']?.toString() ?? '';
       _selectedWalletId = tx['wallet_id'] as int?;
       _imageUrl = tx['image_url'] as String?;
-      _isForYou = (tx['direction'] as String? ?? 'min') == 'plus';
+      _isForYou = (tx['direction'] as String? ?? 'plus') == 'min';
     }
   }
 
@@ -81,6 +81,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   Color get _themeColor => const Color(0xFFAA00FF); // Purple for Installment
 
   Future<void> _submit() async {
+    if (_saving) return;
     final tPrice = double.tryParse(_totalPriceCtrl.text.trim());
     final deposit = double.tryParse(_depositCtrl.text.trim()) ?? 0.0;
     final lastPaid = double.tryParse(_lastPaidCtrl.text.trim()) ?? 0.0;
@@ -111,9 +112,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       return;
     }
     if (_selectedWalletId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transaction.select_wallet'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('transaction.select_wallet'.tr())));
       return;
     }
     if (_personCtrl.text.trim().isEmpty) {
@@ -122,46 +123,71 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       );
       return;
     }
-
     final remaining = tPrice - deposit;
+
+    if (_isForYou &&
+        remaining > 0 &&
+        !_hasSufficientBalanceForOutstanding(remaining)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.insufficient_balance'.tr())),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
 
     try {
       final db = DatabaseService();
       final dbRaw = await db.database;
+      int? savedInstallmentId;
 
       // Ensure entity exists or create them
       int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
 
       if (widget.initialTransaction != null) {
         final instId = widget.initialTransaction!['id'] as int;
-        final oldDeposit = (widget.initialTransaction!['deposit'] as num?)?.toDouble() ?? 
-                           (widget.initialTransaction!['amount'] as num).toDouble();
+        savedInstallmentId = instId;
+        final oldOutstanding =
+            (widget.initialTransaction!['remaining_price'] as num?)
+                ?.toDouble() ??
+            0.0;
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
+        final oldIsForYou = _initialInstallmentIsForYou();
 
         // 1. Revert old balance
-        if (_isForYou) {
-          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldDeposit);
-        } else {
-          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldDeposit);
+        if (oldOutstanding > 0) {
+          if (oldIsForYou) {
+            await ref
+                .read(walletProvider.notifier)
+                .addBalance(oldWalletId, oldOutstanding);
+          } else {
+            await ref
+                .read(walletProvider.notifier)
+                .withdrawBalance(oldWalletId, oldOutstanding);
+          }
         }
 
         // 2. Update installment record
-        await dbRaw.update('installments', {
-          'person_id': personId,
-          'wallet_id': _selectedWalletId,
-          'category_id': _installmentCategoryId,
-          'deposit': deposit,
-          'last_payment': lastPaid,
-          'remaining_price': remaining,
-          'total_months': months,
-          'type': _isForYou ? 'for_you' : 'on_you',
-          'image_path': _imageUrl,
-          'notes': _noteCtrl.text.trim(),
-        }, where: 'id = ?', whereArgs: [instId]);
+        await dbRaw.update(
+          'installments',
+          {
+            'person_id': personId,
+            'wallet_id': _selectedWalletId,
+            'category_id': _installmentCategoryId,
+            'deposit': deposit,
+            'last_payment': lastPaid,
+            'remaining_price': remaining,
+            'total_months': months,
+            'type': _isForYou ? 'for_you' : 'on_you',
+            'image_path': _imageUrl,
+            'notes': _noteCtrl.text.trim(),
+          },
+          where: 'id = ?',
+          whereArgs: [instId],
+        );
 
-        final paidDetailsCount = Sqflite.firstIntValue(
+        final paidDetailsCount =
+            Sqflite.firstIntValue(
               await dbRaw.rawQuery(
                 'SELECT COUNT(*) FROM installment_details WHERE installment_id = ? AND is_paid = 1',
                 [instId],
@@ -205,7 +231,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           'category_id': _installmentCategoryId,
           'currency_id': curr?.id ?? 1,
           'type': 'installment',
-          'direction': _isForYou ? 'plus' : 'min',
+          'direction': _isForYou ? 'min' : 'plus',
           'amount': deposit,
           'notes': 'transaction.deposit_for'.tr(args: [_noteCtrl.text.trim()]),
           'image_url': _imageUrl,
@@ -228,9 +254,17 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
         // 4. Apply new balance
         if (_isForYou) {
-          await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, deposit);
+          if (remaining > 0) {
+            await ref
+                .read(walletProvider.notifier)
+                .withdrawBalance(_selectedWalletId!, remaining);
+          }
         } else {
-          await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, deposit);
+          if (remaining > 0) {
+            await ref
+                .read(walletProvider.notifier)
+                .addBalance(_selectedWalletId!, remaining);
+          }
         }
       } else {
         // --- NEW INSTALLMENT ---
@@ -282,7 +316,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           'category_id': _installmentCategoryId,
           'currency_id': curr?.id ?? 1,
           'type': 'installment',
-          'direction': _isForYou ? 'plus' : 'min',
+          'direction': _isForYou ? 'min' : 'plus',
           'amount': deposit,
           'date': DateTime.now().toIso8601String(),
           'is_paid': 1,
@@ -295,15 +329,25 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           'image_url': _imageUrl,
         });
 
-        if (deposit > 0) {
+        if (remaining > 0) {
           if (_isForYou) {
-            await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, deposit);
+            await ref
+                .read(walletProvider.notifier)
+                .withdrawBalance(_selectedWalletId!, remaining);
           } else {
-            await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, deposit);
+            await ref
+                .read(walletProvider.notifier)
+                .addBalance(_selectedWalletId!, remaining);
           }
         }
+
+        savedInstallmentId = installmentId;
       }
 
+      await db.syncInstallmentTransactions(savedInstallmentId);
+
+      if (!mounted) return;
+      await ref.read(walletProvider.notifier).loadWallets();
       if (!mounted) return;
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
@@ -328,9 +372,47 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   }
 
   Future<int> _getOrCreatePerson(dbRaw, String name) async {
-    final list = await dbRaw.query('persons', where: 'name = ?', whereArgs: [name]);
+    final list = await dbRaw.query(
+      'persons',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
     if (list.isNotEmpty) return list.first['id'] as int;
     return await dbRaw.insert('persons', {'name': name});
+  }
+
+  bool _initialInstallmentIsForYou() {
+    final tx = widget.initialTransaction;
+    if (tx == null) return false;
+    final installmentType =
+        tx['installment_type'] as String? ?? tx['type'] as String?;
+    if (installmentType == 'for_you') return true;
+    if (installmentType == 'on_you') return false;
+    return (tx['direction'] as String? ?? 'plus') == 'min';
+  }
+
+  bool _hasSufficientBalanceForOutstanding(double outstanding) {
+    if (_selectedWalletId == null) return false;
+
+    final wallets = ref.read(walletProvider);
+    final matches = wallets.where((w) => w.id == _selectedWalletId);
+    if (matches.isEmpty) return false;
+
+    var availableBalance = matches.first.balance;
+
+    if (widget.initialTransaction != null) {
+      final oldWalletId = widget.initialTransaction!['wallet_id'] as int?;
+      final oldOutstanding =
+          (widget.initialTransaction!['remaining_price'] as num?)?.toDouble() ??
+          0.0;
+
+      if (oldWalletId == _selectedWalletId) {
+        availableBalance +=
+            _initialInstallmentIsForYou() ? oldOutstanding : -oldOutstanding;
+      }
+    }
+
+    return availableBalance >= outstanding;
   }
 
   List<Map<String, dynamic>> _calculatePlan() {
@@ -375,82 +457,110 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'transaction.installment_plan'.tr(),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'transaction.installment_plan_preview'.tr(),
-              style: TextStyle(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: ListView.separated(
-                itemCount: plan.length,
-                separatorBuilder: (context, index) => Divider(color: cs.outlineVariant.withValues(alpha: 0.1)),
-                itemBuilder: (context, index) {
-                  final item = plan[index];
-                  final date = DateTime.parse(item['due_date']);
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: cs.primary.withValues(alpha: 0.1),
-                      child: Text(
-                        '#${item['month']}',
-                        style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'transaction.installment_plan'.tr(),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'transaction.installment_plan_preview'.tr(),
+                  style: TextStyle(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: plan.length,
+                    separatorBuilder:
+                        (context, index) => Divider(
+                          color: cs.outlineVariant.withValues(alpha: 0.1),
+                        ),
+                    itemBuilder: (context, index) {
+                      final item = plan[index];
+                      final date = DateTime.parse(item['due_date']);
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: cs.primary.withValues(alpha: 0.1),
+                          child: Text(
+                            '#${item['month']}',
+                            style: TextStyle(
+                              color: cs.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          'transaction.payment_number'.tr(
+                            args: ['${item['month']}'],
+                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          DateFormat('MMMM dd, yyyy').format(date),
+                        ),
+                        trailing: Text(
+                          NumberFormat.currency(
+                            symbol: '\$',
+                          ).format(item['amount']),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: cs.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    title: Text(
-                      'transaction.payment_number'.tr(args: ['${item['month']}']),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      'common.close_preview'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    subtitle: Text(DateFormat('MMMM dd, yyyy').format(date)),
-                    trailing: Text(
-                      NumberFormat.currency(symbol: '\$').format(item['amount']),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                 ),
-                child: Text('common.close_preview'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -508,7 +618,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         title: Text(
-          widget.initialTransaction != null ? 'transaction.edit_installment'.tr() : 'dashboard.installment'.tr(),
+          widget.initialTransaction != null
+              ? 'transaction.edit_installment'.tr()
+              : 'dashboard.installment'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
@@ -568,7 +680,14 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                         child: IntrinsicWidth(
                           child: TextField(
                             controller: _totalPriceCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
+                            ],
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 48,
@@ -577,7 +696,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             textAlign: TextAlign.center,
                             decoration: InputDecoration(
                               hintText: '0.00',
-                              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                              ),
                               border: InputBorder.none,
                             ),
                             cursorColor: Colors.white,
@@ -586,7 +707,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       ),
                       IconButton(
                         onPressed: () => _openCalculator(_totalPriceCtrl),
-                        icon: const Icon(Icons.calculate_rounded, color: Colors.white70),
+                        icon: const Icon(
+                          Icons.calculate_rounded,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -614,7 +738,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFFF9800,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -636,7 +762,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                           IconButton(
                             onPressed: _pickContact,
-                            icon: Icon(Icons.person_add_rounded, color: cs.primary),
+                            icon: Icon(
+                              Icons.person_add_rounded,
+                              color: cs.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -647,7 +776,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 40),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -657,9 +789,18 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Expanded(
                             child: TextField(
                               controller: _depositCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.]'),
+                                ),
+                              ],
                               decoration: InputDecoration(
-                                labelText: 'transaction.deposit_initial_paid'.tr(),
+                                labelText:
+                                    'transaction.deposit_initial_paid'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
                               ),
@@ -667,7 +808,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                           IconButton(
                             onPressed: () => _openCalculator(_depositCtrl),
-                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 20),
+                            icon: Icon(
+                              Icons.calculate_rounded,
+                              color: cs.primary.withValues(alpha: 0.5),
+                              size: 20,
+                            ),
                           ),
                         ],
                       ),
@@ -677,7 +822,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 60),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -687,7 +835,15 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Expanded(
                             child: TextField(
                               controller: _lastPaidCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.]'),
+                                ),
+                              ],
                               decoration: InputDecoration(
                                 labelText: 'transaction.last_paid'.tr(),
                                 border: InputBorder.none,
@@ -697,7 +853,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                           IconButton(
                             onPressed: () => _openCalculator(_lastPaidCtrl),
-                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 20),
+                            icon: Icon(
+                              Icons.calculate_rounded,
+                              color: cs.primary.withValues(alpha: 0.5),
+                              size: 20,
+                            ),
                           ),
                         ],
                       ),
@@ -707,7 +867,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 80),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -717,8 +880,13 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Expanded(
                             child: TextField(
                               controller: _monthsCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: false,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
                               decoration: InputDecoration(
                                 labelText: 'transaction.months'.tr(),
                                 border: InputBorder.none,
@@ -728,7 +896,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                           IconButton(
                             onPressed: () => _openCalculator(_monthsCtrl),
-                            icon: Icon(Icons.calculate_rounded, color: cs.primary.withValues(alpha: 0.5), size: 18),
+                            icon: Icon(
+                              Icons.calculate_rounded,
+                              color: cs.primary.withValues(alpha: 0.5),
+                              size: 18,
+                            ),
                           ),
                           Container(
                             height: 24,
@@ -738,7 +910,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                           IconButton(
                             onPressed: _showPlanPreview,
-                            icon: Icon(Icons.calendar_month_rounded, color: cs.primary, size: 18),
+                            icon: Icon(
+                              Icons.calendar_month_rounded,
+                              color: cs.primary,
+                              size: 18,
+                            ),
                             tooltip: 'transaction.preview_plan'.tr(),
                           ),
                         ],
@@ -752,7 +928,11 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     delay: const Duration(milliseconds: 100),
                     child: GestureDetector(
                       onTap: () async {
-                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        final wallet = await showWalletPickerSheet(
+                          context,
+                          ref,
+                          selectedId: _selectedWalletId,
+                        );
                         if (wallet != null) {
                           setState(() => _selectedWalletId = wallet.id);
                         }
@@ -767,14 +947,27 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                               child: Text(
                                 _selectedWalletId == null
                                     ? 'transaction.select_wallet'.tr()
-                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context),
+                                    : wallets
+                                        .firstWhere(
+                                          (w) => w.id == _selectedWalletId,
+                                        )
+                                        .displayName(context),
                                 style: TextStyle(
-                                  color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
-                                  fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
+                                  color:
+                                      _selectedWalletId == null
+                                          ? cs.onSurface.withValues(alpha: 0.5)
+                                          : cs.onSurface,
+                                  fontWeight:
+                                      _selectedWalletId == null
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                 ),
                               ),
                             ),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withValues(alpha: 0.3)),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: cs.onSurface.withValues(alpha: 0.3),
+                            ),
                           ],
                         ),
                       ),
@@ -796,7 +989,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFBE0B).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFFFBE0B,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -830,7 +1025,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: _imageUrl == null ? cs.surfaceContainerLow : cs.primary.withValues(alpha: 0.1),
+                          color:
+                              _imageUrl == null
+                                  ? cs.surfaceContainerLow
+                                  : cs.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -838,32 +1036,54 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: (_imageUrl == null ? cs.onSurface : cs.primary).withValues(alpha: 0.1),
+                                color: (_imageUrl == null
+                                        ? cs.onSurface
+                                        : cs.primary)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.image_rounded,
-                                color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
+                                color:
+                                    _imageUrl == null
+                                        ? cs.onSurface.withValues(alpha: 0.5)
+                                        : cs.primary,
                                 size: 20,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null ? 'transaction.attach_receipt'.tr() : 'transaction.image_attached'.tr(),
+                                _imageUrl == null
+                                    ? 'transaction.attach_receipt'.tr()
+                                    : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
-                                  color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
-                                  fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,
+                                  color:
+                                      _imageUrl == null
+                                          ? cs.onSurface.withValues(alpha: 0.5)
+                                          : cs.primary,
+                                  fontWeight:
+                                      _imageUrl == null
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                 ),
                               ),
                             ),
                             if (_imageUrl != null)
                               GestureDetector(
                                 onTap: () => setState(() => _imageUrl = null),
-                                child: Icon(Icons.close_rounded, color: cs.primary, size: 20),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: cs.primary,
+                                  size: 20,
+                                ),
                               )
                             else
-                              Icon(Icons.add_a_photo_rounded, color: cs.onSurface.withValues(alpha: 0.3), size: 20),
+                              Icon(
+                                Icons.add_a_photo_rounded,
+                                color: cs.onSurface.withValues(alpha: 0.3),
+                                size: 20,
+                              ),
                           ],
                         ),
                       ),
@@ -883,15 +1103,23 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           backgroundColor: _themeColor,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        icon: _saving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Icon(Icons.check_rounded, color: Colors.white),
+                        icon:
+                            _saving
+                                ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                ),
                         label: Text(
                           'common.save'.tr(),
                           style: const TextStyle(

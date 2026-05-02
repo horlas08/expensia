@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/config/premium_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/shared_preferences_service.dart';
 import '../widgets/backup_restore_sheet.dart';
-import '../../../../core/services/backup_restore_service.dart';
 import '../../../../core/services/subscription_service.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../features/categories/presentation/pages/categories_page.dart';
@@ -21,12 +21,12 @@ import '../../../../core/services/database_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+
 // import '../../../../features/transactions/presentation/providers/transactions_provider.dart';// Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
   final prefs = await SharedPreferencesService.getInstance();
   await prefs.setDarkMode(isDark);
 }
-
 
 // ---------------------------------------------------------------------------
 // Profile / Settings Tab
@@ -70,67 +70,73 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     // ThemeSwitchingArea is now global in main.dart — no wrapper needed here.
     return Scaffold(
-        backgroundColor: cs.surface,
-        body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Gradient Header SliverAppBar ──────────────────────────────
-            SliverAppBar(
-              expandedHeight: 220,
-              pinned: true,
-              collapsedHeight: 60,
-              backgroundColor: cs.primary,
-              foregroundColor: Colors.white,
-              title: Text(
-                'profile.title'.tr(),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.parallax,
-                background: _ProfileHeader(
-                  userName: _userName,
-                  onEditTap: _openEditProfile,
-                ),
+      backgroundColor: cs.surface,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── Gradient Header SliverAppBar ──────────────────────────────
+          SliverAppBar(
+            expandedHeight: 220,
+            pinned: true,
+            collapsedHeight: 60,
+            backgroundColor: cs.primary,
+            foregroundColor: Colors.white,
+            title: Text(
+              'profile.title'.tr(),
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
+              background: _ProfileHeader(
+                userName: _userName,
+                onEditTap: _openEditProfile,
+              ),
+            ),
+          ),
 
-            // ── Settings body ─────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── General ──────────────────────────────────────────
-                    _SectionLabel('profile.section_general'.tr(), delay: 0),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 50),
-                      child: _SettingsCard(items: [
+          // ── Settings body ─────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── General ──────────────────────────────────────────
+                  _SectionLabel('profile.section_general'.tr(), delay: 0),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 50),
+                    child: _SettingsCard(
+                      items: [
                         _SettingTile(
                           icon: Icons.person_outline_rounded,
                           label: 'profile.persons'.tr(),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const PersonsPage()),
-                          ),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const PersonsPage(),
+                                ),
+                              ),
                         ),
                         _SettingTile(
                           icon: Icons.language_rounded,
                           label: 'profile.language'.tr(),
-                          trailingText: context.locale.languageCode.toUpperCase(),
+                          trailingText:
+                              context.locale.languageCode.toUpperCase(),
                           onTap: () => showLanguageSheet(context),
                         ),
-                         _SettingTile(
+                        _SettingTile(
                           icon: Icons.category_outlined,
                           label: 'profile.categories'.tr(),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const CategoriesPage(),
-                            ),
-                          ),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CategoriesPage(),
+                                ),
+                              ),
                         ),
                         _SettingTile(
                           icon: Icons.currency_exchange_rounded,
@@ -139,26 +145,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           trailingText: '$currencyCode  $currencySymbol',
                           onTap: () => showCurrencyPickerSheet(context, ref),
                         ),
-                      ]),
+                      ],
                     ),
+                  ),
 
-                    // ── App Preferences ──────────────────────────────────
-                    _SectionLabel('profile.section_preferences'.tr(), delay: 80),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 130),
-                      child: _SettingsCard(items: [
+                  // ── App Preferences ──────────────────────────────────
+                  _SectionLabel('profile.section_preferences'.tr(), delay: 80),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 130),
+                    child: _SettingsCard(
+                      items: [
                         // Theme tile — correct ThemeSwitcher.withTheme() API
                         ThemeSwitcher.withTheme(
                           builder: (context, switcher, theme) {
                             final isDark = theme.brightness == Brightness.dark;
                             return _SettingTile(
-                              icon: isDark
-                                  ? Icons.light_mode_rounded
-                                  : Icons.dark_mode_rounded,
+                              icon:
+                                  isDark
+                                      ? Icons.light_mode_rounded
+                                      : Icons.dark_mode_rounded,
                               label: 'profile.theme'.tr(),
                               onTap: () {
                                 switcher.changeTheme(
-                                  theme: isDark ? AppTheme.lightTheme : AppTheme.darkTheme,
+                                  theme:
+                                      isDark
+                                          ? AppTheme.lightTheme
+                                          : AppTheme.darkTheme,
                                   isReversed: isDark,
                                 );
                                 _persistTheme(!isDark);
@@ -169,7 +181,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   value: isDark,
                                   onChanged: (_) {
                                     switcher.changeTheme(
-                                      theme: isDark ? AppTheme.lightTheme : AppTheme.darkTheme,
+                                      theme:
+                                          isDark
+                                              ? AppTheme.lightTheme
+                                              : AppTheme.darkTheme,
                                       isReversed: isDark,
                                     );
                                     _persistTheme(!isDark);
@@ -182,16 +197,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.notifications_outlined,
                           label: 'profile.notifications'.tr(),
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsPage())),
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => const NotificationSettingsPage(),
+                                ),
+                              ),
                         ),
-                      ]),
+                      ],
                     ),
+                  ),
 
-                    // ── Data & Security ──────────────────────────────────
-                    _SectionLabel('profile.section_data'.tr(), delay: 160),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 210),
-                      child: _SettingsCard(items: [
+                  // ── Data & Security ──────────────────────────────────
+                  _SectionLabel('profile.section_data'.tr(), delay: 160),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 210),
+                    child: _SettingsCard(
+                      items: [
                         _SettingTile(
                           icon: Icons.backup_outlined,
                           label: 'profile.backup'.tr(),
@@ -205,31 +229,34 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.fingerprint_rounded,
                           label: 'profile.app_lock'.tr(),
-                          onTap: () => showAppLockSheet(context, ref),
+                          onTap: () => _openAppLock(context, isPro),
+                          trailing: isPro ? null : const _ProBadge(),
                         ),
                         _SettingTile(
                           icon: Icons.delete_forever_rounded,
                           label: 'profile.clear_data'.tr(),
                           onTap: () => _showClearDataConfirm(context),
                         ),
-                      ]),
+                      ],
                     ),
+                  ),
 
-                    if (!isPro) ...[
-                      // ── Premium Banner ───────────────────────────────────
-                      _SectionLabel('profile.section_premium'.tr(), delay: 240),
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 290),
-                        child: const _PremiumBanner(),
-                      ),
-                      const SizedBox(height: 28),
-                    ],
-
-                    // ── About ────────────────────────────────────────────
-                    _SectionLabel('profile.section_about'.tr(), delay: 320),
+                  if (!isPro) ...[
+                    // ── Premium Banner ───────────────────────────────────
+                    _SectionLabel('profile.section_premium'.tr(), delay: 240),
                     FadeInUp(
-                      delay: const Duration(milliseconds: 370),
-                      child: _SettingsCard(items: [
+                      delay: const Duration(milliseconds: 290),
+                      child: const _PremiumBanner(),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // ── About ────────────────────────────────────────────
+                  _SectionLabel('profile.section_about'.tr(), delay: 320),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 370),
+                    child: _SettingsCard(
+                      items: [
                         _SettingTile(
                           icon: Icons.info_outline_rounded,
                           label: 'profile.app_version'.tr(),
@@ -251,16 +278,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           label: 'profile.contact_us'.tr(),
                           onTap: () {},
                         ),
-                      ]),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
+
   void _showBackupConfirm(BuildContext context) {
     BackupRestoreSheet.showLocal(context, isBackup: true);
   }
@@ -269,80 +298,96 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     BackupRestoreSheet.showLocal(context, isBackup: false);
   }
 
+  Future<void> _openAppLock(BuildContext context, bool isPro) async {
+    final isLocked = PremiumConfig.isLocked(
+      feature: PremiumFeature.appLock,
+      isPro: isPro,
+    );
+    if (isLocked) {
+      await SubscriptionSheet.show(context);
+      return;
+    }
+
+    await showAppLockSheet(context, ref);
+  }
+
   void _showClearDataConfirm(BuildContext pageContext) {
     showDialog(
       context: pageContext,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('profile.clear_data'.tr()),
-        content: Text('profile.clear_data_confirm'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () async {
-              // 1. Show loading state
-              Navigator.pop(dialogContext); // Close confirm dialog
-              
-              if (!mounted) return;
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text('profile.clear_data'.tr()),
+            content: Text('profile.clear_data_confirm'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('common.cancel'.tr()),
+              ),
+              TextButton(
+                onPressed: () async {
+                  // 1. Show loading state
+                  Navigator.pop(dialogContext); // Close confirm dialog
 
-              showDialog(
-                context: pageContext,
-                barrierDismissible: false,
-                builder: (loadingContext) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+                  if (!mounted) return;
 
-              try {
-                // 2. Wipe Data
-                await DatabaseService().deleteAllData();
-                
-                // 3. Clear SharedPreferences
-                final prefs = await SharedPreferencesService.getInstance();
-                await prefs.clearAppSetup();
-                
-                // 4. Reset DB singleton
-                DatabaseService().resetInstance();
-
-                // 4.5. Invalidate global providers so no stale data is shown on restart
-                ref.invalidate(walletProvider);
-                ref.invalidate(recentTransactionsProvider);
-                ref.invalidate(dashboardMetricsProvider);
-                ref.invalidate(allTransactionsProvider);
-
-                if (!mounted) return;
-                
-                // 5. Close loading dialog using the stable pageContext
-                Navigator.of(pageContext).pop();
-                
-                ScaffoldMessenger.of(pageContext).showSnackBar(
-                  SnackBar(content: Text('profile.clear_data_success'.tr())),
-                );
-
-                // 6. Give the snackbar a moment and restart app state
-                await Future.delayed(const Duration(milliseconds: 500));
-                
-                if (mounted) {
-                  // Using go() to completely replace the route stack
-                  pageContext.go('/splash');
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.of(pageContext).pop(); // Close loading if error
-                  ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(content: Text('common.error'.tr() + ': $e')),
+                  showDialog(
+                    context: pageContext,
+                    barrierDismissible: false,
+                    builder:
+                        (loadingContext) =>
+                            const Center(child: CircularProgressIndicator()),
                   );
-                }
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text('common.delete'.tr()),
+
+                  try {
+                    // 2. Wipe Data
+                    await DatabaseService().deleteAllData();
+
+                    // 3. Clear SharedPreferences
+                    final prefs = await SharedPreferencesService.getInstance();
+                    await prefs.clearAppSetup();
+
+                    // 4. Reset DB singleton
+                    DatabaseService().resetInstance();
+
+                    // 4.5. Invalidate global providers so no stale data is shown on restart
+                    ref.invalidate(walletProvider);
+                    ref.invalidate(recentTransactionsProvider);
+                    ref.invalidate(dashboardMetricsProvider);
+                    ref.invalidate(allTransactionsProvider);
+
+                    if (!mounted) return;
+
+                    // 5. Close loading dialog using the stable pageContext
+                    Navigator.of(pageContext).pop();
+
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(
+                        content: Text('profile.clear_data_success'.tr()),
+                      ),
+                    );
+
+                    // 6. Give the snackbar a moment and restart app state
+                    await Future.delayed(const Duration(milliseconds: 500));
+
+                    if (mounted) {
+                      // Using go() to completely replace the route stack
+                      pageContext.go('/splash');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.of(pageContext).pop(); // Close loading if error
+                      ScaffoldMessenger.of(pageContext).showSnackBar(
+                        SnackBar(content: Text('common.error'.tr() + ': $e')),
+                      );
+                    }
+                  }
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text('common.delete'.tr()),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -389,9 +434,16 @@ class _ProfileHeader extends StatelessWidget {
                             Colors.white.withValues(alpha: 0.1),
                           ],
                         ),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 2,
+                        ),
                       ),
-                      child: const Icon(Icons.person_rounded, size: 44, color: Colors.white),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        size: 44,
+                        color: Colors.white,
+                      ),
                     ),
                     GestureDetector(
                       onTap: onEditTap,
@@ -401,9 +453,18 @@ class _ProfileHeader extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 6,
+                            ),
+                          ],
                         ),
-                        child: Icon(Icons.edit_rounded, size: 14, color: cs.primary),
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 14,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -420,7 +481,10 @@ class _ProfileHeader extends StatelessWidget {
                       fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      fontStyle: userName.isEmpty ? FontStyle.italic : FontStyle.normal,
+                      fontStyle:
+                          userName.isEmpty
+                              ? FontStyle.italic
+                              : FontStyle.normal,
                     ),
                   ),
                 ),
@@ -429,7 +493,10 @@ class _ProfileHeader extends StatelessWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 130),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -483,7 +550,11 @@ class _PremiumBanner extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 26),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -517,7 +588,11 @@ class _PremiumBanner extends StatelessWidget {
               ),
               child: const Text(
                 'PRO',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
           ],
@@ -526,8 +601,6 @@ class _PremiumBanner extends StatelessWidget {
     );
   }
 }
-
-
 
 // ---------------------------------------------------------------------------
 // Section Label
@@ -557,6 +630,29 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+class _ProBadge extends StatelessWidget {
+  const _ProBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'get_started.pro_badge'.tr(),
+        style: const TextStyle(
+          color: Colors.orange,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Settings Card — groups items into a rounded container
 // ---------------------------------------------------------------------------
@@ -573,9 +669,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
             color: cs.shadow.withValues(alpha: 0.04),

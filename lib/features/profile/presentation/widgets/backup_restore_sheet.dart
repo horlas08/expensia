@@ -1,28 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/config/premium_config.dart';
 import '../../../../../core/services/backup_restore_service.dart';
+import '../../../../../core/services/subscription_service.dart';
+import 'subscription_sheet.dart';
 
-class BackupRestoreSheet extends StatelessWidget {
-  const BackupRestoreSheet({super.key, required this.isBackup});
+class BackupRestoreSheet extends ConsumerWidget {
+  const BackupRestoreSheet({
+    super.key,
+    required this.isBackup,
+    required this.hostContext,
+  });
 
   final bool isBackup;
+  final BuildContext hostContext;
 
-  static Future<void> showLocal(BuildContext context, {required bool isBackup}) async {
+  static Future<void> showLocal(
+    BuildContext context, {
+    required bool isBackup,
+  }) async {
     await showModalSheet(
       context: context,
       barrierColor: Colors.black54,
-      builder: (_) => BackupRestoreSheet(isBackup: isBackup),
+      builder:
+          (_) => BackupRestoreSheet(isBackup: isBackup, hostContext: context),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final title = isBackup ? 'profile.backup_title'.tr() : 'profile.restore_title'.tr();
-    final actionName = isBackup ? 'profile.backup'.tr() : 'profile.restore'.tr();
-    final actionIcon = isBackup ? Icons.cloud_upload_rounded : Icons.cloud_download_rounded;
+    final isPro = ref.watch(isProProvider);
+    final isDriveLocked = PremiumConfig.isLocked(
+      feature: PremiumFeature.googleDriveBackupRestore,
+      isPro: isPro,
+    );
+    final title =
+        isBackup ? 'profile.backup_title'.tr() : 'profile.restore_title'.tr();
+    final actionName =
+        isBackup ? 'profile.backup'.tr() : 'profile.restore'.tr();
+    final actionIcon =
+        isBackup ? Icons.cloud_upload_rounded : Icons.cloud_download_rounded;
     final desc =
         isBackup
             ? 'profile.backup_sheet_desc'.tr()
@@ -30,9 +51,7 @@ class BackupRestoreSheet extends StatelessWidget {
 
     return Sheet(
       initialOffset: const SheetOffset(1),
-      snapGrid: const SheetSnapGrid.stepless(
-        minOffset: SheetOffset(0.4),
-      ),
+      snapGrid: const SheetSnapGrid.stepless(minOffset: SheetOffset(0.4)),
       child: SheetContentScaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -56,38 +75,59 @@ class BackupRestoreSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
                 child: Text(
                   desc,
-                  style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               _SheetOption(
                 icon: actionIcon,
                 title: 'profile.drive_option_title'.tr(args: [actionName]),
                 subtitle: 'profile.drive_option_subtitle'.tr(),
                 color: const Color(0xFF4285F4),
+                isLocked: isDriveLocked,
                 onTap: () async {
-                  final restored = isBackup 
-                    ? await BackupRestoreService.backupToGoogleDrive(context) 
-                    : await BackupRestoreService.restoreFromGoogleDrive(context);
-                  
-                  if (!isBackup && restored && context.mounted) {
-                    Navigator.pop(context);
-                    context.go('/splash');
-                  } else if (context.mounted) {
-                    Navigator.pop(context);
+                  final navigator = Navigator.of(context);
+                  if (isDriveLocked) {
+                    navigator.pop();
+                    SubscriptionSheet.show(hostContext);
+                    return;
+                  }
+
+                  final restored =
+                      isBackup
+                          ? await BackupRestoreService.backupToGoogleDrive(
+                            context,
+                          )
+                          : await BackupRestoreService.restoreFromGoogleDrive(
+                            context,
+                          );
+
+                  if (!hostContext.mounted) return;
+                  navigator.pop();
+                  if (!isBackup && restored) {
+                    hostContext.go('/splash');
                   }
                 },
               ),
@@ -98,15 +138,16 @@ class BackupRestoreSheet extends StatelessWidget {
                 subtitle: 'profile.file_option_subtitle'.tr(),
                 color: const Color(0xFF00C48C),
                 onTap: () async {
-                  final restored = isBackup 
-                    ? await BackupRestoreService.backupDatabase(context) 
-                    : await BackupRestoreService.restoreDatabase(context);
-                  
-                  if (!isBackup && restored && context.mounted) {
-                    Navigator.pop(context);
-                    context.go('/splash');
-                  } else if (context.mounted) {
-                    Navigator.pop(context);
+                  final navigator = Navigator.of(context);
+                  final restored =
+                      isBackup
+                          ? await BackupRestoreService.backupDatabase(context)
+                          : await BackupRestoreService.restoreDatabase(context);
+
+                  if (!hostContext.mounted) return;
+                  navigator.pop();
+                  if (!isBackup && restored) {
+                    hostContext.go('/splash');
                   }
                 },
               ),
@@ -126,6 +167,7 @@ class _SheetOption extends StatelessWidget {
     required this.subtitle,
     required this.color,
     required this.onTap,
+    this.isLocked = false,
   });
 
   final IconData icon;
@@ -133,6 +175,7 @@ class _SheetOption extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final bool isLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -162,9 +205,39 @@ class _SheetOption extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          if (isLocked) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                'get_started.pro_badge'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -178,9 +251,11 @@ class _SheetOption extends StatelessWidget {
                   ),
                 ),
                 Icon(
-                  Icons.arrow_forward_ios_rounded,
+                  isLocked
+                      ? Icons.lock_outline_rounded
+                      : Icons.arrow_forward_ios_rounded,
                   color: cs.onSurface.withValues(alpha: 0.3),
-                  size: 16,
+                  size: isLocked ? 18 : 16,
                 ),
               ],
             ),

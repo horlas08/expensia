@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
@@ -37,7 +38,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   String? _imageUrl;
   bool _saving = false;
 
-  // For you (they owe me = income technically) vs On you (I owe them = expense)
+  // Client semantics: "On you" is incoming/receive, "For you" is outgoing/pay.
   bool _isOnYou = true; 
 
   @override
@@ -51,7 +52,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       _selectedWalletId = tx['wallet_id'] as int?;
       if (tx['date'] != null) _selectedDate = DateTime.parse(tx['date'].toString());
       _imageUrl = tx['image_url'] as String?;
-      _isOnYou = (tx['direction'] as String? ?? 'min') == 'min';
+      _isOnYou = (tx['direction'] as String? ?? 'plus') == 'plus';
     }
   }
 
@@ -66,6 +67,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   Color get _themeColor => const Color(0xFF0091EA); // Deep Blue for Debt
 
   Future<void> _submit() async {
+    if (_saving) return;
     final amountText = _amountCtrl.text.trim();
     final amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
@@ -86,7 +88,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       );
       return;
     }
-    if (_isOnYou && !_hasSufficientBalanceForOnYou(amount)) {
+    if (!_isOnYou && !_hasSufficientBalanceForForYou(amount)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('transaction.insufficient_balance'.tr())),
       );
@@ -104,19 +106,19 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
         final oldWasOnYou =
-            (widget.initialTransaction!['direction'] as String? ?? 'min') == 'min';
+            (widget.initialTransaction!['direction'] as String? ?? 'plus') == 'plus';
         // Revert old balance
         if (oldWasOnYou) {
-          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
-        } else {
           await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount);
+        } else {
+          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
         }
         // Update transaction
         await db.updateTransaction(id, {
           'wallet_id': _selectedWalletId,
           'category_id': _debtCategoryId,
           'amount': amount,
-          'direction': _isOnYou ? 'min' : 'plus',
+          'direction': _isOnYou ? 'plus' : 'min',
           'date': _selectedDate.toIso8601String(),
           'notes': _noteCtrl.text.trim(),
           'image_url': _imageUrl,
@@ -130,20 +132,20 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
             'person_id': personId,
             'wallet_id': _selectedWalletId,
             'category_id': _debtCategoryId,
-            'income': _isOnYou ? 0 : amount,
-            'expense': _isOnYou ? amount : 0,
+            'income': _isOnYou ? amount : 0,
+            'expense': _isOnYou ? 0 : amount,
             'due_date': _selectedDate.toIso8601String(),
             'notes': _noteCtrl.text.trim(),
             'image_path': _imageUrl,
           }, where: 'id = ?', whereArgs: [debtId]);
         }
         // Apply new balance
-        if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
-        else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
+        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
+        else { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
       } else {
         int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
-        double income = _isOnYou ? 0 : amount;
-        double expense = _isOnYou ? amount : 0;
+        double income = _isOnYou ? amount : 0;
+        double expense = _isOnYou ? 0 : amount;
         final debtId = await dbRaw.insert('debts', {
           'person_id': personId,
           'wallet_id': _selectedWalletId,
@@ -161,7 +163,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'category_id': _debtCategoryId,
           'currency_id': curr?.id ?? 1,
           'type': 'debt',
-          'direction': _isOnYou ? 'min' : 'plus',
+          'direction': _isOnYou ? 'plus' : 'min',
           'amount': amount,
           'date': _selectedDate.toIso8601String(),
           'is_paid': 1,
@@ -172,8 +174,8 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'person_id': personId,
           'person_name': _personCtrl.text.trim(),
         });
-        if (_isOnYou) { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
-        else { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
+        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
+        else { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
       }
 
       if (!mounted) return;
@@ -205,7 +207,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     return await dbRaw.insert('persons', {'name': name});
   }
 
-  bool _hasSufficientBalanceForOnYou(double amount) {
+  bool _hasSufficientBalanceForForYou(double amount) {
     if (_selectedWalletId == null) return false;
 
     final wallets = ref.read(walletProvider);
@@ -220,10 +222,10 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       final oldAmount =
           (widget.initialTransaction!['amount'] as num?)?.toDouble() ?? 0.0;
       final oldWasOnYou =
-          (widget.initialTransaction!['direction'] as String? ?? 'min') == 'min';
+          (widget.initialTransaction!['direction'] as String? ?? 'plus') == 'plus';
 
       if (oldWalletId == _selectedWalletId) {
-        availableBalance += oldWasOnYou ? oldAmount : -oldAmount;
+        availableBalance += oldWasOnYou ? -oldAmount : oldAmount;
       }
     }
 
@@ -347,6 +349,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                           child: TextField(
                             controller: _amountCtrl,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                            ],
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 48,

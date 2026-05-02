@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
@@ -389,6 +390,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   TextField(
                     controller: _cashController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
                     decoration: InputDecoration(
                       hintText: '0.00',
                       filled: true,
@@ -854,6 +858,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     TextField(
                       controller: _salaryController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
                       decoration: InputDecoration(
                         hintText: '0.00',
                         filled: true,

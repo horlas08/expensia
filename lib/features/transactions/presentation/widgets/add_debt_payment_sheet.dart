@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -28,24 +29,50 @@ class AddDebtPaymentSheet extends ConsumerStatefulWidget {
 class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
   final _amountCtrl = TextEditingController();
   int? _selectedWalletId;
+  bool _saving = false;
 
   Future<void> _submit() async {
+    if (_saving) return;
     final amountText = _amountCtrl.text.trim();
-    if (amountText.isEmpty || _selectedWalletId == null) return;
+    if (amountText.isEmpty || _selectedWalletId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.select_wallet'.tr())),
+      );
+      return;
+    }
     
     final amount = double.tryParse(amountText);
-    if (amount == null || amount <= 0) return;
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.invalid_amount'.tr())),
+      );
+      return;
+    }
 
-    await DatabaseService().addDebtPayment(
-      debtId: widget.debtId,
-      amount: amount,
-      direction: widget.direction,
-      walletId: _selectedWalletId!,
-    );
+    setState(() => _saving = true);
+    try {
+      await DatabaseService().addDebtPayment(
+        debtId: widget.debtId,
+        amount: amount,
+        direction: widget.direction,
+        walletId: _selectedWalletId!,
+      );
+      await ref.read(walletProvider.notifier).loadWallets();
 
-    if (mounted) {
-      Navigator.pop(context);
-      widget.onSaved();
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().contains('insufficient_balance')
+          ? 'transaction.insufficient_balance'.tr()
+          : e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -60,12 +87,12 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
     final cs = Theme.of(context).colorScheme;
     final wallets = ref.watch(walletProvider);
     final title = widget.direction == 'plus'
-        ? 'transaction.add_lent_payment'.tr()
-        : 'transaction.add_borrowed_payment'.tr();
+        ? 'transaction.add_borrowed_payment'.tr()
+        : 'transaction.add_lent_payment'.tr();
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     
-    final selectedWallet = _selectedWalletId != null 
-        ? wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.isNotEmpty ? wallets.first : wallets.first) // Just ensuring we get something
+    final selectedWallet = _selectedWalletId != null && wallets.isNotEmpty
+        ? wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.first)
         : (wallets.isNotEmpty ? wallets.first : null);
     final symbol = selectedWallet?.currencySymbol ?? '\$';
 
@@ -144,6 +171,9 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                                   child: TextField(
                                     controller: _amountCtrl,
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                    ],
                                     decoration: const InputDecoration(
                                       hintText: '0.00',
                                       border: InputBorder.none,
@@ -191,7 +221,7 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                                         Text(
                                           _selectedWalletId == null 
                                             ? 'transaction.select_wallet'.tr() 
-                                            : wallets.firstWhere((w) => w.id == _selectedWalletId, orElse: () => wallets.first).displayName(context),
+                                            : (selectedWallet?.displayName(context) ?? 'transaction.select_wallet'.tr()),
                                           style: TextStyle(
                                             fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
                                             color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
@@ -210,14 +240,20 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton(
-                              onPressed: _submit,
+                              onPressed: _saving ? null : _submit,
                               style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
-                              child: Text(
-                                'transaction.save_record'.tr(),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              child: _saving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      'transaction.save_record'.tr(),
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ),
