@@ -53,6 +53,7 @@ class CurrencyModel {
   final String countryCode;
   final String currencyCode;
   final String currencySymbol;
+  final String currencySymbolAr;
   final double rateToUsd;
   final String flag;
 
@@ -63,6 +64,7 @@ class CurrencyModel {
     required this.countryCode,
     required this.currencyCode,
     required this.currencySymbol,
+    required this.currencySymbolAr,
     required this.rateToUsd,
     required this.flag,
   });
@@ -79,6 +81,8 @@ class CurrencyModel {
       currencyCode: map['currency_code'] ?? map['code'] ?? '',
       currencySymbol:
           map['currency_symbol'] ?? map['symbol'] ?? map['symbol_en'] ?? '',
+      currencySymbolAr:
+          map['currency_symbol_ar'] ?? map['symbol_ar'] ?? map['symbol'] ?? '',
       rateToUsd: rateValue is num ? rateValue.toDouble() : 1.0,
       flag: map['flag'] ?? '',
     );
@@ -92,6 +96,7 @@ class CurrencyModel {
       'country_code': countryCode,
       'currency_code': currencyCode,
       'currency_symbol': currencySymbol,
+      'currency_symbol_ar': currencySymbolAr,
       'rate_to_usd': rateToUsd,
       'flag': flag,
     };

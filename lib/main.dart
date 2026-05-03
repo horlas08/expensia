@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animated_theme_switcher/animated_theme_switcher.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -18,16 +19,23 @@ void main() async {
   // Load persisted theme before first frame
   final prefs = await SharedPreferencesService.getInstance();
   final savedDark = prefs.isDarkMode();
-  SystemChrome.setPreferredOrientations(
-      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // Process any pending recurring transactions
   await RecurringTransactionService().processDueTransactions();
+  await MobileAds.instance.initialize();
+
 
   runApp(
     ProviderScope(
       child: EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('ar')],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('ar'),
+        ],
         path: 'assets/lang',
         fallbackLocale: const Locale('en'),
         useOnlyLangCode: true,
@@ -79,9 +87,9 @@ class ExpensiaApp extends ConsumerWidget {
                       FocusManager.instance.primaryFocus?.unfocus();
                     },
                     child: MediaQuery(
-                      data: MediaQuery.of(context).copyWith(
-                        textScaler: const TextScaler.linear(1.3),
-                      ),
+                      data: MediaQuery.of(
+                        context,
+                      ).copyWith(textScaler: const TextScaler.linear(1.3)),
                       child: child!,
                     ),
                   );

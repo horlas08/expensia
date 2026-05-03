@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
 
@@ -125,14 +126,12 @@ class _DebtsSummarySheetState extends ConsumerState<DebtsSummarySheet>
           children: [
             _DebtListView(
               future: _activeDebtsFuture,
-              symbol: widget.currencySymbol,
               onRefresh: () {
                 setState(_loadData);
               },
             ),
             _DebtListView(
               future: _paidDebtsFuture,
-              symbol: widget.currencySymbol,
               onRefresh: () {
                 setState(_loadData);
               },
@@ -145,13 +144,8 @@ class _DebtsSummarySheetState extends ConsumerState<DebtsSummarySheet>
 }
 
 class _DebtListView extends StatelessWidget {
-  const _DebtListView({
-    required this.future,
-    required this.symbol,
-    required this.onRefresh,
-  });
+  const _DebtListView({required this.future, required this.onRefresh});
   final Future<List<Map<String, dynamic>>> future;
-  final String symbol;
   final VoidCallback onRefresh;
 
   @override
@@ -176,7 +170,7 @@ class _DebtListView extends StatelessWidget {
                 Icon(
                   Icons.account_balance_wallet_outlined,
                   size: 64,
-                  color: cs.onSurface.withOpacity(0.2),
+                  color: cs.onSurface.withValues(alpha: 0.2),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -198,6 +192,7 @@ class _DebtListView extends StatelessWidget {
             final amount = (item['current_amount'] as num?)?.toDouble() ?? 0.0;
             final amountText = amount.toStringAsFixed(2);
             final personName = item['person_name'] ?? 'common.unknown'.tr();
+            final amountColor = isOnYou ? Colors.red : Colors.green;
 
             return FadeInUp(
               delay: Duration(milliseconds: 50 * i),
@@ -206,7 +201,9 @@ class _DebtListView extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: ListTile(
                   onTap: () async {
@@ -238,39 +235,40 @@ class _DebtListView extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: (isOnYou ? Colors.green : Colors.red).withOpacity(
-                        0.15,
-                      ),
+                      color: amountColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(
-                      Icons.person_rounded,
-                      color: isOnYou ? Colors.green : Colors.red,
-                    ),
+                    child: Icon(Icons.person_rounded, color: amountColor),
                   ),
-                  title: Text(
+                  title: AutoSizeText(
                     personName,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
+                    maxLines: 1,
+                    minFontSize: 12,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text(
+                  subtitle: AutoSizeText(
                     isOnYou
                         ? 'dashboard.on_you'.tr()
                         : 'dashboard.for_you'.tr(),
                     style: TextStyle(color: cs.onSurfaceVariant),
+                    maxLines: 1,
+                    minFontSize: 10,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '$symbol$amountText',
+                        amountText,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: isOnYou ? Colors.green : Colors.red,
+                          color: amountColor,
                         ),
                       ),
                       const SizedBox(height: 4),

@@ -48,7 +48,6 @@ class _SetupPageState extends ConsumerState<SetupPage> {
     _currencySearchController.addListener(() => setState(() {}));
   }
 
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(setupProvider);
@@ -111,9 +110,31 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => showLanguageSheet(context),
-                      icon: Icon(Icons.language_rounded, color: cs.primary),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20.r),
+                      onTap: () => showLanguageSheet(context),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 6.h,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.language_rounded, color: cs.primary),
+                            SizedBox(width: 6.w),
+                            Text(
+                              context.locale.languageCode == 'ar' ? 'En' : 'ع',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleSmall?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -338,7 +359,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'setup.name_label'.tr(),
+                    'setup.name_label_optional'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -347,7 +368,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      hintText: 'setup.name_label'.tr(),
+                      hintText: 'setup.name_label_optional'.tr(),
                       filled: true,
                       fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
@@ -381,7 +402,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'setup.initial_cash'.tr(),
+                    'setup.initial_cash_optional'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -389,7 +410,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   SizedBox(height: 8.h),
                   TextField(
                     controller: _cashController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
@@ -423,7 +446,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                           children: [
                             Text(
                               state.selectedCurrency?.currencySymbol ?? r'$',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
@@ -431,7 +456,10 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                           ],
                         ),
                       ),
-                      prefixIconConstraints: BoxConstraints(minWidth: 40.w, minHeight: 0),
+                      prefixIconConstraints: BoxConstraints(
+                        minWidth: 40.w,
+                        minHeight: 0,
+                      ),
                     ),
                   ),
                 ],
@@ -513,7 +541,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 onPressed: () {
                   setState(() {
                     _isSearchingCurrency = !_isSearchingCurrency;
-                    if (!_isSearchingCurrency) _currencySearchController.clear();
+                    if (!_isSearchingCurrency) {
+                      _currencySearchController.clear();
+                    }
                   });
                 },
                 icon: Icon(
@@ -528,81 +558,97 @@ class _SetupPageState extends ConsumerState<SetupPage> {
           SizedBox(height: 16.h),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
-            child: _isSearchingCurrency
-                ? FadeInLeft(
-                  duration: const Duration(milliseconds: 300),
-                  child: TextField(
-                    controller: _currencySearchController,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'setup.search_currency'.tr(),
-                      filled: true,
-                      fillColor: cs.surface,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.2)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(color: cs.primary, width: 2),
-                      ),
-                    ),
-                  ),
-                )
-                : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInUp(
-                      duration: const Duration(milliseconds: 800),
-                      child: ShaderMask(
-                        shaderCallback:
-                            (bounds) => const LinearGradient(
-                              colors: [Color(0xFFF2994A), Color(0xFFF2C94C)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
-                        child: Text(
-                          'setup.currency_title'.tr(),
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -1,
+            child:
+                _isSearchingCurrency
+                    ? FadeInLeft(
+                      duration: const Duration(milliseconds: 300),
+                      child: TextField(
+                        controller: _currencySearchController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'setup.search_currency'.tr(),
+                          filled: true,
+                          fillColor: cs.surface,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 12.h,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(
+                              color: cs.primary.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(
+                              color: cs.primary.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: cs.primary, width: 2),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 4.h),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 200),
-                      child: Text(
-                        'setup.currency_desc'.tr(),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FadeInUp(
+                          duration: const Duration(milliseconds: 800),
+                          child: ShaderMask(
+                            shaderCallback:
+                                (bounds) => const LinearGradient(
+                                  colors: [
+                                    Color(0xFFF2994A),
+                                    Color(0xFFF2C94C),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds),
+                            child: Text(
+                              'setup.currency_title'.tr(),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        SizedBox(height: 4.h),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 200),
+                          child: Text(
+                            'setup.currency_desc'.tr(),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
           ),
           SizedBox(height: 24.h),
           Expanded(
             child: currenciesAsync.when(
               data: (currencies) {
                 final query = _currencySearchController.text.toLowerCase();
-                final filtered = currencies.where((c) {
-                  final nameEn = c.currencyNameEn.toLowerCase();
-                  final nameAr = c.currencyNameAr.toLowerCase();
-                  final code = c.currencyCode.toLowerCase();
-                  return nameEn.contains(query) ||
-                      nameAr.contains(query) ||
-                      code.contains(query);
-                }).toList();
+                final filtered =
+                    currencies.where((c) {
+                      final nameEn = c.currencyNameEn.toLowerCase();
+                      final nameAr = c.currencyNameAr.toLowerCase();
+                      final code = c.currencyCode.toLowerCase();
+                      return nameEn.contains(query) ||
+                          nameAr.contains(query) ||
+                          code.contains(query);
+                    }).toList();
 
                 return FadeInUp(
                   delay: const Duration(milliseconds: 400),
@@ -849,7 +895,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'setup.salary_amount'.tr(),
+                      'setup.salary_amount_optional'.tr(),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -857,7 +903,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     SizedBox(height: 8.h),
                     TextField(
                       controller: _salaryController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                       ],
@@ -891,7 +939,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                             children: [
                               Text(
                                 state.selectedCurrency?.currencySymbol ?? r'$',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
@@ -899,7 +949,10 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                             ],
                           ),
                         ),
-                        prefixIconConstraints: BoxConstraints(minWidth: 40.w, minHeight: 0),
+                        prefixIconConstraints: BoxConstraints(
+                          minWidth: 40.w,
+                          minHeight: 0,
+                        ),
                       ),
                     ),
                   ],

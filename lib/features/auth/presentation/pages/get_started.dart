@@ -169,12 +169,34 @@ class GetStartedPage extends ConsumerWidget {
               children: [
                 Align(
                   alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.language_rounded,
-                      color: Theme.of(context).colorScheme.primary,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => showLanguageSheet(context),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.language_rounded,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            context.locale.languageCode == 'ar' ? 'ع' : 'EN',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    onPressed: () => showLanguageSheet(context),
                   ),
                 ),
                 const Spacer(),

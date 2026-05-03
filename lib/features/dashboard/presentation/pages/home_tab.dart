@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../features/transactions/presentation/widgets/add_transaction_sheet.dart';
 import '../../../../core/services/shared_preferences_service.dart';
+import '../../../../core/models/user_setup_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../transactions/presentation/widgets/transaction_type_sheet.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
@@ -50,9 +51,15 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final totalBalance = ref.watch(totalBalanceProvider);
     final metricsAsync = ref.watch(dashboardMetricsProvider);
     final transactionsAsync = ref.watch(recentTransactionsProvider);
-
-    // Use global currency provider — static symbol, never translated
     final currencySymbol = ref.watch(currencySymbolProvider);
+    final defaultCurrencyAsync = ref.watch(defaultCurrencyProvider);
+    final currencyCatalogAsync = ref.watch(currencyCatalogProvider);
+    final currencyDisplaySymbol = _resolveDashboardCurrencySymbol(
+      context,
+      defaultCurrencyAsync: defaultCurrencyAsync,
+      currencyCatalogAsync: currencyCatalogAsync,
+      fallbackSymbol: currencySymbol,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -143,7 +150,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -185,15 +192,17 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     const SizedBox(height: 12),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      child: _BalanceAmountText(
-                        amount:
-                            _balanceVisible
-                                ? totalBalance.toStringAsFixed(2)
-                                : '••••••',
-                        currencySymbol: currencySymbol,
-
-                        showCurrency: _balanceVisible,
-                        key: ValueKey(_balanceVisible),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: _BalanceAmountText(
+                          amount:
+                              _balanceVisible
+                                  ? totalBalance.toStringAsFixed(2)
+                                  : '••••••',
+                          currencySymbol: currencyDisplaySymbol,
+                          showCurrency: _balanceVisible,
+                          key: ValueKey(_balanceVisible),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -204,8 +213,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.income'.tr(),
-                                  value: (metrics['monthly_income'] as num? ?? 0).toStringAsFixed(2),
-                                  currencySymbol: currencySymbol,
+                                  value: (metrics['monthly_income'] as num? ??
+                                          0)
+                                      .toStringAsFixed(2),
                                   icon: Icons.arrow_downward_rounded,
                                   color: const Color(0xFF69F0AE),
                                   visible: _balanceVisible,
@@ -219,8 +229,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.expenses'.tr(),
-                                  value: (metrics['monthly_expense'] as num? ?? 0).toStringAsFixed(2),
-                                  currencySymbol: currencySymbol,
+                                  value: (metrics['monthly_expense'] as num? ??
+                                          0)
+                                      .toStringAsFixed(2),
                                   icon: Icons.arrow_upward_rounded,
                                   color: const Color(0xFFFF6E6E),
                                   visible: _balanceVisible,
@@ -230,7 +241,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           ),
                       loading:
                           () => const Center(child: LinearProgressIndicator()),
-                      error: (e, _) => Text('common.error_prefix'.tr(args: ['$e'])),
+                      error:
+                          (e, _) =>
+                              Text('common.error_prefix'.tr(args: ['$e'])),
                     ),
                   ],
                 ),
@@ -341,7 +354,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   Text(
                     'dashboard.recent_transactions'.tr(),
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -499,11 +512,46 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 }
 
+String _resolveDashboardCurrencySymbol(
+  BuildContext context, {
+  required AsyncValue<CurrencyModel?> defaultCurrencyAsync,
+  required AsyncValue<List<CurrencyModel>> currencyCatalogAsync,
+  required String fallbackSymbol,
+}) {
+  final localeCode = context.locale.languageCode;
+  final defaultCurrency = defaultCurrencyAsync.valueOrNull;
+  if (defaultCurrency == null) {
+    return fallbackSymbol;
+  }
+
+  CurrencyModel? catalogCurrency;
+  final catalog = currencyCatalogAsync.valueOrNull;
+  if (catalog != null) {
+    for (final currency in catalog) {
+      if (currency.id == defaultCurrency.id) {
+        catalogCurrency = currency;
+        break;
+      }
+    }
+  }
+
+  final resolvedCurrency = catalogCurrency ?? defaultCurrency;
+  if (localeCode == 'ar') {
+    final symbolAr = resolvedCurrency.currencySymbolAr;
+    if (symbolAr.isNotEmpty) {
+      return symbolAr;
+    }
+  }
+
+  return resolvedCurrency.currencySymbol.isNotEmpty
+      ? resolvedCurrency.currencySymbol
+      : fallbackSymbol;
+}
+
 class _MiniBalanceStat extends StatelessWidget {
   const _MiniBalanceStat({
     required this.label,
     required this.value,
-    required this.currencySymbol,
     required this.icon,
     required this.color,
     required this.visible,
@@ -511,7 +559,6 @@ class _MiniBalanceStat extends StatelessWidget {
 
   final String label;
   final String value;
-  final String currencySymbol;
   final IconData icon;
   final Color color;
   final bool visible;
@@ -536,18 +583,18 @@ class _MiniBalanceStat extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AutoSizeText(
-                label,
-                maxLines: 1,
-                style: const TextStyle(color: Colors.white60, fontSize: 11),
-                minFontSize: 9,
-                overflow: TextOverflow.ellipsis,
-              ),
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                  minFontSize: 9,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   child: _BalanceAmountText(
                     amount: visible ? value : '•••',
-                    currencySymbol: currencySymbol,
-                    showCurrency: visible,
+                    currencySymbol: '',
+                    showCurrency: false,
                     key: ValueKey(visible),
                     amountStyle: TextStyle(
                       color: color,
@@ -755,7 +802,8 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
@@ -764,6 +812,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
+                      height: 1.5,
                       fontWeight: FontWeight.w600,
                       color: contentColor,
                     ),
@@ -783,7 +832,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                     icon: Icon(
                       Icons.swap_horiz_rounded,
                       color: contentColor,
-                      size: 20,
+                      size: 32,
                     ),
                   ),
                 ),

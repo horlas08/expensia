@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/models/person_model.dart';
 
-final personsProvider = AsyncNotifierProvider<PersonsNotifier, List<Person>>(PersonsNotifier.new);
+final personsProvider = AsyncNotifierProvider<PersonsNotifier, List<Person>>(
+  PersonsNotifier.new,
+);
 
 class PersonsNotifier extends AsyncNotifier<List<Person>> {
   @override
@@ -40,66 +41,30 @@ class PersonsNotifier extends AsyncNotifier<List<Person>> {
     return await DatabaseService().hasPersonDependencies(id);
   }
 
-  Future<int> syncFromDeviceOnOpen() async => importFromDevice();
+  Future<int> syncFromDeviceOnOpen() async {
+    return 0;
+  }
 
-  Future<int> importFromDevice() async {
-    // 1. Request Permission
-    if (!await FlutterContacts.requestPermission()) {
-      throw Exception('Contacts permission denied');
-    }
+  Future<Person?> importPickedContact(Person person) async {
+    final existing = state.value ?? await _fetchPersons();
+    final normalizedIncomingPhone = _normalizePhone(person.phone);
+    final normalizedIncomingName = person.name.trim().toLowerCase();
 
-    // 2. Fetch Contacts with properties
-    final contacts = await FlutterContacts.getContacts(withProperties: true);
-    if (contacts.isEmpty) return 0;
-
-    // 3. Prepare for batch insert
-    final List<Map<String, String>> toImport = [];
-    final existing = state.value ?? [];
-    
-    // Map existing by both normalized name and phone
-    final existingPhones = existing
-        .where((p) => p.phone != null)
-        .map((p) => _normalizePhone(p.phone))
-        .toSet();
-    final existingNames = existing.map((p) => p.name.trim().toLowerCase()).toSet();
-
-    for (final contact in contacts) {
-      final name = contact.displayName.trim();
-      if (name.isEmpty) continue;
-
-      // Extract and normalize the first primary/mobile phone
-      String? rawPhone;
-      if (contact.phones.isNotEmpty) {
-        // Prefer mobile if available
-        final mobile = contact.phones.firstWhere(
-          (p) => p.label == PhoneLabel.mobile,
-          orElse: () => contact.phones.first,
-        );
-        rawPhone = mobile.number;
+    for (final entry in existing) {
+      final sameName =
+          entry.name.trim().toLowerCase() == normalizedIncomingName;
+      final samePhone =
+          normalizedIncomingPhone.isNotEmpty &&
+          _normalizePhone(entry.phone) == normalizedIncomingPhone;
+      if (sameName || samePhone) {
+        return entry;
       }
-
-      final normalizedPhone = _normalizePhone(rawPhone);
-
-      // Skip if exactly same name or same phone exists
-      if (existingNames.contains(name.toLowerCase())) continue;
-      if (normalizedPhone.isNotEmpty && existingPhones.contains(normalizedPhone)) continue;
-
-      toImport.add({
-        'name': name,
-        'phone': rawPhone ?? '',
-      });
-      
-      // Update local sets to avoid duplicates within the import batch itself
-      existingNames.add(name.toLowerCase());
-      if (normalizedPhone.isNotEmpty) existingPhones.add(normalizedPhone);
     }
 
-    if (toImport.isNotEmpty) {
-      await DatabaseService().importDeviceContacts(toImport);
-      await refresh();
-    }
-    
-    return toImport.length;
+    final id = await DatabaseService().addPerson(person.name, person.phone);
+    await refresh();
+
+    return Person(id: id, name: person.name, phone: person.phone);
   }
 
   String _normalizePhone(String? phone) {
@@ -119,8 +84,8 @@ final filteredPersonsProvider = Provider<AsyncValue<List<Person>>>((ref) {
   return personsAsync.whenData((persons) {
     if (query.isEmpty) return persons;
     return persons.where((p) {
-      return p.name.toLowerCase().contains(query) || 
-             (p.phone?.toLowerCase().contains(query) ?? false);
+      return p.name.toLowerCase().contains(query) ||
+          (p.phone?.toLowerCase().contains(query) ?? false);
     }).toList();
   });
 });

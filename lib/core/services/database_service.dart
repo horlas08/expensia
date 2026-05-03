@@ -754,7 +754,7 @@ class DatabaseService {
     final incomeResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'income' AND is_repeat = 0 AND COALESCE(is_opening, 0) = 0 AND date >= ?
+      WHERE type = 'income' AND COALESCE(is_opening, 0) = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -762,7 +762,7 @@ class DatabaseService {
     final expenseResult = await db.rawQuery(
       '''
       SELECT SUM(amount) as total FROM transactions 
-      WHERE type = 'expense' AND is_repeat = 0 AND COALESCE(is_opening, 0) = 0 AND date >= ?
+      WHERE type = 'expense' AND COALESCE(is_opening, 0) = 0 AND date >= ?
     ''',
       [firstDayOfMonth],
     );
@@ -825,7 +825,6 @@ class DatabaseService {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       LEFT JOIN persons p ON t.person_id = p.id
-      WHERE t.is_repeat = 0
       UNION ALL
       SELECT
         tr.id,
@@ -885,7 +884,6 @@ class DatabaseService {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN wallets w ON t.wallet_id = w.id
       LEFT JOIN persons p ON t.person_id = p.id
-      WHERE t.is_repeat = 0
       UNION ALL
       SELECT
         tr.id,
@@ -914,6 +912,16 @@ class DatabaseService {
       ORDER BY date DESC
     ''';
     return await db.rawQuery(sql);
+  }
+
+  Future<int> getTransactionCountForFreeLimit() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COUNT(*) as count
+      FROM transactions
+      WHERE COALESCE(is_opening, 0) = 0
+    ''');
+    return (result.first['count'] as num?)?.toInt() ?? 0;
   }
 
   Future<void> _syncInstallmentTransactions(

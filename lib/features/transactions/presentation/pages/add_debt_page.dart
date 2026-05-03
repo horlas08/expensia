@@ -8,9 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
+import '../../../../core/services/subscription_service.dart';
+import '../../../../core/services/transaction_limit_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../providers/transactions_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
@@ -39,7 +42,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   bool _saving = false;
 
   // Client semantics: "On you" is incoming/receive, "For you" is outgoing/pay.
-  bool _isOnYou = true; 
+  bool _isOnYou = true;
 
   @override
   void initState() {
@@ -50,7 +53,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       _noteCtrl.text = tx['notes']?.toString() ?? '';
       _personCtrl.text = tx['person_name']?.toString() ?? '';
       _selectedWalletId = tx['wallet_id'] as int?;
-      if (tx['date'] != null) _selectedDate = DateTime.parse(tx['date'].toString());
+      if (tx['date'] != null) {
+        _selectedDate = DateTime.parse(tx['date'].toString());
+      }
       _imageUrl = tx['image_url'] as String?;
       _isOnYou = (tx['direction'] as String? ?? 'plus') == 'plus';
     }
@@ -77,9 +82,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       return;
     }
     if (_selectedWalletId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transaction.select_wallet'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('transaction.select_wallet'.tr())));
       return;
     }
     if (_personCtrl.text.trim().isEmpty) {
@@ -100,18 +105,40 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     try {
       final db = DatabaseService();
       final dbRaw = await db.database;
+      final isPro = ref.read(isProProvider);
+
+      if (widget.initialTransaction == null) {
+        final currentCount = await db.getTransactionCountForFreeLimit();
+        if (!mounted) return;
+        final allowed =
+            await TransactionLimitService.ensureCanCreateTransaction(
+              context: context,
+              isPro: isPro,
+              currentCount: currentCount,
+            );
+        if (!allowed) {
+          if (mounted) setState(() => _saving = false);
+          return;
+        }
+      }
 
       if (widget.initialTransaction != null) {
         final id = widget.initialTransaction!['id'] as int;
-        final oldAmount = (widget.initialTransaction!['amount'] as num).toDouble();
+        final oldAmount =
+            (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
         final oldWasOnYou =
-            (widget.initialTransaction!['direction'] as String? ?? 'plus') == 'plus';
+            (widget.initialTransaction!['direction'] as String? ?? 'plus') ==
+            'plus';
         // Revert old balance
         if (oldWasOnYou) {
-          await ref.read(walletProvider.notifier).withdrawBalance(oldWalletId, oldAmount);
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(oldWalletId, oldAmount);
         } else {
-          await ref.read(walletProvider.notifier).addBalance(oldWalletId, oldAmount);
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(oldWalletId, oldAmount);
         }
         // Update transaction
         await db.updateTransaction(id, {
@@ -127,21 +154,36 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
         // Update underlying debt if exists
         final debtId = widget.initialTransaction!['debt_id'];
         if (debtId != null) {
-          int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
-          await dbRaw.update('debts', {
-            'person_id': personId,
-            'wallet_id': _selectedWalletId,
-            'category_id': _debtCategoryId,
-            'income': _isOnYou ? amount : 0,
-            'expense': _isOnYou ? 0 : amount,
-            'due_date': _selectedDate.toIso8601String(),
-            'notes': _noteCtrl.text.trim(),
-            'image_path': _imageUrl,
-          }, where: 'id = ?', whereArgs: [debtId]);
+          int personId = await _getOrCreatePerson(
+            dbRaw,
+            _personCtrl.text.trim(),
+          );
+          await dbRaw.update(
+            'debts',
+            {
+              'person_id': personId,
+              'wallet_id': _selectedWalletId,
+              'category_id': _debtCategoryId,
+              'income': _isOnYou ? amount : 0,
+              'expense': _isOnYou ? 0 : amount,
+              'due_date': _selectedDate.toIso8601String(),
+              'notes': _noteCtrl.text.trim(),
+              'image_path': _imageUrl,
+            },
+            where: 'id = ?',
+            whereArgs: [debtId],
+          );
         }
         // Apply new balance
-        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
-        else { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
+        if (_isOnYou) {
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(_selectedWalletId!, amount);
+        } else {
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(_selectedWalletId!, amount);
+        }
       } else {
         int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
         double income = _isOnYou ? amount : 0;
@@ -174,14 +216,22 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           'person_id': personId,
           'person_name': _personCtrl.text.trim(),
         });
-        if (_isOnYou) { await ref.read(walletProvider.notifier).addBalance(_selectedWalletId!, amount); }
-        else { await ref.read(walletProvider.notifier).withdrawBalance(_selectedWalletId!, amount); }
+        if (_isOnYou) {
+          await ref
+              .read(walletProvider.notifier)
+              .addBalance(_selectedWalletId!, amount);
+        } else {
+          await ref
+              .read(walletProvider.notifier)
+              .withdrawBalance(_selectedWalletId!, amount);
+        }
       }
 
       if (!mounted) return;
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
       ref.invalidate(allTransactionsProvider);
+      ref.invalidate(filteredTransactionsProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -202,7 +252,11 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   }
 
   Future<int> _getOrCreatePerson(dbRaw, String name) async {
-    final list = await dbRaw.query('persons', where: 'name = ?', whereArgs: [name]);
+    final list = await dbRaw.query(
+      'persons',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
     if (list.isNotEmpty) return list.first['id'] as int;
     return await dbRaw.insert('persons', {'name': name});
   }
@@ -222,7 +276,8 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       final oldAmount =
           (widget.initialTransaction!['amount'] as num?)?.toDouble() ?? 0.0;
       final oldWasOnYou =
-          (widget.initialTransaction!['direction'] as String? ?? 'plus') == 'plus';
+          (widget.initialTransaction!['direction'] as String? ?? 'plus') ==
+          'plus';
 
       if (oldWalletId == _selectedWalletId) {
         availableBalance += oldWasOnYou ? -oldAmount : oldAmount;
@@ -348,9 +403,13 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                         child: IntrinsicWidth(
                           child: TextField(
                             controller: _amountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
                             ],
                             style: const TextStyle(
                               color: Colors.white,
@@ -360,7 +419,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                             textAlign: TextAlign.center,
                             decoration: InputDecoration(
                               hintText: '0.00',
-                              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                              ),
                               border: InputBorder.none,
                             ),
                             cursorColor: Colors.white,
@@ -369,7 +430,10 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                       ),
                       IconButton(
                         onPressed: _openCalculator,
-                        icon: const Icon(Icons.calculate_rounded, color: Colors.white70),
+                        icon: const Icon(
+                          Icons.calculate_rounded,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -388,7 +452,10 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 20),
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -398,7 +465,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF4081).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFFF4081,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -415,12 +484,16 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                                 hintText: 'transaction.person_name_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
+                                hintStyle: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
                           IconButton(
                             onPressed: _pickContact,
-                            icon: Icon(Icons.person_add_rounded, color: cs.primary),
+                            icon: Icon(
+                              Icons.person_add_rounded,
+                              color: cs.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -433,7 +506,11 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                     delay: const Duration(milliseconds: 60),
                     child: GestureDetector(
                       onTap: () async {
-                        final wallet = await showWalletPickerSheet(context, ref, selectedId: _selectedWalletId);
+                        final wallet = await showWalletPickerSheet(
+                          context,
+                          ref,
+                          selectedId: _selectedWalletId,
+                        );
                         if (wallet != null) {
                           setState(() => _selectedWalletId = wallet.id);
                         }
@@ -448,14 +525,28 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                               child: Text(
                                 _selectedWalletId == null
                                     ? 'transaction.select_wallet'.tr()
-                                    : wallets.firstWhere((w) => w.id == _selectedWalletId).displayName(context),
+                                    : wallets
+                                        .firstWhere(
+                                          (w) => w.id == _selectedWalletId,
+                                        )
+                                        .displayName(context),
                                 style: TextStyle(
-                                  color: _selectedWalletId == null ? cs.onSurface.withValues(alpha: 0.5) : cs.onSurface,
-                                  fontWeight: _selectedWalletId == null ? FontWeight.normal : FontWeight.bold,
+                                  fontSize: 12,
+                                  color:
+                                      _selectedWalletId == null
+                                          ? cs.onSurface.withValues(alpha: 0.5)
+                                          : cs.onSurface,
+                                  fontWeight:
+                                      _selectedWalletId == null
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                 ),
                               ),
                             ),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface.withValues(alpha: 0.3)),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: cs.onSurface.withValues(alpha: 0.3),
+                            ),
                           ],
                         ),
                       ),
@@ -493,46 +584,80 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                     child: GestureDetector(
                       onTap: _pickImage,
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: _imageUrl == null ? cs.surfaceContainerLow : cs.primary.withValues(alpha: 0.1),
+                          color:
+                              _imageUrl == null
+                                  ? cs.surfaceContainerLow
+                                  : cs.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
-                          border: _imageUrl == null ? Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.5),
-                            style: BorderStyle.none,
-                          ) : Border.all(color: cs.primary),
+                          border:
+                              _imageUrl == null
+                                  ? Border.all(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    style: BorderStyle.none,
+                                  )
+                                  : Border.all(color: cs.primary),
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: (_imageUrl == null ? cs.onSurface : cs.primary).withValues(alpha: 0.1),
+                                color: (_imageUrl == null
+                                        ? cs.onSurface
+                                        : cs.primary)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.image_rounded,
-                                color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
+                                color:
+                                    _imageUrl == null
+                                        ? cs.onSurface.withValues(alpha: 0.5)
+                                        : cs.primary,
                                 size: 20,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _imageUrl == null ? 'transaction.attach_receipt'.tr() : 'transaction.image_attached'.tr(),
+                                _imageUrl == null
+                                    ? 'transaction.attach_receipt'.tr()
+                                    : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
-                                  color: _imageUrl == null ? cs.onSurface.withValues(alpha: 0.5) : cs.primary,
-                                  fontWeight: _imageUrl == null ? FontWeight.normal : FontWeight.bold,
+                                  fontSize: 12,
+                                  color:
+                                      _imageUrl == null
+                                          ? cs.onSurface.withValues(alpha: 0.5)
+                                          : cs.primary,
+                                  fontWeight:
+                                      _imageUrl == null
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                 ),
                               ),
                             ),
                             if (_imageUrl != null)
                               GestureDetector(
                                 onTap: () => setState(() => _imageUrl = null),
-                                child: Icon(Icons.close_rounded, color: cs.primary, size: 20),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: cs.primary,
+                                  size: 20,
+                                ),
                               )
                             else
-                              Icon(Icons.add_a_photo_rounded, color: cs.onSurface.withValues(alpha: 0.3), size: 20),
+                              Icon(
+                                Icons.add_a_photo_rounded,
+                                color: cs.onSurface.withValues(alpha: 0.3),
+                                size: 20,
+                              ),
                           ],
                         ),
                       ),
@@ -544,7 +669,10 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 140),
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -554,7 +682,9 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFBE0B).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFFFBE0B,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -571,6 +701,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                                 hintText: 'transaction.note_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
+                                hintStyle: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
@@ -592,15 +723,23 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                           backgroundColor: _themeColor,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        icon: _saving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Icon(Icons.check_rounded, color: Colors.white),
+                        icon:
+                            _saving
+                                ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                ),
                         label: Text(
                           'common.save'.tr(),
                           style: const TextStyle(
@@ -620,7 +759,6 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
       ),
     );
   }
-
 }
 
 // ---------------------------------------------------------------------------

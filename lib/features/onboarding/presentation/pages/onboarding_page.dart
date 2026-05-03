@@ -19,22 +19,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
     {
       'title': 'onboarding.step1.title',
       'subtitle': 'onboarding.step1.subtitle',
-      'image': 'assets/images/onboarding_expenses.png'
+      'image': 'assets/images/onboarding_expenses.png',
     },
     {
       'title': 'onboarding.step2.title',
       'subtitle': 'onboarding.step2.subtitle',
-      'image': 'assets/images/onboarding_debts.png'
+      'image': 'assets/images/onboarding_debts.png',
     },
     {
       'title': 'onboarding.step3.title',
       'subtitle': 'onboarding.step3.subtitle',
-      'image': 'assets/images/onboarding_installments.png'
+      'image': 'assets/images/onboarding_installments.png',
     },
     {
       'title': 'onboarding.step4.title',
       'subtitle': 'onboarding.step4.subtitle',
-      'image': 'assets/images/onboarding_reports.png'
+      'image': 'assets/images/onboarding_reports.png',
     },
   ];
 
@@ -68,7 +68,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       FadeInUp(
                         child: Text(
                           _onboardingData[index]['title']!.tr(),
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                           ),
@@ -80,9 +82,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         delay: const Duration(milliseconds: 200),
                         child: Text(
                           _onboardingData[index]['subtitle']!.tr(),
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.grey,
-                          ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -95,12 +97,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,
-            child: IconButton(
-              onPressed: () => showLanguageSheet(context),
-              icon: Icon(
-                Icons.language_rounded,
-                color: Theme.of(context).colorScheme.primary,
-                size: 28,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => showLanguageSheet(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.language_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.locale.languageCode == 'ar' ? 'En' : 'ع',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -131,27 +150,32 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     height: 50,
-                    width: _currentIndex == _onboardingData.length - 1 ? 140 : 50,
+                    width:
+                        _currentIndex == _onboardingData.length - 1 ? 140 : 50,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(25),
                     ),
                     alignment: Alignment.center,
-                    child: _currentIndex == _onboardingData.length - 1
-                        ? Text(
-                            "get_started.title".tr(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          )
-                        : const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                    child:
+                        _currentIndex == _onboardingData.length - 1
+                            ? Text(
+                              "get_started.title".tr(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                            : const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                   ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -164,9 +188,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
       height: 8,
       width: _currentIndex == index ? 24 : 8,
       decoration: BoxDecoration(
-        color: _currentIndex == index
-            ? Theme.of(context).colorScheme.primary
-            : Colors.grey.shade300,
+        color:
+            _currentIndex == index
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(4),
       ),
     );

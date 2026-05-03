@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:toastification/toastification.dart';
 import 'package:flutter/scheduler.dart';
 import '../../../../core/models/person_model.dart';
+import '../../../../core/services/device_contact_picker_service.dart';
 import '../../../../core/utils/url_launcher_utils.dart';
 import '../providers/persons_provider.dart';
 import '../widgets/add_person_sheet.dart';
@@ -29,35 +30,8 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
   }
 
   Future<void> _autoSyncContacts() async {
-    if (_didAutoSync || !mounted) return;
+    if (_didAutoSync || !mounted || widget.isPicker) return;
     _didAutoSync = true;
-
-    final toast = toastification.show(
-      context: context,
-      type: ToastificationType.info,
-      style: ToastificationStyle.flat,
-      title: Text('common.loading'.tr()),
-      description: Text('${'profile.import_contacts'.tr()}...'),
-      autoCloseDuration: null,
-    );
-
-    try {
-      final count = await ref.read(personsProvider.notifier).syncFromDeviceOnOpen();
-      toastification.dismiss(toast);
-
-      if (!mounted || count <= 0) return;
-
-      toastification.show(
-        context: context,
-        type: ToastificationType.success,
-        style: ToastificationStyle.flatColored,
-        title: Text('common.success'.tr()),
-        description: Text('profile.import_success'.tr(args: [count.toString()])),
-        autoCloseDuration: const Duration(seconds: 4),
-      );
-    } catch (_) {
-      toastification.dismiss(toast);
-    }
   }
 
   @override
@@ -78,7 +52,9 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                widget.isPicker ? 'profile.select_person'.tr() : 'profile.persons'.tr(),
+                widget.isPicker
+                    ? 'profile.select_person'.tr()
+                    : 'profile.persons'.tr(),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -95,7 +71,11 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
                 ),
                 child: Center(
                   child: FadeInDown(
-                    child: Icon(Icons.people_alt_rounded, size: 64, color: Colors.white.withValues(alpha: 0.2)),
+                    child: Icon(
+                      Icons.people_alt_rounded,
+                      size: 64,
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
                   ),
                 ),
               ),
@@ -103,7 +83,10 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
             actions: [
               IconButton(
                 onPressed: () => _handleImport(context, ref),
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                icon: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: Colors.white,
+                ),
                 tooltip: 'profile.import_contacts'.tr(),
               ),
             ],
@@ -115,7 +98,10 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
               child: FadeInUp(
                 child: TextField(
-                  onChanged: (val) => ref.read(personsSearchQueryProvider.notifier).state = val,
+                  onChanged:
+                      (val) =>
+                          ref.read(personsSearchQueryProvider.notifier).state =
+                              val,
                   decoration: InputDecoration(
                     hintText: 'profile.search_persons'.tr(),
                     prefixIcon: const Icon(Icons.search_rounded),
@@ -143,29 +129,36 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
               }
 
               return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final person = persons[index];
-                      return FadeInUp(
-                        delay: Duration(milliseconds: 50 * index),
-                        child: _PersonCard(person: person, isPicker: widget.isPicker),
-                      );
-                    },
-                    childCount: persons.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final person = persons[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 50 * index),
+                      child: _PersonCard(
+                        person: person,
+                        isPicker: widget.isPicker,
+                      ),
+                    );
+                  }, childCount: persons.length),
                 ),
               );
             },
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              child: Center(child: Text('common.error_prefix'.tr(args: ['$e']))),
-            ),
+            loading:
+                () => const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+            error:
+                (e, _) => SliverFillRemaining(
+                  child: Center(
+                    child: Text('common.error_prefix'.tr(args: ['$e'])),
+                  ),
+                ),
           ),
-          
+
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
@@ -178,37 +171,29 @@ class _PersonsPageState extends ConsumerState<PersonsPage> {
   }
 
   Future<void> _handleImport(BuildContext context, WidgetRef ref) async {
-    // Show loading toast
-    final toast = toastification.show(
-      context: context,
-      type: ToastificationType.info,
-      style: ToastificationStyle.flat,
-      title: Text('common.loading'.tr()),
-      description: Text('${'profile.import_contacts'.tr()}...'),
-      autoCloseDuration: null, // Keep it open during sync
-    );
-
     try {
-      final notifier = ref.read(personsProvider.notifier);
-      final count = await notifier.importFromDevice();
-      
-      // Remove loading toast
-      toastification.dismiss(toast);
+      final pickedPerson = await DeviceContactPickerService.pickPerson();
+      if (pickedPerson == null || !context.mounted) return;
 
-      if (context.mounted) {
-        toastification.show(
-          context: context,
-          type: ToastificationType.success,
-          style: ToastificationStyle.flatColored,
-          title: Text('common.success'.tr()),
-          description: Text('profile.import_success'.tr(args: [count.toString()])),
-          autoCloseDuration: const Duration(seconds: 4),
-        );
+      final saved = await ref
+          .read(personsProvider.notifier)
+          .importPickedContact(pickedPerson);
+
+      if (!context.mounted || saved == null) return;
+      if (widget.isPicker) {
+        Navigator.pop(context, saved);
+        return;
       }
-    } catch (e) {
-      // Remove loading toast
-      toastification.dismiss(toast);
 
+      toastification.show(
+        context: context,
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('common.success'.tr()),
+        description: Text('profile.contact_imported'.tr(args: [saved.name])),
+        autoCloseDuration: const Duration(seconds: 4),
+      );
+    } catch (e) {
       if (context.mounted) {
         toastification.show(
           context: context,
@@ -230,10 +215,13 @@ class _PersonCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    
+
     // Soft color based on name
-    final avatarColor = Colors.primaries[person.name.length % Colors.primaries.length].withValues(alpha: 0.15);
-    final textIconColor = Colors.primaries[person.name.length % Colors.primaries.length];
+    final avatarColor = Colors
+        .primaries[person.name.length % Colors.primaries.length]
+        .withValues(alpha: 0.15);
+    final textIconColor =
+        Colors.primaries[person.name.length % Colors.primaries.length];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -273,33 +261,55 @@ class _PersonCard extends ConsumerWidget {
           person.name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: person.phone != null && person.phone!.isNotEmpty
-            ? Text(
-                person.phone!,
-                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-              )
-            : null,
+        subtitle:
+            person.phone != null && person.phone!.isNotEmpty
+                ? Text(
+                  person.phone!,
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                )
+                : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (person.phone != null && person.phone!.isNotEmpty) ...[
               IconButton(
-                onPressed: () => UrlLauncherUtils.launchWhatsApp(context, person.phone!),
-                icon: const Icon(Icons.message_rounded, size: 20, color: Colors.green),
-                style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1)),
+                onPressed:
+                    () =>
+                        UrlLauncherUtils.launchWhatsApp(context, person.phone!),
+                icon: const Icon(
+                  Icons.message_rounded,
+                  size: 20,
+                  color: Colors.green,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.green.withValues(alpha: 0.1),
+                ),
               ),
               const SizedBox(width: 4),
               IconButton(
-                onPressed: () => UrlLauncherUtils.launchCall(context, person.phone!),
-                icon: const Icon(Icons.phone_rounded, size: 20, color: Colors.blue),
-                style: IconButton.styleFrom(backgroundColor: Colors.blue.withValues(alpha: 0.1)),
+                onPressed:
+                    () => UrlLauncherUtils.launchCall(context, person.phone!),
+                icon: const Icon(
+                  Icons.phone_rounded,
+                  size: 20,
+                  color: Colors.blue,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                ),
               ),
             ],
             const SizedBox(width: 4),
             IconButton(
               onPressed: () => _confirmDelete(context, ref),
-              icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red),
-              style: IconButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1)),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                size: 20,
+                color: Colors.red,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.red.withValues(alpha: 0.1),
+              ),
             ),
           ],
         ),
@@ -314,21 +324,28 @@ class _PersonCard extends ConsumerWidget {
     if (context.mounted) {
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('profile.delete_person_title'.tr()),
-          content: Text(
-            hasDeps 
-              ? 'profile.delete_person_confirm'.tr()
-              : "${'common.delete'.tr()} ${person.name}?"
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
+        builder:
+            (ctx) => AlertDialog(
+              title: Text('profile.delete_person_title'.tr()),
+              content: Text(
+                hasDeps
+                    ? 'profile.delete_person_confirm'.tr()
+                    : "${'common.delete'.tr()} ${person.name}?",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('common.cancel'.tr()),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(
+                    'common.delete'.tr(),
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       );
 
       if (confirm == true) {

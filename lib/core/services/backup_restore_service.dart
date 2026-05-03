@@ -15,9 +15,11 @@ import '../models/user_setup_model.dart';
 class BackupRestoreService {
   static const String _dbName = 'expensia.db';
   static const String _backupFileName = 'expensia_backup.db';
+  static const List<String> _driveScopes = [drive.DriveApi.driveAppdataScope];
 
   static final gsi.GoogleSignIn _googleSignIn = gsi.GoogleSignIn.instance;
   static bool _initialized = false;
+  static String? _lastDriveAuthError;
 
   static Future<void> _ensureInitialized() async {
     if (!_initialized) {
@@ -29,22 +31,30 @@ class BackupRestoreService {
   static Future<drive.DriveApi?> _getDriveApi() async {
     try {
       await _ensureInitialized();
+      _lastDriveAuthError = null;
 
-      // 1. Authenticate (Sign In)
-      final account = await _googleSignIn.authenticate();
-      // Note: In gsi 7.x, authenticate() returns non-nullable or throws
+      // Reuse any available Google session before prompting the user again.
+      gsi.GoogleSignInAccount? account =
+          await _googleSignIn.attemptLightweightAuthentication();
+      account ??= await _googleSignIn.authenticate(scopeHint: _driveScopes);
 
-      // 2. Authorize Scopes
-      final scopes = [drive.DriveApi.driveAppdataScope];
-      final authorization = await account.authorizationClient.authorizeScopes(
-        scopes,
-      );
+      final authorization =
+          await account.authorizationClient.authorizationForScopes(
+            _driveScopes,
+          ) ??
+          await account.authorizationClient.authorizeScopes(_driveScopes);
 
-      // 3. Get Authenticated Client
-      final client = authorization.authClient(scopes: scopes);
+      final client = authorization.authClient(scopes: _driveScopes);
       return drive.DriveApi(client);
+    } on gsi.GoogleSignInException catch (e) {
+      _lastDriveAuthError = _formatDriveAuthError(e);
+      debugPrint(
+        'Error getting Drive API: ${e.code.name} ${e.description ?? ''}',
+      );
+      return null;
     } catch (e) {
       debugPrint('Error getting Drive API: $e');
+      _lastDriveAuthError = null;
       return null;
     }
   }
@@ -114,7 +124,10 @@ class BackupRestoreService {
       final drive.DriveApi? driveApi = await _getDriveApi();
       if (driveApi == null) {
         if (context.mounted) {
-          _showError(context, 'get_started.drive_signin_failed'.tr());
+          _showError(
+            context,
+            _lastDriveAuthError ?? 'get_started.drive_signin_failed'.tr(),
+          );
         }
         return false;
       }
@@ -169,7 +182,10 @@ class BackupRestoreService {
       final driveApi = await _getDriveApi();
       if (driveApi == null) {
         if (context.mounted) {
-          _showError(context, 'get_started.drive_signin_failed'.tr());
+          _showError(
+            context,
+            _lastDriveAuthError ?? 'get_started.drive_signin_failed'.tr(),
+          );
         }
         return false;
       }
@@ -227,6 +243,17 @@ class BackupRestoreService {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
+  }
+
+  static String _formatDriveAuthError(gsi.GoogleSignInException error) {
+    final description = error.description ?? '';
+    if (error.code == gsi.GoogleSignInExceptionCode.canceled &&
+        description.contains('Account reauth failed')) {
+      return 'Google Sign-In could not finish. On Android this usually means '
+          'the app Google OAuth setup is incomplete for this build.';
+    }
+
+    return 'get_started.drive_signin_failed'.tr();
   }
 
   static Future<void> _syncSettingsWithPrefs() async {

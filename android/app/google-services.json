@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "938301732033",
+    "project_id": "expensia-c2f5b",
+    "storage_bucket": "expensia-c2f5b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938301732033:android:155497882e8a7c6e3ad040",
+        "android_client_info": {
+          "package_name": "com.expensia.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "938301732033-p0hgkk95ubm5sfppl492iuovos3tnem7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.expensia.app",
+            "certificate_hash": "db215ab37bb4ff6e36807b2812d458639181228c"
+          }
+        },
+        {
+          "client_id": "938301732033-vh25d67f4jpbsjkmgqkqsid3s2p5b9kh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.expensia.app",
+            "certificate_hash": "5d3b17de11bf527bc298ae82a72fc7c9a94341ef"
+          }
+        },
+        {
+          "client_id": "938301732033-82d4eebg0kua5md1qe9277l5vk5j9fbj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHAHlyne9I4riJJEYsF8ksqchN7njIo3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "938301732033-3277kfs4l6g9fbmsm4d3ve22e0gs428m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "938301732033-00pkktp5aqt9uu7cljd37qr8r4cr8imn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.expensia"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

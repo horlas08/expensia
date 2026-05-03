@@ -13,6 +13,12 @@ class AppTheme {
         secondary: const Color(0xFF00C48C),
         surface: Colors.white,
       ),
+      inputDecorationTheme: InputDecorationThemeData(
+        hintStyle: TextStyle(
+          fontSize: 12,
+        ),
+
+      ),
       textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,

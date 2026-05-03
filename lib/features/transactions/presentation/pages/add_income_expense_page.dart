@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../core/config/premium_config.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/services/subscription_service.dart';
+import '../../../../core/services/transaction_limit_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../core/providers/categories_provider.dart';
-import '../../../../features/profile/presentation/widgets/subscription_sheet.dart';
+import '../providers/transactions_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/category_picker_sheet.dart';
 import '../widgets/image_source_sheet.dart';
@@ -98,6 +98,12 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       );
       return;
     }
+    if (_selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transaction.select_category'.tr())),
+      );
+      return;
+    }
     if (_selectedWalletId == null) {
       ScaffoldMessenger.of(
         context,
@@ -112,25 +118,15 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       final dbRaw = await db.database;
 
       if (widget.initialTransaction == null) {
-        final countResult = await dbRaw.rawQuery(
-          'SELECT COUNT(*) as count FROM transactions',
-        );
-        final currentCount = (countResult.first['count'] as num?)?.toInt() ?? 0;
-        if (PremiumConfig.hasReachedTransactionLimit(
-          isPro: isPro,
-          currentCount: currentCount,
-        )) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'transaction.free_limit_reached'.tr(
-                  args: ['${PremiumConfig.maxFreeTransactions}'],
-                ),
-              ),
-            ),
-          );
-          SubscriptionSheet.show(context);
+        final currentCount = await db.getTransactionCountForFreeLimit();
+        if (!mounted) return;
+        final allowed =
+            await TransactionLimitService.ensureCanCreateTransaction(
+              context: context,
+              isPro: isPro,
+              currentCount: currentCount,
+            );
+        if (!allowed) {
           return;
         }
       }
@@ -143,9 +139,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
       final transactionData = {
         'wallet_id': _selectedWalletId,
-        'category_id':
-            _selectedCategoryId ??
-            (_isIncome ? 5 : 11), // Default to Salary(5) or Housing(11)
+        'category_id': _selectedCategoryId,
         'currency_id': currency?.id ?? wallet.currencyId,
         'type': widget.transactionType,
         'direction': _isIncome ? 'plus' : 'min',
@@ -247,6 +241,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
       ref.invalidate(allTransactionsProvider);
+      ref.invalidate(filteredTransactionsProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -528,7 +523,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                       child: _FormCard(
                         icon: Icons.category_rounded,
                         color: const Color(0xFF9B5DE5),
-                        label: 'transaction.category'.tr(),
+                        label: '${'transaction.category'.tr()} *',
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -609,6 +604,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                               decoration: InputDecoration(
                                 hintText: 'transaction.note_hint'.tr(),
                                 border: InputBorder.none,
+                                hintStyle: TextStyle(fontSize: 12),
                                 isDense: true,
                               ),
                             ),
@@ -669,6 +665,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                                     ? 'transaction.attach_image'.tr()
                                     : 'transaction.image_attached'.tr(),
                                 style: TextStyle(
+                                  fontSize: 12,
                                   color:
                                       _imageUrl == null
                                           ? cs.onSurface.withValues(alpha: 0.5)

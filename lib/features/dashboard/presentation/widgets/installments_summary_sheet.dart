@@ -13,10 +13,12 @@ class InstallmentsSummarySheet extends ConsumerStatefulWidget {
   final String currencySymbol;
 
   @override
-  ConsumerState<InstallmentsSummarySheet> createState() => _InstallmentsSummarySheetState();
+  ConsumerState<InstallmentsSummarySheet> createState() =>
+      _InstallmentsSummarySheetState();
 }
 
-class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySheet>
+class _InstallmentsSummarySheetState
+    extends ConsumerState<InstallmentsSummarySheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Future<List<Map<String, dynamic>>> _activeInstallmentsFuture;
@@ -56,9 +58,7 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
 
     return Sheet(
       initialOffset: const SheetOffset(1),
-      snapGrid: const SheetSnapGrid.stepless(
-        minOffset: SheetOffset(0.5),
-      ),
+      snapGrid: const SheetSnapGrid.stepless(minOffset: SheetOffset(0.5)),
       child: SheetContentScaffold(
         backgroundColor: cs.surface,
         topBar: AppBar(
@@ -66,7 +66,7 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
           foregroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white,),
+            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
@@ -80,7 +80,10 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white60,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
             tabs: [
               Tab(text: 'dashboard.active'.tr()),
               Tab(text: 'dashboard.paid'.tr()),
@@ -92,14 +95,12 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
           children: [
             _InstallmentListView(
               future: _activeInstallmentsFuture,
-              symbol: widget.currencySymbol,
               onRefresh: () {
                 setState(_loadData);
               },
             ),
             _InstallmentListView(
               future: _paidInstallmentsFuture,
-              symbol: widget.currencySymbol,
               onRefresh: () {
                 setState(_loadData);
               },
@@ -112,13 +113,8 @@ class _InstallmentsSummarySheetState extends ConsumerState<InstallmentsSummarySh
 }
 
 class _InstallmentListView extends StatelessWidget {
-  const _InstallmentListView({
-    required this.future,
-    required this.symbol,
-    required this.onRefresh,
-  });
+  const _InstallmentListView({required this.future, required this.onRefresh});
   final Future<List<Map<String, dynamic>>> future;
-  final String symbol;
   final VoidCallback onRefresh;
 
   @override
@@ -140,7 +136,11 @@ class _InstallmentListView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.business_center_outlined, size: 64, color: cs.onSurface.withOpacity(0.2)),
+                Icon(
+                  Icons.business_center_outlined,
+                  size: 64,
+                  color: cs.onSurface.withValues(alpha: 0.2),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'dashboard.no_installments_found'.tr(),
@@ -157,12 +157,13 @@ class _InstallmentListView extends StatelessWidget {
           itemBuilder: (context, i) {
             final item = data[i];
             // Usually 'type' = 'for_you' or 'on_you'
-            final isForYou = item['type'] == 'for_you'; 
+            final isForYou = item['type'] == 'for_you';
             final remainingPrice =
                 (item['remaining_price'] as num?)?.toDouble() ?? 0.0;
             final remainingPriceText = remainingPrice.toStringAsFixed(2);
             final remainingMonths = item['remaining_months'];
             final personName = item['person_name'] ?? 'common.unknown'.tr();
+            final amountColor = isForYou ? Colors.red : Colors.green;
 
             return FadeInUp(
               delay: Duration(milliseconds: 50 * i),
@@ -171,21 +172,25 @@ class _InstallmentListView extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: ListTile(
                   onTap: () async {
-                    final tx = await DatabaseService().getMainTransactionForInstallment(item['id']);
+                    final tx = await DatabaseService()
+                        .getMainTransactionForInstallment(item['id']);
                     if (tx != null && context.mounted) {
                       final style = TransactionListItem.getStyle(context, tx);
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => TransactionDetailPage(
-                            tx: tx,
-                            iconData: style.icon,
-                            iconColor: style.color,
-                          ),
+                          builder:
+                              (context) => TransactionDetailPage(
+                                tx: tx,
+                                iconData: style.icon,
+                                iconColor: style.color,
+                              ),
                         ),
                       );
                       if (context.mounted) {
@@ -193,22 +198,28 @@ class _InstallmentListView extends StatelessWidget {
                       }
                     }
                   },
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.15),
+                      color: amountColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
-                      Icons.business_rounded,
-                      color: Colors.orange,
-                    ),
+                    child: Icon(Icons.business_rounded, color: amountColor),
                   ),
-                  title: Text(
+                  title: AutoSizeText(
                     personName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    minFontSize: 12,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Row(
                     children: [
@@ -217,23 +228,25 @@ class _InstallmentListView extends StatelessWidget {
                           '${isForYou ? 'dashboard.for_you'.tr() : 'dashboard.on_you'.tr()} • $remainingMonths mos left',
                           style: TextStyle(color: cs.onSurfaceVariant),
                           maxLines: 1,
+                          minFontSize: 10,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-
                     ],
                   ),
                   trailing: Column(
                     children: [
                       Text(
-                        '$symbol$remainingPriceText',
-                        style: const TextStyle(
+                        remainingPriceText,
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Colors.orange,
+                          color: amountColor,
                         ),
                       ),
-                      _StatusBadge(status: item['status'] as String? ?? 'active'),
-
+                      _StatusBadge(
+                        status: item['status'] as String? ?? 'active',
+                      ),
                     ],
                   ),
                 ),

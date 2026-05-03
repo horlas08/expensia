@@ -8,9 +8,12 @@ import 'package:sqflite/sqflite.dart';
 import '../../../../core/models/person_model.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../core/services/database_service.dart';
+import '../../../../core/services/subscription_service.dart';
+import '../../../../core/services/transaction_limit_service.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../providers/transactions_provider.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/image_source_sheet.dart';
 import '../widgets/two_options_selector.dart';
@@ -139,7 +142,23 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     try {
       final db = DatabaseService();
       final dbRaw = await db.database;
+      final isPro = ref.read(isProProvider);
       int? savedInstallmentId;
+
+      if (widget.initialTransaction == null) {
+        final currentCount = await db.getTransactionCountForFreeLimit();
+        if (!mounted) return;
+        final allowed =
+            await TransactionLimitService.ensureCanCreateTransaction(
+              context: context,
+              isPro: isPro,
+              currentCount: currentCount,
+            );
+        if (!allowed) {
+          if (mounted) setState(() => _saving = false);
+          return;
+        }
+      }
 
       // Ensure entity exists or create them
       int personId = await _getOrCreatePerson(dbRaw, _personCtrl.text.trim());
@@ -352,6 +371,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
       ref.invalidate(allTransactionsProvider);
+      ref.invalidate(filteredTransactionsProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -564,6 +584,73 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     );
   }
 
+  Widget _buildInstallmentInputCard({
+    required IconData icon,
+    required Color color,
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    required List<TextInputFormatter> inputFormatters,
+    required String hintText,
+    VoidCallback? trailingAction,
+    String? trailingLabel,
+    IconData? trailingIcon,
+    bool showLabel = false,
+    String? label,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+
+    return _FormCard(
+      icon: icon,
+      color: color,
+      label: label ?? '',
+      showLabel: showLabel,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              decoration: InputDecoration(
+                hintText: hintText,
+                border: InputBorder.none,
+                isDense: true,
+                hintStyle: TextStyle(
+                  color: cs.onSurface.withValues(alpha: 0.35),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          if (trailingAction != null &&
+              trailingLabel != null &&
+              trailingIcon != null) ...[
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: trailingAction,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                backgroundColor: color.withValues(alpha: 0.12),
+                foregroundColor: color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: Icon(trailingIcon, size: 16),
+              label: Text(
+                trailingLabel,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickContact() async {
     final person = await Navigator.push<Person>(
       context,
@@ -728,7 +815,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 20),
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -757,6 +847,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                                 hintText: 'transaction.entity_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
+                                hintStyle: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
@@ -775,150 +866,50 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
                   FadeInUp(
                     delay: const Duration(milliseconds: 40),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                    child: _buildInstallmentInputCard(
+                      icon: Icons.payments_rounded,
+                      color: const Color(0xFF22C55E),
+                      controller: _depositCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _depositCtrl,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.]'),
-                                ),
-                              ],
-                              decoration: InputDecoration(
-                                labelText:
-                                    'transaction.deposit_initial_paid'.tr(),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _openCalculator(_depositCtrl),
-                            icon: Icon(
-                              Icons.calculate_rounded,
-                              color: cs.primary.withValues(alpha: 0.5),
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      hintText: 'transaction.deposit_initial_paid'.tr(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FadeInUp(
                     delay: const Duration(milliseconds: 60),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                    child: _buildInstallmentInputCard(
+                      icon: Icons.event_available_rounded,
+                      color: const Color(0xFF0EA5E9),
+                      controller: _lastPaidCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _lastPaidCtrl,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.]'),
-                                ),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'transaction.last_paid'.tr(),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _openCalculator(_lastPaidCtrl),
-                            icon: Icon(
-                              Icons.calculate_rounded,
-                              color: cs.primary.withValues(alpha: 0.5),
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      hintText: 'transaction.last_paid'.tr(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FadeInUp(
                     delay: const Duration(milliseconds: 80),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                    child: _buildInstallmentInputCard(
+                      icon: Icons.calendar_today_rounded,
+                      color: const Color(0xFFF59E0B),
+                      controller: _monthsCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: false,
                       ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _monthsCtrl,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: false,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'transaction.months'.tr(),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _openCalculator(_monthsCtrl),
-                            icon: Icon(
-                              Icons.calculate_rounded,
-                              color: cs.primary.withValues(alpha: 0.5),
-                              size: 18,
-                            ),
-                          ),
-                          Container(
-                            height: 24,
-                            width: 1,
-                            color: cs.outlineVariant.withValues(alpha: 0.3),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                          ),
-                          IconButton(
-                            onPressed: _showPlanPreview,
-                            icon: Icon(
-                              Icons.calendar_month_rounded,
-                              color: cs.primary,
-                              size: 18,
-                            ),
-                            tooltip: 'transaction.preview_plan'.tr(),
-                          ),
-                        ],
-                      ),
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      hintText: 'transaction.months'.tr(),
+                      trailingAction: _showPlanPreview,
+                      trailingLabel: 'transaction.preview_plan'.tr(),
+                      trailingIcon: Icons.visibility_rounded,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -979,7 +970,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 120),
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
@@ -1008,6 +1002,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                                 hintText: 'transaction.note_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
+                                hintStyle: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
@@ -1023,7 +1018,10 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     child: GestureDetector(
                       onTap: _pickImage,
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
                           color:
                               _imageUrl == null
@@ -1150,12 +1148,14 @@ class _FormCard extends StatelessWidget {
     required this.color,
     required this.label,
     required this.child,
+    this.showLabel = true,
   });
 
   final IconData icon;
   final Color color;
   final String label;
   final Widget child;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1178,21 +1178,24 @@ class _FormCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                child,
-              ],
-            ),
+            child:
+                showLabel
+                    ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        child,
+                      ],
+                    )
+                    : child,
           ),
         ],
       ),
