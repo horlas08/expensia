@@ -7,6 +7,9 @@ import '../../features/auth/presentation/pages/get_started.dart';
 import '../../features/auth/presentation/pages/setup_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 
+import '../../features/profile/presentation/pages/html_content_page.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
@@ -32,6 +35,20 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardPage(),
+    ),
+    GoRoute(
+      path: '/privacy-policy',
+      builder: (context, state) => HtmlContentPage(
+        title: 'profile.privacy_policy'.tr(),
+        assetPath: 'assets/privacy-policy.html',
+      ),
+    ),
+    GoRoute(
+      path: '/terms-of-use',
+      builder: (context, state) => HtmlContentPage(
+        title: 'profile.terms'.tr(),
+        assetPath: 'assets/terms-use.html',
+      ),
     ),
   ],
 );

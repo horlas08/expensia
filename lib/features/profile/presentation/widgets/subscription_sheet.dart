@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/subscription_service.dart';
 
 class SubscriptionSheet extends ConsumerStatefulWidget {
@@ -186,6 +187,31 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                             style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
                           ),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  // ── COMPLIANCE LINKS ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () => context.push('/privacy-policy'),
+                        child: Text(
+                          'profile.privacy_policy'.tr(),
+                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                        ),
+                      ),
+                      Text(
+                        '•',
+                        style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/terms-of-use'),
+                        child: Text(
+                          'profile.terms'.tr(),
+                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

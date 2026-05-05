@@ -178,7 +178,10 @@
     "delete_person_confirm": "This will also delete all associated debts and installments. Continue?",
     "select_person": "Select Person",
     "lock_bio_note": "Requires biometrics (Face ID, fingerprint) or device PIN.",
-    "user_badge": "Expensia User"
+    "user_badge": "Expensia User",
+    "section_summary": "SUMMARY",
+    "debt_summary": "Debt Summary",
+    "installment_summary": "Installment Summary"
   },
   "categories": {
     "expense": "Expense",

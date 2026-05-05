@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Terms of Use | DebtPro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f7f8fa;
+      color: #333;
+      margin: 0;
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #ffffff;
+      padding: 28px;
+    }
+
+    h1, h2 {
+      color: #111;
+    }
+
+    hr {
+      margin: 30px 0;
+      border: none;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    /* 🔘 Language Switch */
+    .lang-switch {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .lang-btn {
+      padding: 6px 14px;
+      border-radius: 14px;
+      border: 1px solid #ddd;
+      background: #f1f1f1;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .lang-btn.active {
+      background: #2E7D32;
+      color: #fff;
+      border-color: #2E7D32;
+    }
+
+    .lang {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* RTL support */
+    .rtl {
+      direction: rtl;
+      text-align: right;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- 🌐 Language Toggle -->
+  <div class="lang-switch">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" id="btn-ar" onclick="setLang('ar')">AR</button>
+  </div>
+
+  <!-- 🇬🇧 English -->
+  <div id="en">
+
+    <h1>📄 Terms of Use</h1>
+    <div class="lang">DebtPro | Diouni — Last updated: January 2026</div>
+
+    <p>
+      By using DebtPro | Diouni, you agree to use the application solely for personal debt management and organization purposes.
+    </p>
+
+    <p>
+      The app is an organizational tool designed to help users record debts, track payments, send friendly reminders, and communicate with related parties. It does not provide financial or legal advice.
+    </p>
+
+    <p>
+      Users are fully responsible for the accuracy of the data entered into the app and for the content and manner of any communication with other parties.
+    </p>
+
+    <p>
+      All messages and calls are initiated by the user. The developers are not liable for any disputes, misuse, or consequences resulting from these actions.
+    </p>
+
+    <p>
+      Continued use of the app constitutes full acceptance of these terms.
+    </p>
+
+  </div>
+
+  <!-- 🇸🇦 Arabic -->
+  <div id="ar" class="hidden rtl">
+
+    <h1>📄 شروط الاستخدام</h1>
+
+    <p>
+      باستخدامك لتطبيق <strong>DebtPro | ديوني</strong>، فإنك توافق على استخدامه لأغراض إدارة وتنظيم الديون الشخصية فقط.
+    </p>
+
+    <p>
+      التطبيق أداة تنظيمية ولا يقدم أي استشارات مالية أو قانونية.
+    </p>
+
+    <p>
+      يتحمل المستخدم المسؤولية الكاملة عن صحة البيانات التي يقوم بإدخالها، وكذلك عن محتوى الرسائل أو أسلوب التواصل مع الأطراف الأخرى.
+    </p>
+
+    <p>
+      جميع عمليات الاتصال تتم بمبادرة المستخدم، ولا يتحمل مطورو التطبيق أي مسؤولية عن النزاعات أو النتائج المترتبة على سوء الاستخدام.
+    </p>
+
+    <p>
+      استمرار استخدام التطبيق يُعد موافقة صريحة على هذه الشروط.
+    </p>
+
+  </div>
+
+</div>
+
+<script>
+  function setLang(lang) {
+    document.getElementById('en').classList.toggle('hidden', lang !== 'en');
+    document.getElementById('ar').classList.toggle('hidden', lang !== 'ar');
+
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+
+    document.documentElement.lang = lang;
+  }
+</script>
+
+</body>
+</html>

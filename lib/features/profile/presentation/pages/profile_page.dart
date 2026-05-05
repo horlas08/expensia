@@ -21,6 +21,8 @@ import '../../../../core/services/database_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../dashboard/presentation/widgets/debts_summary_sheet.dart';
+import '../../dashboard/presentation/widgets/installments_summary_sheet.dart';
 
 // import '../../../../features/transactions/presentation/providers/transactions_provider.dart';// Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
@@ -149,6 +151,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ),
 
+                  // ── Summary ──────────────────────────────────────────
+                  _SectionLabel('profile.section_summary'.tr(), delay: 60),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 100),
+                    child: _SettingsCard(
+                      items: [
+                        _SettingTile(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'profile.debt_summary'.tr(),
+                          onTap: () => DebtsSummarySheet.show(context),
+                        ),
+                        _SettingTile(
+                          icon: Icons.calendar_month_outlined,
+                          label: 'profile.installment_summary'.tr(),
+                          onTap: () => InstallmentsSummarySheet.show(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // ── App Preferences ──────────────────────────────────
                   _SectionLabel('profile.section_preferences'.tr(), delay: 80),
                   FadeInUp(
@@ -266,12 +288,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.privacy_tip_outlined,
                           label: 'profile.privacy_policy'.tr(),
-                          onTap: () {},
+                          onTap: () => context.push('/privacy-policy'),
                         ),
                         _SettingTile(
                           icon: Icons.description_outlined,
                           label: 'profile.terms'.tr(),
-                          onTap: () {},
+                          onTap: () => context.push('/terms-of-use'),
                         ),
                         _SettingTile(
                           icon: Icons.mail_outline_rounded,

@@ -178,7 +178,10 @@
     "delete_person_confirm": "سيؤدي هذا أيضاً إلى حذف جميع الديون والأقساط المرتبطة. هل تريد الاستمرار؟",
     "select_person": "اختر الشخص",
     "lock_bio_note": "يتطلب التحقق البيومتري مثل Face ID أو البصمة أو رمز قفل الجهاز.",
-    "user_badge": "مستخدم Expensia"
+    "user_badge": "مستخدم Expensia",
+    "section_summary": "الملخص",
+    "debt_summary": "ملخص الديون",
+    "installment_summary": "ملخص الأقساط"
   },
   "categories": {
     "expense": "مصروف",

@@ -58,6 +58,7 @@ dependencies:
   blur: ^4.0.2
   flutter_native_contact_picker: ^0.0.11
   google_mobile_ads: ^8.0.0
+  flutter_widget_from_html: ^0.17.2
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +77,8 @@ flutter:
     - assets/images/
     - assets/svg/
     - assets/lang/
+    - assets/privacy-policy.html
+    - assets/terms-use.html
   fonts:
     - family: Cairo
       fonts:

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Privacy Policy | DebtPro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f7f8fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      line-height: 1.7;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #ffffff;
+      padding: 32px;
+    }
+    h1, h2 {
+      color: #111;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    hr {
+      margin: 30px 0;
+      border: none;
+      border-top: 1px solid #e0e0e0;
+    }
+     /* 🔘 Language Switch */
+    .lang-switch {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .lang-btn {
+      padding: 6px 14px;
+      border-radius: 14px;
+      border: 1px solid #ddd;
+      background: #f1f1f1;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .lang-btn.active {
+      background: #2E7D32;
+      color: #fff;
+      border-color: #2E7D32;
+    }
+
+    .lang {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 13px;
+      color: #777;
+    }
+    /* RTL support */
+    .rtl {
+      direction: rtl;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 🌐 Language Toggle -->
+  <div class="lang-switch">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" id="btn-ar" onclick="setLang('ar')">AR</button>
+  </div>
+
+  <!-- 🇬🇧 English -->
+
+  <div id="en">
+    <h1>🔐 Privacy Policy</h1>
+  <div class="lang">DebtPro | Diouni — Last updated: January 2026</div>
+
+  <p>
+    DebtPro | Diouni respects user privacy and is fully committed to protecting personal data.
+  </p>
+
+  <p>
+    The app does not collect, store, or share any personal information with third parties.
+  </p>
+
+  <p>
+    All debt-related data, transactions, reminders, and contact details are entered voluntarily by the user and are used solely within the app for personal debt management and organization purposes.
+  </p>
+
+  <p>
+    Features such as friendly reminders, communication with related parties, or phone calls are initiated manually by the user. The app does not send automatic messages or perform any communication without user interaction.
+  </p>
+
+  <p>
+    Friendly reminder messages may include a short identifying phrase such as
+    <strong>“Sent via DebtPro | Diouni”</strong>.
+    This option can be enabled or disabled at any time through the app settings.
+  </p>
+
+  <p>
+    The app does not record calls, monitor messages, access unauthorized data, or use any information for advertising or marketing purposes.
+  </p>
+
+  <p>
+    Certain permissions (such as contacts or phone access) may be requested strictly to enable user-selected features and for no other purpose.
+  </p>
+
+  <hr />
+  </div>
+
+  <div id="ar" class="hidden rtl">
+    <h1> سياسة الخصوصية</h1>
+
+  <p>
+    يلتزم تطبيق <strong>DebtPro | ديوني</strong> باحترام خصوصية المستخدم وحماية بياناته بشكل كامل.
+  </p>
+
+  <p>
+    لا يقوم التطبيق بجمع أو تخزين أو مشاركة أي بيانات شخصية مع أي طرف ثالث.
+  </p>
+
+  <p>
+    جميع البيانات المتعلقة بالديون، العمليات المالية، التذكيرات، وأرقام التواصل يتم إدخالها من قبل المستخدم بإرادته الكاملة، وتُستخدم حصريًا داخل التطبيق لأغراض إدارة وتنظيم الديون.
+  </p>
+
+  <p>
+    جميع عمليات الاتصال أو إرسال الرسائل تتم بمبادرة المستخدم فقط، ولا يقوم التطبيق بأي تواصل تلقائي.
+  </p>
+
+  <p>
+    قد تحتوي رسائل التذكير الودية على عبارة تعريفية مثل
+    <strong>“مرسلة عبر DebtPro | ديوني”</strong>
+    مع إمكانية تفعيل أو إيقاف هذه الإضافة من الإعدادات.
+  </p>
+
+  <p>
+    لا يقوم التطبيق بتسجيل المكالمات أو مراقبة الرسائل أو استخدام البيانات لأي أغراض إعلانية.
+  </p>
+  </div>
+  <div class="footer">
+    Contact: support@debtpro.app
+  </div>
+
+</div>
+
+<script>
+  function setLang(lang) {
+    document.getElementById('en').classList.toggle('hidden', lang !== 'en');
+    document.getElementById('ar').classList.toggle('hidden', lang !== 'ar');
+
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+
+    document.documentElement.lang = lang;
+  }
+</script>
+
+</body>
+</html>
