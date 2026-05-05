@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/config/premium_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/shared_preferences_service.dart';
+import '../../../dashboard/presentation/widgets/debts_summary_sheet.dart';
+import '../../../dashboard/presentation/widgets/installments_summary_sheet.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../../../../core/services/subscription_service.dart';
 import '../../../../core/providers/currency_provider.dart';
@@ -21,8 +24,6 @@ import '../../../../core/services/database_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
-import '../../dashboard/presentation/widgets/debts_summary_sheet.dart';
-import '../../dashboard/presentation/widgets/installments_summary_sheet.dart';
 
 // import '../../../../features/transactions/presentation/providers/transactions_provider.dart';// Persists the chosen theme to SharedPreferences
 Future<void> _persistTheme(bool isDark) async {
@@ -61,6 +62,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (result != null && result.isNotEmpty && mounted) {
       setState(() => _userName = result);
     }
+  }
+
+  void _showDebtsSheet(BuildContext context, String sym) {
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        builder: (context) => DebtsSummarySheet(currencySymbol: sym),
+      ),
+    );
+  }
+
+  void _showInstallmentsSheet(BuildContext context, String sym) {
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        builder: (context) => InstallmentsSummarySheet(currencySymbol: sym),
+      ),
+    );
   }
 
   @override
@@ -160,12 +179,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _SettingTile(
                           icon: Icons.account_balance_wallet_outlined,
                           label: 'profile.debt_summary'.tr(),
-                          onTap: () => DebtsSummarySheet.show(context),
+                          onTap: () => _showDebtsSheet(context, currencySymbol),
                         ),
                         _SettingTile(
                           icon: Icons.calendar_month_outlined,
                           label: 'profile.installment_summary'.tr(),
-                          onTap: () => InstallmentsSummarySheet.show(context),
+                          onTap: () => _showInstallmentsSheet(context,currencySymbol),
                         ),
                       ],
                     ),

@@ -12,6 +12,13 @@ class DebtsSummarySheet extends ConsumerStatefulWidget {
   const DebtsSummarySheet({super.key, required this.currencySymbol});
   final String currencySymbol;
 
+  static Future<void> show(BuildContext context, String currencySymbol) {
+    return showModalSheet(
+      context: context,
+      builder: (context) => DebtsSummarySheet(currencySymbol: currencySymbol),
+    );
+  }
+
   @override
   ConsumerState<DebtsSummarySheet> createState() => _DebtsSummarySheetState();
 }
