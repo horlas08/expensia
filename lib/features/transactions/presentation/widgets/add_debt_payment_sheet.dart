@@ -14,12 +14,14 @@ class AddDebtPaymentSheet extends ConsumerStatefulWidget {
   final int debtId;
   final String direction;
   final VoidCallback onSaved;
+  final Map<String, dynamic>? initialPayment;
 
   const AddDebtPaymentSheet({
     super.key,
     required this.debtId,
     required this.direction,
     required this.onSaved,
+    this.initialPayment,
   });
 
   @override
@@ -30,6 +32,16 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
   final _amountCtrl = TextEditingController();
   int? _selectedWalletId;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPayment != null) {
+      final amount = widget.initialPayment!['amount'];
+      _amountCtrl.text = amount is num ? (amount.truncateToDouble() == amount ? amount.toInt().toString() : amount.toString()) : amount.toString();
+      _selectedWalletId = widget.initialPayment!['wallet_id'] as int?;
+    }
+  }
 
   Future<void> _submit() async {
     if (_saving) return;
@@ -51,12 +63,20 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
 
     setState(() => _saving = true);
     try {
-      await DatabaseService().addDebtPayment(
-        debtId: widget.debtId,
-        amount: amount,
-        direction: widget.direction,
-        walletId: _selectedWalletId!,
-      );
+      if (widget.initialPayment != null) {
+        await DatabaseService().updateDebtPayment(
+          transactionId: widget.initialPayment!['id'] as int,
+          amount: amount,
+          walletId: _selectedWalletId!,
+        );
+      } else {
+        await DatabaseService().addDebtPayment(
+          debtId: widget.debtId,
+          amount: amount,
+          direction: widget.direction,
+          walletId: _selectedWalletId!,
+        );
+      }
       await ref.read(walletProvider.notifier).loadWallets();
 
       if (mounted) {
@@ -86,9 +106,11 @@ class _AddDebtPaymentSheetState extends ConsumerState<AddDebtPaymentSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final wallets = ref.watch(walletProvider);
-    final title = widget.direction == 'plus'
-        ? 'transaction.add_borrowed_payment'.tr()
-        : 'transaction.add_lent_payment'.tr();
+    final title = widget.initialPayment != null
+        ? 'common.edit'.tr() // You might want a better translation key but this works
+        : (widget.direction == 'plus'
+            ? 'transaction.add_borrowed_payment'.tr()
+            : 'transaction.add_lent_payment'.tr());
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     
     final selectedWallet = _selectedWalletId != null && wallets.isNotEmpty

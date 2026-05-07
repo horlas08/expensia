@@ -6,13 +6,13 @@ import 'package:animate_do/animate_do.dart';
 
 import '../../../../core/config/premium_config.dart';
 import '../../../../core/services/subscription_service.dart';
+import '../../../../core/services/wallet_limit_service.dart';
 import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/dashboard/presentation/pages/wallet_action_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
-import '../../../../features/profile/presentation/widgets/subscription_sheet.dart';
 
 class WalletPage extends ConsumerStatefulWidget {
   const WalletPage({super.key});
@@ -497,7 +497,23 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  /// Returns the translated wallet type label for the selector field.
+  static String _localizedType(String type, BuildContext context) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'wallet.cash'.tr();
+      case 'bank':
+        return 'wallet.bank'.tr();
+      case 'investment':
+        return 'wallet.investment'.tr();
+      case 'credit_card':
+        return 'wallet.credit_card'.tr();
+      default:
+        return 'wallet.other'.tr();
+    }
+  }
+
+  Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
     final balanceText = _balanceCtrl.text.trim();
     final balance = double.tryParse(balanceText);
@@ -516,22 +532,15 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
     });
 
     if (_nameError != null || _balanceError != null) return;
-    if (PremiumConfig.hasReachedWalletLimit(
+
+    // Wallet limit — shows Watch Ad / Upgrade sheet
+    final canCreate = await WalletLimitService.ensureCanCreateWallet(
+      context: context,
       isPro: isPro,
       currentCount: walletCount,
-    )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'wallet.free_limit_reached'.tr(
-              args: ['${PremiumConfig.maxFreeWallets}'],
-            ),
-          ),
-        ),
-      );
-      SubscriptionSheet.show(context);
-      return;
-    }
+    );
+    if (!canCreate) return;
+    if (!mounted) return;
 
     // Read currency from global provider — static symbol, not translated
     final currency = ref.read(defaultCurrencyProvider).valueOrNull;
@@ -544,6 +553,7 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
         currencyCode: currency?.currencyCode ?? 'USD',
         currencySymbol: currency?.currencySymbol ?? '\$',
         currencyNameEn: currency?.currencyNameEn ?? 'US Dollar',
+        currencyNameAr: currency?.currencyNameAr,
         rateToUsd: currency?.rateToUsd ?? 1.0,
       ),
     );
@@ -667,7 +677,7 @@ class _AddWalletSheetState extends ConsumerState<_AddWalletSheet> {
                   ),
                   const Spacer(),
                   Text(
-                    _type.toUpperCase(),
+                    _localizedType(_type, context),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8),

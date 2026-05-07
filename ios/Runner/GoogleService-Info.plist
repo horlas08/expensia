@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>938301732033-48mv9m0svoj6qgor2tgr4ig9plt3sjst.apps.googleusercontent.com</string>
+	<string>938301732033-mt2pg6usehj02mf4r7uc7dkidqd2i0ci.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.938301732033-48mv9m0svoj6qgor2tgr4ig9plt3sjst</string>
+	<string>com.googleusercontent.apps.938301732033-mt2pg6usehj02mf4r7uc7dkidqd2i0ci</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>938301732033-p0hgkk95ubm5sfppl492iuovos3tnem7.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.expensia.app</string>
+	<string>com.expensia.pro</string>
 	<key>PROJECT_ID</key>
 	<string>expensia-c2f5b</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:938301732033:ios:42ff2bd17c3bf9ec3ad040</string>
+	<string>1:938301732033:ios:19c390dd1e70e2983ad040</string>
 </dict>
 </plist>

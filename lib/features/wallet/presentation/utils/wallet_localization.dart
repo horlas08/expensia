@@ -24,4 +24,14 @@ extension WalletDisplayNameX on WalletEntity {
   String displayName(BuildContext context) {
     return localizedWalletDisplayName(context, name);
   }
+
+  String localizedCurrencyName(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    if (locale == 'ar' &&
+        currencyNameAr != null &&
+        currencyNameAr!.isNotEmpty) {
+      return currencyNameAr!;
+    }
+    return currencyNameEn ?? '';
+  }
 }

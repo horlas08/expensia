@@ -1135,20 +1135,42 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     final dir = payment['direction'] as String? ?? 'min';
     final isIncome = dir == 'plus';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color:
-              isIncome
-                  ? Colors.green.withValues(alpha: 0.2)
-                  : Colors.red.withValues(alpha: 0.2),
+    return GestureDetector(
+      onTap: () {
+        final debtId = payment['debt_id'] as int? ?? widget.tx['debt_id'] as int? ?? widget.tx['id'] as int;
+        Navigator.push(
+          context,
+          ModalSheetRoute(
+            builder: (ctx) => AddDebtPaymentSheet(
+              debtId: debtId,
+              direction: dir,
+              initialPayment: payment,
+              onSaved: () {
+                ref.invalidate(walletProvider);
+                ref.invalidate(filteredTransactionsProvider);
+                ref.invalidate(dashboardMetricsProvider);
+                ref.invalidate(recentTransactionsProvider);
+                ref.invalidate(allTransactionsProvider);
+                _loadData();
+              },
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color:
+                isIncome
+                    ? Colors.green.withValues(alpha: 0.2)
+                    : Colors.red.withValues(alpha: 0.2),
+          ),
         ),
-      ),
-      child: Row(
+        child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -1198,6 +1220,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           ),
         ],
       ),
+    ),
     );
   }
 

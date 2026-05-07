@@ -736,7 +736,7 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getWallets() async {
     final db = await database;
     return await db.rawQuery('''
-      SELECT w.*, c.currency_code, c.currency_symbol, c.currency_name_en, c.rate_to_usd
+      SELECT w.*, c.currency_code, c.currency_symbol, c.currency_name_en, c.currency_name_ar, c.rate_to_usd
       FROM wallets w
       LEFT JOIN all_currencies c ON w.currency_id = c.id
       WHERE w.is_visible = 1
@@ -1708,6 +1708,67 @@ class DatabaseService {
     }
 
     await _recalculateDebtState(db, debtId);
+  }
+
+  Future<void> updateDebtPayment({
+    required int transactionId,
+    required double amount,
+    required int walletId,
+  }) async {
+    final db = await database;
+    
+    final txRows = await db.query('transactions', where: 'id = ?', whereArgs: [transactionId], limit: 1);
+    if (txRows.isEmpty) return;
+
+    final tx = txRows.first;
+    final oldAmount = (tx['amount'] as num).toDouble();
+    final oldWalletId = tx['wallet_id'] as int;
+    final direction = tx['direction'] as String;
+    final debtId = tx['debt_id'] as int?;
+
+    // Check balance if min
+    if (direction == 'min') {
+      double effectiveBalance = 0;
+      final walletRows = await db.query('wallets', columns: ['balance'], where: 'id = ?', whereArgs: [walletId], limit: 1);
+      if (walletRows.isNotEmpty) {
+        effectiveBalance = (walletRows.first['balance'] as num?)?.toDouble() ?? 0.0;
+      }
+      if (oldWalletId == walletId) {
+        effectiveBalance += oldAmount;
+      }
+      if (effectiveBalance < amount) throw Exception('insufficient_balance');
+    }
+
+    await db.transaction((txn) async {
+      // Revert old
+      if (direction == 'min') {
+        await txn.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [oldAmount, oldWalletId]);
+      } else {
+        await txn.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [oldAmount, oldWalletId]);
+      }
+
+      // Apply new
+      if (direction == 'min') {
+        await txn.rawUpdate('UPDATE wallets SET balance = balance - ? WHERE id = ?', [amount, walletId]);
+      } else {
+        await txn.rawUpdate('UPDATE wallets SET balance = balance + ? WHERE id = ?', [amount, walletId]);
+      }
+
+      // Update tx
+      await txn.update(
+        'transactions',
+        {
+          'amount': amount,
+          'wallet_id': walletId,
+        },
+        where: 'id = ?',
+        whereArgs: [transactionId],
+      );
+    });
+
+    if (debtId != null) {
+      await _recalculateDebtState(db, debtId);
+    }
   }
 
   Future<void> _recalculateInstallmentState(

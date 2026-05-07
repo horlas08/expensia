@@ -24,6 +24,7 @@ class WalletNotifier extends StateNotifier<List<WalletEntity>> {
         currencyCode: map['currency_code'],
         currencySymbol: map['currency_symbol'],
         currencyNameEn: map['currency_name_en'],
+        currencyNameAr: map['currency_name_ar'],
         rateToUsd: map['rate_to_usd'],
         hide: map['hide'],
         bloc: map['bloc'],

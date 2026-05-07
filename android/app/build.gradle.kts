@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.expensia.app"
+        applicationId = "com.expensia.pro"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

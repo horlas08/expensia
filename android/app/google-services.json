@@ -56,6 +56,42 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938301732033:android:574519f69d545b993ad040",
+        "android_client_info": {
+          "package_name": "com.expensia.pro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "938301732033-82d4eebg0kua5md1qe9277l5vk5j9fbj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHAHlyne9I4riJJEYsF8ksqchN7njIo3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "938301732033-3277kfs4l6g9fbmsm4d3ve22e0gs428m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "938301732033-00pkktp5aqt9uu7cljd37qr8r4cr8imn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.expensia"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

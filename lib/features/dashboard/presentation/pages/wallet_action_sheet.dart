@@ -687,6 +687,22 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
     super.dispose();
   }
 
+  /// Returns the translated wallet type label for the selector field.
+  static String _localizedType(String type, BuildContext context) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'wallet.cash'.tr();
+      case 'bank':
+        return 'wallet.bank'.tr();
+      case 'investment':
+        return 'wallet.investment'.tr();
+      case 'credit_card':
+        return 'wallet.credit_card'.tr();
+      default:
+        return 'wallet.other'.tr();
+    }
+  }
+
   void _submit() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
@@ -732,7 +748,7 @@ class _EditWalletPageState extends ConsumerState<_EditWalletPage> {
                 Text('wallet.wallet_type'.tr(), style: const TextStyle(fontSize: 16)),
                 const Spacer(),
                 Text(
-                  _type.toUpperCase(),
+                  _localizedType(_type, context),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 8),
