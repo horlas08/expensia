@@ -160,7 +160,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                                   () => showWalletActionSheet(context, wallet),
                               child: _WalletCard(
                                 wallet: wallet,
-                                currencySymbol: currencySymbol,
+                                currencySymbol: '',//currencySymbol,
                               ),
                             ),
                           ),

@@ -1,4 +1,4 @@
-enum PremiumFeature { appLock, googleDriveBackupRestore, statistics }
+enum PremiumFeature { appLock, googleDriveBackupRestore, statistics, darkMode }
 
 class PremiumConfig {
   const PremiumConfig._();
@@ -13,6 +13,7 @@ class PremiumConfig {
       case PremiumFeature.appLock:
       case PremiumFeature.googleDriveBackupRestore:
       case PremiumFeature.statistics:
+      case PremiumFeature.darkMode:
         return true;
     }
   }

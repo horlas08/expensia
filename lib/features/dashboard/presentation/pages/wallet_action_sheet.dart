@@ -174,7 +174,8 @@ class _WalletActionsRoot extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '$currencySymbol${wallet.balance.toStringAsFixed(2)}',
+                          // '$currencySymbol${wallet.balance.toStringAsFixed(2)}',
+                          '${wallet.balance.toStringAsFixed(2)}',
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],

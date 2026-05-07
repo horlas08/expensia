@@ -206,7 +206,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       ? Icons.light_mode_rounded
                                       : Icons.dark_mode_rounded,
                               label: 'profile.theme'.tr(),
-                              onTap: () {
+                              onTap: () async {
+                                if (!isPro) {
+                                  await SubscriptionSheet.show(context);
+                                  return;
+                                }
                                 switcher.changeTheme(
                                   theme:
                                       isDark
@@ -216,22 +220,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 );
                                 _persistTheme(!isDark);
                               },
-                              trailing: Transform.scale(
-                                scale: 0.85,
-                                child: Switch.adaptive(
-                                  value: isDark,
-                                  onChanged: (_) {
-                                    switcher.changeTheme(
-                                      theme:
-                                          isDark
-                                              ? AppTheme.lightTheme
-                                              : AppTheme.darkTheme,
-                                      isReversed: isDark,
-                                    );
-                                    _persistTheme(!isDark);
-                                  },
-                                ),
-                              ),
+                              trailing:
+                                  isPro
+                                      ? Transform.scale(
+                                        scale: 0.85,
+                                        child: Switch.adaptive(
+                                          value: isDark,
+                                          onChanged: (val) {
+                                            switcher.changeTheme(
+                                              theme:
+                                                  isDark
+                                                      ? AppTheme.lightTheme
+                                                      : AppTheme.darkTheme,
+                                              isReversed: isDark,
+                                            );
+                                            _persistTheme(!isDark);
+                                          },
+                                        ),
+                                      )
+                                      : const _ProBadge(),
                             );
                           },
                         ),

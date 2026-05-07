@@ -103,28 +103,40 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
 
                   // ── FEATURES ────────────────────────────────────────
                   _FeatureItem(
-                    icon: Icons.cloud_upload_rounded,
-                    title: 'get_started.restore_from_drive'.tr(),
-                    subtitle: 'get_started.restore_from_drive_desc'.tr(),
+                    icon: Icons.receipt_long_rounded,
+                    title: 'subscription.unlimited_transactions'.tr(),
+                    subtitle: 'subscription.unlimited_transactions_desc'.tr(),
                     delay: 200,
                   ),
                   _FeatureItem(
-                    icon: Icons.currency_exchange_rounded,
-                    title: 'settings.multi_currency'.tr(),
-                    subtitle: 'settings.multi_currency_desc'.tr(),
+                    icon: Icons.account_balance_wallet_rounded,
+                    title: 'subscription.unlimited_wallets'.tr(),
+                    subtitle: 'subscription.unlimited_wallets_desc'.tr(),
+                    delay: 250,
+                  ),
+                  _FeatureItem(
+                    icon: Icons.cloud_done_rounded,
+                    title: 'subscription.google_drive_sync'.tr(),
+                    subtitle: 'subscription.google_drive_sync_desc'.tr(),
                     delay: 300,
                   ),
                   _FeatureItem(
-                    icon: Icons.analytics_rounded,
+                    icon: Icons.bar_chart_rounded,
                     title: 'subscription.advanced_analytics'.tr(),
                     subtitle: 'subscription.advanced_analytics_desc'.tr(),
+                    delay: 350,
+                  ),
+                  _FeatureItem(
+                    icon: Icons.fingerprint_rounded,
+                    title: 'subscription.biometric_lock'.tr(),
+                    subtitle: 'subscription.biometric_lock_desc'.tr(),
                     delay: 400,
                   ),
                   _FeatureItem(
-                    icon: Icons.ads_click_rounded,
-                    title: 'subscription.ad_free'.tr(),
-                    subtitle: 'subscription.ad_free_desc'.tr(),
-                    delay: 500,
+                    icon: Icons.dark_mode_rounded,
+                    title: 'subscription.dark_mode'.tr(),
+                    subtitle: 'subscription.dark_mode_desc'.tr(),
+                    delay: 450,
                   ),
 
                   const SizedBox(height: 40),
