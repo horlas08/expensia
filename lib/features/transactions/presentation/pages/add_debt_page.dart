@@ -390,15 +390,15 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        sym,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
+                      // Text(
+                      //   sym,
+                      //   style: TextStyle(
+                      //     color: Colors.white.withValues(alpha: 0.8),
+                      //     fontSize: 28,
+                      //     fontWeight: FontWeight.bold,
+                      //   ),
+                      // ),
+                      // const SizedBox(width: 4),
                       Flexible(
                         child: IntrinsicWidth(
                           child: TextField(

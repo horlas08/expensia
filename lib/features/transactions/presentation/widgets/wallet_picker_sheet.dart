@@ -150,7 +150,8 @@ class WalletPickerSheet extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '$currentCurrencySymbol${wallet.balance.toStringAsFixed(2)}',
+                                      // '$currentCurrencySymbol${wallet.balance.toStringAsFixed(2)}',
+                                      '${wallet.balance.toStringAsFixed(2)}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
