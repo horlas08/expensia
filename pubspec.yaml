@@ -2,7 +2,7 @@ name: expensia
 description: "A visually elegant financial application using Riverpod, GoRouter, and custom animations."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.7.2
@@ -109,7 +109,6 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/images/icon.png
   android: true
   ios: true
   web: false
@@ -118,4 +117,3 @@ flutter_native_splash:
   ios_content_mode: center
   android_12:
     color: "#FFFFFF"
-    image: assets/images/icon.png

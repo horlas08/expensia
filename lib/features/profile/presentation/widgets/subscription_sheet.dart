@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -202,29 +203,29 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                   ),
                   const SizedBox(height: 16),
                   // ── COMPLIANCE LINKS ──
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: () => context.push('/privacy-policy'),
-                        child: Text(
-                          'profile.privacy_policy'.tr(),
-                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                      ),
-                      Text(
-                        '•',
-                        style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
-                      ),
-                      TextButton(
-                        onPressed: () => context.push('/terms-of-use'),
-                        child: Text(
-                          'profile.terms'.tr(),
-                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     TextButton(
+                  //       onPressed: () => context.push('/privacy-policy'),
+                  //       child: Text(
+                  //         'profile.privacy_policy'.tr(),
+                  //         style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                  //       ),
+                  //     ),
+                  //     Text(
+                  //       '•',
+                  //       style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+                  //     ),
+                  //     TextButton(
+                  //       onPressed: () => context.push('/terms-of-use'),
+                  //       child: Text(
+                  //         'profile.terms'.tr(),
+                  //         style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                 ],
               ),
             ),
@@ -325,14 +326,15 @@ class _FeatureItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  AutoSizeText(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    maxLines: 1,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                    style: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.5), fontSize: 10, ),
                   ),
                 ],
               ),

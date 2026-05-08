@@ -227,10 +227,10 @@ class _PersonCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
       ),
-      child: ListTile(
+      child: InkWell(
         onTap: () {
           if (isPicker) {
             Navigator.pop(context, person);
@@ -238,81 +238,106 @@ class _PersonCard extends ConsumerWidget {
             AddPersonSheet.show(context, person: person);
           }
         },
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: avatarColor,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Center(
-            child: Text(
-              person.initials,
-              style: TextStyle(
-                color: textIconColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: avatarColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    person.initials,
+                    style: TextStyle(
+                      color: textIconColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
-        title: Text(
-          person.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle:
-            person.phone != null && person.phone!.isNotEmpty
-                ? Text(
-                  person.phone!,
-                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-                )
-                : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (person.phone != null && person.phone!.isNotEmpty) ...[
-              IconButton(
-                onPressed:
-                    () =>
-                        UrlLauncherUtils.launchWhatsApp(context, person.phone!),
-                icon: const Icon(
-                  Icons.message_rounded,
-                  size: 20,
+              const SizedBox(width: 12),
+
+              // Name & Phone
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      person.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (person.phone != null && person.phone!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        person.phone!,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Actions
+              const SizedBox(width: 12),
+              if (person.phone != null && person.phone!.isNotEmpty) ...[
+                _ActionIcon(
+                  icon: Icons.message_rounded,
                   color: Colors.green,
+                  onTap: () =>
+                      UrlLauncherUtils.launchWhatsApp(context, person.phone!),
                 ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.green.withValues(alpha: 0.1),
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                onPressed:
-                    () => UrlLauncherUtils.launchCall(context, person.phone!),
-                icon: const Icon(
-                  Icons.phone_rounded,
-                  size: 20,
+                const SizedBox(width: 6),
+                _ActionIcon(
+                  icon: Icons.phone_rounded,
                   color: Colors.blue,
+                  onTap: () => UrlLauncherUtils.launchCall(context, person.phone!),
                 ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                ),
+                const SizedBox(width: 6),
+              ],
+              _ActionIcon(
+                icon: Icons.delete_outline_rounded,
+                color: Colors.red,
+                onTap: () => _confirmDelete(context, ref),
               ),
             ],
-            const SizedBox(width: 4),
-            IconButton(
-              onPressed: () => _confirmDelete(context, ref),
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                size: 20,
-                color: Colors.red,
-              ),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.red.withValues(alpha: 0.1),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _ActionIcon({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: color),
       ),
     );
   }

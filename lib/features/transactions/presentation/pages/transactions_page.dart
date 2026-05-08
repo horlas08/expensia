@@ -395,15 +395,16 @@ class TransactionListItem extends ConsumerWidget {
           title: AutoSizeText(
             displayTitle,
             maxLines: 1,
-            minFontSize: 12,
+
+            minFontSize: 10,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
           ),
           subtitle: Text(
             displaySubtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.5), fontSize: 12),
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -634,7 +635,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   direction == 'plus'
                       ? Icons.arrow_downward_rounded
                       : Icons.arrow_upward_rounded,
-                  color: direction == 'plus' ? Colors.green : Colors.red,
+                  color: (type == 'debt' || type == 'installment')
+                      ? (direction == 'plus' ? Colors.red : Colors.green)
+                      : (direction == 'plus' ? Colors.green : Colors.red),
                   size: 20,
                 ),
                 const SizedBox(width: 4),
@@ -642,7 +645,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   amount.toStringAsFixed(2),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: direction == 'plus' ? Colors.green : Colors.red,
+                    color: (type == 'debt' || type == 'installment')
+                        ? (direction == 'plus' ? Colors.red : Colors.green)
+                        : (direction == 'plus' ? Colors.green : Colors.red),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -746,13 +751,15 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                 context,
                 'history.detail_type'.tr(),
                 direction == 'plus'
-                    ? (type == 'debt'
+                    ? (type == 'debt' || type == 'installment'
                         ? 'dashboard.on_you'.tr()
                         : 'categories.income'.tr())
-                    : (type == 'debt'
+                    : (type == 'debt' || type == 'installment'
                         ? 'dashboard.for_you'.tr()
                         : 'categories.expense'.tr()),
-                valueColor: direction == 'plus' ? Colors.green : Colors.red,
+                valueColor: (type == 'debt' || type == 'installment')
+                    ? (direction == 'plus' ? Colors.red : Colors.green)
+                    : (direction == 'plus' ? Colors.green : Colors.red),
               ),
             ]),
 
@@ -1166,8 +1173,8 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           border: Border.all(
             color:
                 isIncome
-                    ? Colors.green.withValues(alpha: 0.2)
-                    : Colors.red.withValues(alpha: 0.2),
+                    ? Colors.red.withValues(alpha: 0.2)
+                    : Colors.green.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
@@ -1175,7 +1182,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: (isIncome ? Colors.green : Colors.red).withValues(
+              color: (isIncome ? Colors.red : Colors.green).withValues(
                 alpha: 0.1,
               ),
               borderRadius: BorderRadius.circular(8),
@@ -1184,7 +1191,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               isIncome
                   ? Icons.arrow_downward_rounded
                   : Icons.arrow_upward_rounded,
-              color: isIncome ? Colors.green : Colors.red,
+              color: isIncome ? Colors.red : Colors.green,
               size: 18,
             ),
           ),
@@ -1215,7 +1222,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
-              color: isIncome ? Colors.green : Colors.red,
+              color: isIncome ? Colors.red : Colors.green,
             ),
           ),
         ],

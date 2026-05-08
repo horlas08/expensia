@@ -114,7 +114,7 @@
     "language": "Language",
     "categories": "Categories",
     "default_currency": "Default Currency",
-    "theme": "Appearance",
+    "theme": "Dark mode",
     "notifications": "Notifications",
     "backup": "Backup Data",
     "restore": "Restore Data",
@@ -346,9 +346,8 @@
       "subtitle": "See clear insights about your spending and income."
     }
   },
-  "splash": {
-    "tagline": "Master Your Finances"
-  },
+  "splash_title": "Expensia",
+  "splash_tagline": "Master Your Finances",
   "settings": {
     "multi_currency": "Multi-currency Support",
     "multi_currency_desc": "Multi-currency support for all accounts"
@@ -474,7 +473,7 @@
     "home": "Home",
     "wallet": "Wallet",
     "stat": "Stat",
-    "profile": "Profile"
+    "profile": "Settings"
   },
   "media": {
     "add_receipt": "Add Receipt",

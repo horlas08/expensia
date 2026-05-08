@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -113,10 +114,10 @@ class _SplashPageState extends ConsumerState<SplashPage> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  size: 80,
-                  color: Colors.white,
+                child: Image.asset(
+                  'assets/images/loogo.png',
+                  width: 100,
+                  height: 100,
                 ),
               ),
             ),
@@ -124,12 +125,12 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             FadeInUp(
               delay: const Duration(milliseconds: 300),
               child: Text(
-                'Expensia',
-                style: GoogleFonts.outfit(
-                  fontSize: 48,
+                'splash_title'.tr(),
+                style: TextStyle(
+                  fontSize: context.locale.languageCode == 'ar' ? 28.sp : 48,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 2,
+                  letterSpacing: context.locale.languageCode == 'ar' ? 0 : 2,
                 ),
               ),
             ),
@@ -137,7 +138,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             FadeInUp(
               delay: const Duration(milliseconds: 600),
               child: Text(
-                'splash.tagline'.tr(),
+                'splash_tagline'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
