@@ -1113,13 +1113,13 @@ class _StatisticsLockedOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'subscription.advanced_analytics'.tr(),
+                'profile.premium.advanced_analytics'.tr(),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                'subscription.advanced_analytics_desc'.tr(),
+                'profile.premium.advanced_analytics_desc'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
               ),

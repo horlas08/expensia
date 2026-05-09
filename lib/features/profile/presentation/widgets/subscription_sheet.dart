@@ -129,38 +129,38 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                   // ── FEATURES ────────────────────────────────────────
                   _FeatureItem(
                     icon: Icons.receipt_long_rounded,
-                    title: 'subscription.unlimited_transactions'.tr(),
-                    subtitle: 'subscription.unlimited_transactions_desc'.tr(),
+                    title: 'profile.premium.unlimited_transactions'.tr(),
+                    subtitle: 'profile.premium.unlimited_transactions_desc'.tr(),
                     delay: 200,
                   ),
                   _FeatureItem(
                     icon: Icons.account_balance_wallet_rounded,
-                    title: 'subscription.unlimited_wallets'.tr(),
-                    subtitle: 'subscription.unlimited_wallets_desc'.tr(),
+                    title: 'profile.premium.unlimited_wallets'.tr(),
+                    subtitle: 'profile.premium.unlimited_wallets_desc'.tr(),
                     delay: 250,
                   ),
                   _FeatureItem(
                     icon: Icons.cloud_done_rounded,
-                    title: 'subscription.google_drive_sync'.tr(),
-                    subtitle: 'subscription.google_drive_sync_desc'.tr(),
+                    title: 'profile.premium.google_drive_sync'.tr(),
+                    subtitle: 'profile.premium.google_drive_sync_desc'.tr(),
                     delay: 300,
                   ),
                   _FeatureItem(
                     icon: Icons.bar_chart_rounded,
-                    title: 'subscription.advanced_analytics'.tr(),
-                    subtitle: 'subscription.advanced_analytics_desc'.tr(),
+                    title: 'profile.premium.advanced_analytics'.tr(),
+                    subtitle: 'profile.premium.advanced_analytics_desc'.tr(),
                     delay: 350,
                   ),
                   _FeatureItem(
                     icon: Icons.fingerprint_rounded,
-                    title: 'subscription.biometric_lock'.tr(),
-                    subtitle: 'subscription.biometric_lock_desc'.tr(),
+                    title: 'profile.premium.biometric_lock'.tr(),
+                    subtitle: 'profile.premium.biometric_lock_desc'.tr(),
                     delay: 400,
                   ),
                   _FeatureItem(
                     icon: Icons.dark_mode_rounded,
-                    title: 'subscription.dark_mode'.tr(),
-                    subtitle: 'subscription.dark_mode_desc'.tr(),
+                    title: 'profile.premium.dark_mode'.tr(),
+                    subtitle: 'profile.premium.dark_mode_desc'.tr(),
                     delay: 450,
                   ),
 
@@ -202,7 +202,7 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                   else if (_packages == null || _packages!.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Center(child: Text('subscription.no_packages'.tr())),
+                      child: Center(child: Text('profile.premium.no_packages'.tr())),
                     )
                   else
                     Column(
@@ -228,7 +228,7 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                       child: _isPurchasing 
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text(
-                            'subscription.upgrade_now'.tr(),
+                            'profile.premium.upgrade_now'.tr(),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                     ),
