@@ -1091,44 +1091,46 @@ class _StatisticsLockedOverlay extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: cs.surface.withValues(alpha: 0.92),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.shadow.withValues(alpha: 0.12),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: 0.92),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.shadow.withValues(alpha: 0.12),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.lock_rounded, color: cs.primary, size: 30),
               ),
-              child: Icon(Icons.lock_rounded, color: cs.primary, size: 30),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'subscription.advanced_analytics'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'subscription.advanced_analytics_desc'.tr(),
-              textAlign: TextAlign.center,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onUpgrade,
-              icon: const Icon(Icons.workspace_premium_rounded),
-              label: Text('profile.upgrade_premium'.tr()),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'subscription.advanced_analytics'.tr(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'subscription.advanced_analytics_desc'.tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onUpgrade,
+                icon: const Icon(Icons.workspace_premium_rounded),
+                label: Text('profile.upgrade_premium'.tr()),
+              ),
+            ],
+          ),
         ),
       ),
     );

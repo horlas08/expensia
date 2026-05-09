@@ -7,6 +7,7 @@ Future<String?> showWalletTypeSheet(BuildContext context, String currentType) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    useRootNavigator: true,
     builder: (_) => _WalletTypeSheet(currentType: currentType),
   );
 }

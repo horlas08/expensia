@@ -54,16 +54,23 @@ class SubscriptionService {
     }
   }
 
-  Future<bool> purchasePro() async {
+  Future<List<Package>> getPackages() async {
     try {
       Offerings offerings = await Purchases.getOfferings();
-      if (offerings.current != null && offerings.current!.availablePackages.isNotEmpty) {
-        final result = await Purchases.purchasePackage(
-          offerings.current!.availablePackages.first,
-        );
-        CustomerInfo customerInfo = result.customerInfo;
-        return customerInfo.entitlements.all[_proEntitlementId]?.isActive ?? false;
+      if (offerings.current != null) {
+        return offerings.current!.availablePackages;
       }
+    } catch (e) {
+      debugPrint('Failed to fetch packages: $e');
+    }
+    return [];
+  }
+
+  Future<bool> purchasePackage(Package package) async {
+    try {
+      final result = await Purchases.purchasePackage(package);
+      CustomerInfo customerInfo = result.customerInfo;
+      return customerInfo.entitlements.all[_proEntitlementId]?.isActive ?? false;
     } catch (e) {
       debugPrint('Purchase failed: $e');
     }

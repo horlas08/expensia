@@ -111,6 +111,11 @@ class _WalletActionsRoot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final currencySymbol = ref.watch(currencySymbolProvider);
+    final allWallets = ref.watch(walletProvider);
+    final currentWallet = allWallets.firstWhere(
+      (w) => w.id == wallet.id,
+      orElse: () => wallet,
+    );
 
     return Container(
       color: cs.surface,
@@ -138,12 +143,12 @@ class _WalletActionsRoot extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: _walletGradient(wallet.type),
+                  colors: _walletGradient(currentWallet.type),
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: _walletGradient(wallet.type).first.withValues(alpha: 0.3),
+                    color: _walletGradient(currentWallet.type).first.withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -157,7 +162,7 @@ class _WalletActionsRoot extends ConsumerWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(_walletIcon(wallet.type), color: Colors.white, size: 24),
+                    child: Icon(_walletIcon(currentWallet.type), color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -165,7 +170,7 @@ class _WalletActionsRoot extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          wallet.displayName(context),
+                          currentWallet.displayName(context),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -174,8 +179,8 @@ class _WalletActionsRoot extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          // '$currencySymbol${wallet.balance.toStringAsFixed(2)}',
-                          '${wallet.balance.toStringAsFixed(2)}',
+                          // '$currencySymbol${currentWallet.balance.toStringAsFixed(2)}',
+                          '${currentWallet.balance.toStringAsFixed(2)}',
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
@@ -776,11 +781,21 @@ class _DeleteWalletPage extends ConsumerStatefulWidget {
 }
 
 class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
-  void _submit() {
-    ref.read(walletProvider.notifier).deleteWallet(widget.wallet.id);
-    _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
-    // Finally close the whole sheet
-    Navigator.of(context, rootNavigator: true).pop();
+  Future<void> _submit() async {
+    try {
+      await ref.read(walletProvider.notifier).deleteWallet(widget.wallet.id);
+      if (!mounted) return;
+      _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
+      Navigator.of(context, rootNavigator: true).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete this wallet. It may have associated transactions.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

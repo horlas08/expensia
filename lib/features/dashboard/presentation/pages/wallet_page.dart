@@ -99,28 +99,31 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'wallet.total_balance'.tr(),
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'wallet.total_balance'.tr(),
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              _WalletAmountText(
-                                amount: totalBalance.toStringAsFixed(2),
-                                currencySymbol: currencySymbol,
-                                amountStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
+                                const SizedBox(height: 4),
+                                _WalletAmountText(
+                                  amount: totalBalance.toStringAsFixed(2),
+                                  currencySymbol: currencySymbol,
+                                  amountStyle: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 10),
                           Text(
                             'wallet.wallet_count'.tr(
                               args: ['${wallets.length}'],

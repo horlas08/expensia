@@ -1,5 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
@@ -25,6 +26,29 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
   bool _isPurchasing = false;
   bool _isRestoring = false;
   String? _errorMessage;
+
+  List<Package>? _packages;
+  Package? _selectedPackage;
+  bool _isLoadingPackages = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPackages();
+  }
+
+  Future<void> _loadPackages() async {
+    final packages = await ref.read(subscriptionServiceProvider).getPackages();
+    if (mounted) {
+      setState(() {
+        _packages = packages;
+        _isLoadingPackages = false;
+        if (packages.isNotEmpty) {
+          _selectedPackage = packages.first;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,10 +193,31 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                       ),
                     ),
 
+                  // ── PACKAGES ──
+                  if (_isLoadingPackages)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_packages == null || _packages!.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(child: Text('subscription.no_packages'.tr())),
+                    )
+                  else
+                    Column(
+                      children: _packages!.map((pkg) => _PackageCard(
+                        package: pkg,
+                        isSelected: _selectedPackage == pkg,
+                        onTap: () => setState(() => _selectedPackage = pkg),
+                      )).toList(),
+                    ),
+                  const SizedBox(height: 16),
+
                   FadeInUp(
                     delay: const Duration(milliseconds: 600),
                     child: ElevatedButton(
-                      onPressed: (_isPurchasing || _isRestoring) ? null : () => _handlePurchase(context, ref),
+                      onPressed: (_isPurchasing || _isRestoring || _selectedPackage == null) ? null : () => _handlePurchase(context, ref),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         foregroundColor: Colors.white,
@@ -184,7 +229,7 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text(
                             'subscription.upgrade_now'.tr(),
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                     ),
                   ),
@@ -237,12 +282,14 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
   }
 
   Future<void> _handlePurchase(BuildContext context, WidgetRef ref) async {
+    if (_selectedPackage == null) return;
+    
     setState(() {
       _isPurchasing = true;
       _errorMessage = null;
     });
     
-    final success = await ref.read(subscriptionServiceProvider).purchasePro();
+    final success = await ref.read(subscriptionServiceProvider).purchasePackage(_selectedPackage!);
     if (success) {
       ref.read(isProProvider.notifier).state = true;
       if (context.mounted) {
@@ -337,6 +384,78 @@ class _FeatureItem extends StatelessWidget {
                     style: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.5), fontSize: 10, ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageCard extends StatelessWidget {
+  final Package package;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PackageCard({
+    required this.package,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isLifetime = package.packageType == PackageType.lifetime;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange.withValues(alpha: 0.1) : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          border: Border.all(
+            color: isSelected ? Colors.orange : cs.outlineVariant.withValues(alpha: 0.3),
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isLifetime ? Icons.all_inclusive_rounded : Icons.calendar_month_rounded,
+              color: isSelected ? Colors.orange : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    package.storeProduct.title.replaceAll(RegExp(r'\(.*\)'), '').trim(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isSelected ? Colors.orange : cs.onSurface,
+                    ),
+                  ),
+                  if (package.storeProduct.description.isNotEmpty)
+                    Text(
+                      package.storeProduct.description,
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
+                ],
+              ),
+            ),
+            Text(
+              package.storeProduct.priceString,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: isSelected ? Colors.orange : cs.onSurface,
               ),
             ),
           ],
