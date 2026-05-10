@@ -782,6 +782,9 @@ class _DeleteWalletPage extends ConsumerStatefulWidget {
 
 class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
   Future<void> _submit() async {
+    final wallets = ref.read(walletProvider);
+    final isLastWallet = wallets.length <= 1;
+
     try {
       await ref.read(walletProvider.notifier).deleteWallet(widget.wallet.id);
       if (!mounted) return;
@@ -789,11 +792,14 @@ class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
       Navigator.of(context, rootNavigator: true).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot delete this wallet. It may have associated transactions.'),
-          backgroundColor: Colors.red,
-        ),
+      final message =
+          isLastWallet
+              ? 'wallet.delete_last_wallet_error'.tr()
+              : 'wallet.delete_wallet_has_data_error'.tr();
+      _showTopSheetSnackbar(
+        context,
+        message,
+        backgroundColor: Colors.red,
       );
     }
   }
@@ -839,6 +845,73 @@ class _DeleteWalletPageState extends ConsumerState<_DeleteWalletPage> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+void _showTopSheetSnackbar(
+  BuildContext context,
+  String message, {
+  required Color backgroundColor,
+}) {
+  final overlay = Navigator.of(context, rootNavigator: true).overlay;
+  if (overlay == null) return;
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (context) {
+      final topPadding = MediaQuery.of(context).padding.top;
+      return Positioned(
+        top: topPadding + 16,
+        left: 16,
+        right: 16,
+        child: IgnorePointer(
+          ignoring: true,
+          child: Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              bottom: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 18,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  overlay.insert(entry);
+  Future<void>.delayed(const Duration(seconds: 3), () {
+    entry.remove();
+  });
+}
 
 class _SubmitButton extends StatelessWidget {
   const _SubmitButton({

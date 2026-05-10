@@ -422,7 +422,9 @@
     "to_wallet": "To Wallet",
     "destination_wallet": "Destination Wallet",
     "delete_irreversible": "This action cannot be undone.",
-    "delete_permanently": "Delete Permanently"
+    "delete_permanently": "Delete Permanently",
+    "delete_last_wallet_error": "Cannot delete your last wallet. Create another wallet first.",
+    "delete_wallet_has_data_error": "Cannot delete this wallet. It may still be linked to existing data."
   },
   "stat": {
     "title": "Statistics",

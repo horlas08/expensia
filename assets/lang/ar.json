@@ -422,7 +422,9 @@
     "to_wallet": "إلى المحفظة",
     "destination_wallet": "المحفظة المستهدفة",
     "delete_irreversible": "لا يمكن التراجع عن هذا الإجراء.",
-    "delete_permanently": "حذف نهائي"
+    "delete_permanently": "حذف نهائي",
+    "delete_last_wallet_error": "لا يمكن حذف آخر محفظة لديك. أنشئ محفظة أخرى أولاً.",
+    "delete_wallet_has_data_error": "لا يمكن حذف هذه المحفظة. قد تكون ما زالت مرتبطة ببيانات موجودة."
   },
   "stat": {
     "title": "إحصائيات",
