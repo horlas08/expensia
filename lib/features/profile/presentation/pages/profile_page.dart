@@ -238,7 +238,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           },
                                         ),
                                       )
-                                      : const _ProBadge(),
+                                      : _ProBadge(),
                             );
                           },
                         ),
@@ -278,7 +278,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           icon: Icons.fingerprint_rounded,
                           label: 'profile.app_lock'.tr(),
                           onTap: () => _openAppLock(context, isPro),
-                          trailing: isPro ? null : const _ProBadge(),
+                          trailing: isPro ? null : _ProBadge(),
                         ),
                         _SettingTile(
                           icon: Icons.delete_forever_rounded,
@@ -294,7 +294,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     _SectionLabel('profile.section_premium'.tr(), delay: 240),
                     FadeInUp(
                       delay: const Duration(milliseconds: 290),
-                      child: const _PremiumBanner(),
+                      child: _PremiumBanner(),
                     ),
                     const SizedBox(height: 28),
                   ],
