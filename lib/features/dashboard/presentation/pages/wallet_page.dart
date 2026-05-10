@@ -113,7 +113,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                                 const SizedBox(height: 4),
                                 _WalletAmountText(
                                   amount: totalBalance.toStringAsFixed(2),
-                                  currencySymbol: currencySymbol,
+                                  currencySymbol: '',//currencySymbol,
                                   amountStyle: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 28,
