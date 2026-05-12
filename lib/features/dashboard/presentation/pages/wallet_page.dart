@@ -13,6 +13,7 @@ import '../../../../features/dashboard/presentation/pages/wallet_action_sheet.da
 import '../../../../core/providers/currency_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class WalletPage extends ConsumerStatefulWidget {
   const WalletPage({super.key});
@@ -112,7 +113,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 _WalletAmountText(
-                                  amount: totalBalance.toStringAsFixed(2),
+                                  amount: CurrencyFormatter.format(totalBalance),
                                   currencySymbol: '',//currencySymbol,
                                   amountStyle: const TextStyle(
                                     color: Colors.white,
@@ -313,7 +314,7 @@ class _WalletCard extends StatelessWidget {
                 amount:
                     (wallet.hide ?? 0) == 1
                         ? '••••••'
-                        : wallet.balance.toStringAsFixed(2),
+                        : CurrencyFormatter.format(wallet.balance),
                 currencySymbol: currencySymbol,
                 showCurrency: (wallet.hide ?? 0) != 1,
                 amountStyle: const TextStyle(

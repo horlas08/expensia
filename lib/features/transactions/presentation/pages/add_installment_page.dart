@@ -39,6 +39,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   final _monthsCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   final _personCtrl = TextEditingController();
+  final _personFocusNode = FocusNode();
 
   int? _selectedWalletId;
   bool _saving = false;
@@ -78,6 +79,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
     _monthsCtrl.dispose();
     _noteCtrl.dispose();
     _personCtrl.dispose();
+    _personFocusNode.dispose();
     super.dispose();
   }
 
@@ -696,7 +698,6 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final sym = ref.watch(currencySymbolProvider);
     final wallets = ref.watch(walletProvider);
 
     return Scaffold(
@@ -722,7 +723,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
           FadeInDown(
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 5),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_themeColor, _themeColor.withValues(alpha: 0.7)],
@@ -740,7 +741,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       setState(() => _isForYou = !isLeft);
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
                   Text(
                     'transaction.total_price'.tr(),
                     style: const TextStyle(
@@ -749,20 +750,12 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 2),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Text(
-                      //   sym,
-                      //   style: TextStyle(
-                      //     color: Colors.white.withValues(alpha: 0.8),
-                      //     fontSize: 28,
-                      //     fontWeight: FontWeight.bold,
-                      //   ),
-                      // ),
-                      // const SizedBox(width: 4),
+
                       Flexible(
                         child: IntrinsicWidth(
                           child: TextField(
@@ -778,6 +771,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 48,
+                              height: 1.3,
                               fontWeight: FontWeight.bold,
                             ),
                             textAlign: TextAlign.center,
@@ -812,90 +806,146 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  // ── Entity + Wallet Grid ────────────────────────────────
                   FadeInUp(
                     delay: const Duration(milliseconds: 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFFF9800,
-                              ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Entity / Person card — clickable to focus or pick contact
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.business_rounded,
+                            iconColor: const Color(0xFFFF9800),
+                            label: 'transaction.entity'.tr(),
+                            onTap: () {
+                              _personFocusNode.requestFocus();
+                            },
+                            trailing: GestureDetector(
+                              onTap: _pickContact,
+                              child: const Icon(
+                                Icons.person_add_alt_1_rounded,
+                                size: 16,
+                                color: Color(0xFFFF9800),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.business_rounded,
-                              color: Color(0xFFFF9800),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
                             child: TextField(
                               controller: _personCtrl,
+                              focusNode: _personFocusNode,
                               decoration: InputDecoration(
                                 hintText: 'transaction.entity_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
-                                hintStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.zero,
+                                hintStyle: TextStyle(
+                                  fontSize: 11,
+                                  color: cs.onSurface.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: _pickContact,
-                            icon: Icon(
-                              Icons.person_add_rounded,
-                              color: cs.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        // Wallet card — onTap directly on _GridCard
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.account_balance_wallet_rounded,
+                            iconColor: cs.primary,
+                            label: 'transaction.wallet'.tr(),
+                            isSelected: _selectedWalletId != null,
+                            onTap: () async {
+                              final wallet = await showWalletPickerSheet(
+                                context,
+                                ref,
+                                selectedId: _selectedWalletId,
+                              );
+                              if (wallet != null) {
+                                setState(() => _selectedWalletId = wallet.id);
+                              }
+                            },
+                            trailing: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: cs.onSurface.withValues(alpha: 0.35),
+                            ),
+                            child: Text(
+                              _selectedWalletId == null
+                                  ? 'transaction.select_wallet'.tr()
+                                  : wallets
+                                      .firstWhere(
+                                        (w) => w.id == _selectedWalletId,
+                                      )
+                                      .displayName(context),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    _selectedWalletId != null
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                color:
+                                    _selectedWalletId != null
+                                        ? cs.onSurface
+                                        : cs.onSurface.withValues(alpha: 0.4),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FadeInUp(
+                          delay: const Duration(milliseconds: 40),
+                          child: _buildInstallmentInputCard(
+                            icon: Icons.payments_rounded,
+                            color: const Color(0xFF22C55E),
+                            controller: _depositCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                            ],
+                            hintText: 'transaction.deposit_initial_paid'.tr(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
 
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 40),
-                    child: _buildInstallmentInputCard(
-                      icon: Icons.payments_rounded,
-                      color: const Color(0xFF22C55E),
-                      controller: _depositCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      // Last paid
+                      Expanded(
+                        child: FadeInUp(
+                          delay: const Duration(milliseconds: 60),
+                          child: _buildInstallmentInputCard(
+                            icon: Icons.event_available_rounded,
+                            color: const Color(0xFF0EA5E9),
+                            controller: _lastPaidCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                            ],
+                            hintText: 'transaction.last_paid'.tr(),
+                          ),
+                        ),
                       ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      hintText: 'transaction.deposit_initial_paid'.tr(),
-                    ),
+                      // const SizedBox(height: 12),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 60),
-                    child: _buildInstallmentInputCard(
-                      icon: Icons.event_available_rounded,
-                      color: const Color(0xFF0EA5E9),
-                      controller: _lastPaidCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      hintText: 'transaction.last_paid'.tr(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  // Deposit
+
+
+                  // Months
                   FadeInUp(
                     delay: const Duration(milliseconds: 80),
                     child: _buildInstallmentInputCard(
@@ -914,61 +964,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Wallet
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 100),
-                    child: GestureDetector(
-                      onTap: () async {
-                        final wallet = await showWalletPickerSheet(
-                          context,
-                          ref,
-                          selectedId: _selectedWalletId,
-                        );
-                        if (wallet != null) {
-                          setState(() => _selectedWalletId = wallet.id);
-                        }
-                      },
-                      child: _FormCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        color: cs.primary,
-                        label: 'transaction.wallet'.tr(),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _selectedWalletId == null
-                                    ? 'transaction.select_wallet'.tr()
-                                    : wallets
-                                        .firstWhere(
-                                          (w) => w.id == _selectedWalletId,
-                                        )
-                                        .displayName(context),
-                                style: TextStyle(
-                                  color:
-                                      _selectedWalletId == null
-                                          ? cs.onSurface.withValues(alpha: 0.5)
-                                          : cs.onSurface,
-                                  fontWeight:
-                                      _selectedWalletId == null
-                                          ? FontWeight.normal
-                                          : FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
                   // Note
                   FadeInUp(
-                    delay: const Duration(milliseconds: 120),
+                    delay: const Duration(milliseconds: 100),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1014,7 +1012,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
                   // Image Picker
                   FadeInUp(
-                    delay: const Duration(milliseconds: 140),
+                    delay: const Duration(milliseconds: 120),
                     child: GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -1134,6 +1132,118 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Animated grid card (used in 2-column layouts)
+// ---------------------------------------------------------------------------
+class _GridCard extends StatefulWidget {
+  const _GridCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.child,
+    this.onTap,
+    this.trailing,
+    this.isSelected = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool isSelected;
+
+  @override
+  State<_GridCard> createState() => _GridCardState();
+}
+
+class _GridCardState extends State<_GridCard>
+    with SingleTickerProviderStateMixin {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.diagonal3Values(
+          _pressed ? 0.96 : 1.0,
+          _pressed ? 0.96 : 1.0,
+          1.0,
+        ),
+        transformAlignment: Alignment.center,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color:
+              widget.isSelected
+                  ? widget.iconColor.withValues(alpha: 0.07)
+                  : (_pressed
+                      ? cs.surfaceContainerHighest
+                      : cs.surfaceContainerLow),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color:
+                widget.isSelected
+                    ? widget.iconColor.withValues(alpha: 0.35)
+                    : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (widget.isSelected ? widget.iconColor : Colors.black)
+                  .withValues(alpha: _pressed ? 0.04 : 0.06),
+              blurRadius: _pressed ? 4 : 10,
+              offset: Offset(0, _pressed ? 1 : 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.iconColor,
+                    size: 16,
+                  ),
+                ),
+                const Spacer(),
+                if (widget.trailing != null) widget.trailing!,
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface.withValues(alpha: 0.45),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            widget.child,
+          ],
+        ),
       ),
     );
   }

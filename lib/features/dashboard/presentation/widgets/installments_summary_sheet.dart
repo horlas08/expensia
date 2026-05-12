@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/services/database_service.dart';
 import '../../../transactions/presentation/pages/transactions_page.dart';
@@ -160,7 +161,7 @@ class _InstallmentListView extends StatelessWidget {
             final isForYou = item['type'] == 'for_you';
             final remainingPrice =
                 (item['remaining_price'] as num?)?.toDouble() ?? 0.0;
-            final remainingPriceText = remainingPrice.toStringAsFixed(2);
+            final remainingPriceText = CurrencyFormatter.format(remainingPrice);
             final remainingMonths = item['remaining_months'];
             final personName = item['person_name'] ?? 'common.unknown'.tr();
             final amountColor = isForYou ? Colors.red : Colors.green;

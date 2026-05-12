@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,23 +21,15 @@ void main() async {
   // Load persisted theme before first frame
   final prefs = await SharedPreferencesService.getInstance();
   final savedDark = prefs.isDarkMode();
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Process any pending recurring transactions
-  await RecurringTransactionService().processDueTransactions();
-  await MobileAds.instance.initialize();
-
-
   runApp(
     ProviderScope(
       child: EasyLocalization(
-        supportedLocales: const [
-          Locale('en'),
-          Locale('ar'),
-        ],
+        supportedLocales: const [Locale('en'), Locale('ar')],
         path: 'assets/lang',
         fallbackLocale: const Locale('en'),
         useOnlyLangCode: true,
@@ -43,6 +37,17 @@ void main() async {
       ),
     ),
   );
+
+  unawaited(_warmUpServices());
+}
+
+Future<void> _warmUpServices() async {
+  try {
+    await MobileAds.instance.initialize();
+    await RecurringTransactionService().processDueTransactions();
+  } catch (e) {
+    debugPrint('Non-blocking startup task failed: $e');
+  }
 }
 
 class ExpensiaApp extends ConsumerWidget {

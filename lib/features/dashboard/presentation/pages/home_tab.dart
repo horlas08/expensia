@@ -20,6 +20,7 @@ import '../../../../core/utils/transaction_grouper.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import '../widgets/debts_summary_sheet.dart';
 import '../widgets/installments_summary_sheet.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
@@ -197,7 +198,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                         child: _BalanceAmountText(
                           amount:
                               _balanceVisible
-                                  ? totalBalance.toStringAsFixed(2)
+                                  ? CurrencyFormatter.format(totalBalance)
                                   : '••••••',
                           currencySymbol: currencyDisplaySymbol,
                           showCurrency: _balanceVisible,
@@ -213,9 +214,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.income'.tr(),
-                                  value: (metrics['monthly_income'] as num? ??
-                                          0)
-                                      .toStringAsFixed(2),
+                                  value: CurrencyFormatter.format(
+                                    (metrics['monthly_income'] as num? ?? 0)
+                                        .toDouble(),
+                                  ),
                                   icon: Icons.arrow_downward_rounded,
                                   color: const Color(0xFF69F0AE),
                                   visible: _balanceVisible,
@@ -229,9 +231,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               Expanded(
                                 child: _MiniBalanceStat(
                                   label: 'dashboard.expenses'.tr(),
-                                  value: (metrics['monthly_expense'] as num? ??
-                                          0)
-                                      .toStringAsFixed(2),
+                                  value: CurrencyFormatter.format(
+                                    (metrics['monthly_expense'] as num? ?? 0)
+                                        .toDouble(),
+                                  ),
                                   icon: Icons.arrow_upward_rounded,
                                   color: const Color(0xFFFF6E6E),
                                   visible: _balanceVisible,
@@ -295,10 +298,15 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               delay: const Duration(milliseconds: 200),
                               child: _FlipMetricCard(
                                 label: 'dashboard.installment'.tr(),
-                                onYouAmount:
-                                    '${metrics['installment_on_you'] ?? 0.0}',
-                                forYouAmount:
-                                    '${metrics['installment_for_you'] ?? 0.0}',
+                                onYouAmount: CurrencyFormatter.format(
+                                  (metrics['installment_on_you'] as num? ?? 0.0)
+                                      .toDouble(),
+                                ),
+                                forYouAmount: CurrencyFormatter.format(
+                                  (metrics['installment_for_you'] as num? ??
+                                          0.0)
+                                      .toDouble(),
+                                ),
                                 currencySymbol: currencySymbol,
                                 accentColor: const Color(0xFFAA00FF),
                                 gradient: const [
@@ -319,8 +327,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                               delay: const Duration(milliseconds: 200),
                               child: _FlipMetricCard(
                                 label: 'dashboard.debt'.tr(),
-                                onYouAmount: '${metrics['debt_on_you']}',
-                                forYouAmount: '${metrics['debt_for_you']}',
+                                onYouAmount: CurrencyFormatter.format(
+                                  (metrics['debt_on_you'] as num? ?? 0.0)
+                                      .toDouble(),
+                                ),
+                                forYouAmount: CurrencyFormatter.format(
+                                  (metrics['debt_for_you'] as num? ?? 0.0)
+                                      .toDouble(),
+                                ),
                                 currencySymbol: currencySymbol,
                                 accentColor: const Color(0xFF0091EA),
                                 gradient: const [
@@ -440,9 +454,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                                       ),
                                       const SizedBox(width: 2),
                                       Text(
-                                        income
-                                            .toStringAsFixed(1)
-                                            .replaceAll(RegExp(r'\.0$'), ''),
+                                        CurrencyFormatter.format(income),
                                         style: const TextStyle(
                                           color: Colors.green,
                                           fontSize: 11,
@@ -459,9 +471,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                                       ),
                                       const SizedBox(width: 2),
                                       Text(
-                                        expense
-                                            .toStringAsFixed(1)
-                                            .replaceAll(RegExp(r'\.0$'), ''),
+                                        CurrencyFormatter.format(expense),
                                         style: const TextStyle(
                                           color: Colors.red,
                                           fontSize: 11,
@@ -771,7 +781,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
       onTap: widget.onDetails ?? _toggle,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
         decoration: BoxDecoration(
           gradient:
               usesGradient
@@ -808,7 +818,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                 Expanded(
                   child: Text(
                     widget.label,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
@@ -823,7 +833,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                   color: Colors.transparent,
                   child: IconButton(
                     constraints: const BoxConstraints(
-                      minWidth: 32,
+                      maxWidth: 32,
                       minHeight: 32,
                     ),
                     padding: EdgeInsets.zero,
@@ -838,7 +848,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 2),
             Center(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,

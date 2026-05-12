@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/services/database_service.dart';
 import '../../../transactions/presentation/pages/transactions_page.dart';
@@ -197,7 +198,7 @@ class _DebtListView extends StatelessWidget {
             final isOnYou =
                 (item['opening_direction'] as String? ?? 'plus') == 'plus';
             final amount = (item['current_amount'] as num?)?.toDouble() ?? 0.0;
-            final amountText = amount.toStringAsFixed(2);
+            final amountText = CurrencyFormatter.format(amount);
             final personName = item['person_name'] ?? 'common.unknown'.tr();
             final amountColor = isOnYou ? Colors.red : Colors.green;
 

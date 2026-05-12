@@ -68,7 +68,6 @@ dev_dependencies:
   riverpod_generator: ^2.4.3
   custom_lint: ^0.7.0
   riverpod_lint: ^2.3.13
-  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
@@ -106,14 +105,3 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/images/loogo.png"
   min_sdk_android: 21 #
-
-flutter_native_splash:
-  color: "#FFFFFF"
-  android: true
-  ios: true
-  web: false
-  fullscreen: true
-  android_gravity: center
-  ios_content_mode: center
-  android_12:
-    color: "#FFFFFF"

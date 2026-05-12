@@ -35,6 +35,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   final _personCtrl = TextEditingController();
+  final _personFocusNode = FocusNode();
 
   int? _selectedWalletId;
   DateTime _selectedDate = DateTime.now();
@@ -66,6 +67,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     _personCtrl.dispose();
+    _personFocusNode.dispose();
     super.dispose();
   }
 
@@ -344,7 +346,6 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final sym = ref.watch(currencySymbolProvider);
     final wallets = ref.watch(walletProvider);
     final dateStr = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
 
@@ -369,7 +370,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
           FadeInDown(
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_themeColor, _themeColor.withValues(alpha: 0.7)],
@@ -385,20 +386,12 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                     rightLabel: 'dashboard.for_you'.tr(),
                     onChanged: (isLeft) => setState(() => _isOnYou = isLeft),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Text(
-                      //   sym,
-                      //   style: TextStyle(
-                      //     color: Colors.white.withValues(alpha: 0.8),
-                      //     fontSize: 28,
-                      //     fontWeight: FontWeight.bold,
-                      //   ),
-                      // ),
-                      // const SizedBox(width: 4),
+
                       Flexible(
                         child: IntrinsicWidth(
                           child: TextField(
@@ -415,6 +408,7 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
                               color: Colors.white,
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
+                              height: 1.3,
                             ),
                             textAlign: TextAlign.center,
                             decoration: InputDecoration(
@@ -448,108 +442,97 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Person Name
+                   // ── Person + Wallet Grid ─────────────────────────────────
                   FadeInUp(
                     delay: const Duration(milliseconds: 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFFF4081,
-                              ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Person card — clickable to focus or pick contact
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.person_rounded,
+                            iconColor: const Color(0xFFFF4081),
+                            label: 'common.person'.tr(),
+                            onTap: () {
+                              _personFocusNode.requestFocus();
+                            },
+                            trailing: GestureDetector(
+                              onTap: _pickContact,
+                              child: const Icon(
+                                Icons.person_add_alt_1_rounded,
+                                size: 16,
+                                color: Color(0xFFFF4081),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.person_rounded,
-                              color: Color(0xFFFF4081),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
                             child: TextField(
                               controller: _personCtrl,
+                              focusNode: _personFocusNode,
                               decoration: InputDecoration(
                                 hintText: 'transaction.person_name_hint'.tr(),
                                 border: InputBorder.none,
                                 isDense: true,
-                                hintStyle: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: _pickContact,
-                            icon: Icon(
-                              Icons.person_add_rounded,
-                              color: cs.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Wallet
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 60),
-                    child: GestureDetector(
-                      onTap: () async {
-                        final wallet = await showWalletPickerSheet(
-                          context,
-                          ref,
-                          selectedId: _selectedWalletId,
-                        );
-                        if (wallet != null) {
-                          setState(() => _selectedWalletId = wallet.id);
-                        }
-                      },
-                      child: _FormCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        color: cs.primary,
-                        label: 'transaction.wallet'.tr(),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _selectedWalletId == null
-                                    ? 'transaction.select_wallet'.tr()
-                                    : wallets
-                                        .firstWhere(
-                                          (w) => w.id == _selectedWalletId,
-                                        )
-                                        .displayName(context),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color:
-                                      _selectedWalletId == null
-                                          ? cs.onSurface.withValues(alpha: 0.5)
-                                          : cs.onSurface,
-                                  fontWeight:
-                                      _selectedWalletId == null
-                                          ? FontWeight.normal
-                                          : FontWeight.bold,
+                                hintStyle: TextStyle(
+                                  fontSize: 11,
+                                  color: cs.onSurface.withValues(alpha: 0.4),
                                 ),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        // Wallet card — onTap on _GridCard directly
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.account_balance_wallet_rounded,
+                            iconColor: cs.primary,
+                            label: 'transaction.wallet'.tr(),
+                            isSelected: _selectedWalletId != null,
+                            onTap: () async {
+                              final wallet = await showWalletPickerSheet(
+                                context,
+                                ref,
+                                selectedId: _selectedWalletId,
+                              );
+                              if (wallet != null) {
+                                setState(() => _selectedWalletId = wallet.id);
+                              }
+                            },
+                            trailing: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: cs.onSurface.withValues(alpha: 0.35),
+                            ),
+                            child: Text(
+                              _selectedWalletId == null
+                                  ? 'transaction.select_wallet'.tr()
+                                  : wallets
+                                      .firstWhere(
+                                        (w) => w.id == _selectedWalletId,
+                                      )
+                                      .displayName(context),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    _selectedWalletId != null
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                color:
+                                    _selectedWalletId != null
+                                        ? cs.onSurface
+                                        : cs.onSurface.withValues(alpha: 0.4),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -756,6 +739,119 @@ class _AddDebtPageState extends ConsumerState<AddDebtPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Animated grid card (used in 2-column layouts)
+// ---------------------------------------------------------------------------
+class _GridCard extends StatefulWidget {
+  const _GridCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.child,
+    this.onTap,
+    this.trailing,
+    this.isSelected = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool isSelected;
+
+  @override
+  State<_GridCard> createState() => _GridCardState();
+}
+
+class _GridCardState extends State<_GridCard>
+    with SingleTickerProviderStateMixin {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform:
+            Matrix4.diagonal3Values(
+              _pressed ? 0.96 : 1.0,
+              _pressed ? 0.96 : 1.0,
+              1.0,
+            ),
+        transformAlignment: Alignment.center,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color:
+              widget.isSelected
+                  ? widget.iconColor.withValues(alpha: 0.07)
+                  : (_pressed
+                      ? cs.surfaceContainerHighest
+                      : cs.surfaceContainerLow),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color:
+                widget.isSelected
+                    ? widget.iconColor.withValues(alpha: 0.35)
+                    : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (widget.isSelected ? widget.iconColor : Colors.black)
+                  .withValues(alpha: _pressed ? 0.04 : 0.06),
+              blurRadius: _pressed ? 4 : 10,
+              offset: Offset(0, _pressed ? 1 : 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.iconColor,
+                    size: 16,
+                  ),
+                ),
+                const Spacer(),
+                if (widget.trailing != null) widget.trailing!,
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface.withValues(alpha: 0.45),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            widget.child,
+          ],
+        ),
       ),
     );
   }

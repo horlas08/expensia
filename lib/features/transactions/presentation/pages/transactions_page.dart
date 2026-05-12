@@ -10,6 +10,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../core/constants/category_icons.dart';
 import '../../../../core/utils/transaction_grouper.dart';
 import '../../../../core/utils/url_launcher_utils.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/providers/currency_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -162,9 +163,7 @@ class TransactionsPage extends ConsumerWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              income
-                                  .toStringAsFixed(1)
-                                  .replaceAll(RegExp(r'\.0$'), ''),
+                              CurrencyFormatter.format(income),
                               style: const TextStyle(
                                 color: Colors.green,
                                 fontSize: 11,
@@ -181,9 +180,7 @@ class TransactionsPage extends ConsumerWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              expense
-                                  .toStringAsFixed(1)
-                                  .replaceAll(RegExp(r'\.0$'), ''),
+                              CurrencyFormatter.format(expense),
                               style: const TextStyle(
                                 color: Colors.red,
                                 fontSize: 11,
@@ -411,7 +408,7 @@ class TransactionListItem extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '$amountPrefix${amount.abs().toStringAsFixed(2)}',
+                '$amountPrefix${CurrencyFormatter.format(amount.abs())}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -642,7 +639,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  amount.toStringAsFixed(2),
+                  CurrencyFormatter.format(amount),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: (type == 'debt' || type == 'installment')

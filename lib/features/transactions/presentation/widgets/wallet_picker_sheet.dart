@@ -7,6 +7,7 @@ import '../../../../features/wallet/domain/entities/wallet_entity.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../core/providers/currency_provider.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 Future<WalletEntity?> showWalletPickerSheet(BuildContext context, WidgetRef ref, {int? selectedId}) {
   return Navigator.push<WalletEntity?>(
@@ -150,8 +151,7 @@ class WalletPickerSheet extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      // '$currentCurrencySymbol${wallet.balance.toStringAsFixed(2)}',
-                                      '${wallet.balance.toStringAsFixed(2)}',
+                                      CurrencyFormatter.format(wallet.balance),
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,

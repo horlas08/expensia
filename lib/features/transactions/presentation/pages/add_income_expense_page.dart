@@ -350,7 +350,6 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final sym = ref.watch(currencySymbolProvider);
     final wallets = ref.watch(walletProvider);
     final dateStr = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
 
@@ -379,7 +378,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
           FadeInDown(
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_typeColor, _typeColor.withValues(alpha: 0.7)],
@@ -389,6 +388,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
               ),
               child: Column(
                 children: [
+
                   Text(
                     'transaction.amount'.tr(),
                     style: const TextStyle(
@@ -397,20 +397,11 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Text(
-                      //   sym,
-                      //   style: TextStyle(
-                      //     color: Colors.white.withValues(alpha: 0.8),
-                      //     fontSize: 28,
-                      //     fontWeight: FontWeight.bold,
-                      //   ),
-                      // ),
-                      // const SizedBox(width: 4),
                       Flexible(
                         child: IntrinsicWidth(
                           child: TextField(
@@ -427,6 +418,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                               color: Colors.white,
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
+                              height: 1.3,
                             ),
                             textAlign: TextAlign.center,
                             decoration: InputDecoration(
@@ -460,28 +452,35 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Wallet
+                  // ── Wallet + Category Grid ────────────────────────────────
                   FadeInUp(
-                    delay: const Duration(milliseconds: 60),
-                    child: GestureDetector(
-                      onTap: () async {
-                        final wallet = await showWalletPickerSheet(
-                          context,
-                          ref,
-                          selectedId: _selectedWalletId,
-                        );
-                        if (wallet != null) {
-                          setState(() => _selectedWalletId = wallet.id);
-                        }
-                      },
-                      child: _FormCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        color: cs.primary,
-                        label: 'transaction.wallet'.tr(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
+                    delay: const Duration(milliseconds: 40),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Wallet card
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.account_balance_wallet_rounded,
+                            iconColor: cs.primary,
+                            label: 'transaction.wallet'.tr(),
+                            isSelected: _selectedWalletId != null,
+                            onTap: () async {
+                              final wallet = await showWalletPickerSheet(
+                                context,
+                                ref,
+                                selectedId: _selectedWalletId,
+                              );
+                              if (wallet != null) {
+                                setState(() => _selectedWalletId = wallet.id);
+                              }
+                            },
+                            trailing: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: cs.onSurface.withValues(alpha: 0.35),
+                            ),
+                            child: Text(
                               wallets.isEmpty
                                   ? 'transaction.no_wallet'.tr()
                                   : (wallets.any(
@@ -494,56 +493,55 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                                           .displayName(context)
                                       : 'transaction.select_wallet'.tr()),
                               style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    _selectedWalletId != null
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
                                 color:
                                     _selectedWalletId != null
                                         ? cs.onSurface
                                         : cs.onSurface.withValues(alpha: 0.4),
-                                fontWeight:
-                                    _selectedWalletId != null
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Category
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 100),
-                    child: GestureDetector(
-                      onTap: _pickCategory,
-                      child: _FormCard(
-                        icon: Icons.category_rounded,
-                        color: const Color(0xFF9B5DE5),
-                        label: '${'transaction.category'.tr()} *',
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
+                        const SizedBox(width: 10),
+                        // Category card
+                        Expanded(
+                          child: _GridCard(
+                            icon: Icons.category_rounded,
+                            iconColor: const Color(0xFF9B5DE5),
+                            label: 'transaction.category'.tr(),
+                            isSelected: _selectedCategoryId != null,
+                            onTap: _pickCategory,
+                            trailing: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 16,
+                              color: cs.onSurface.withValues(alpha: 0.35),
+                            ),
+                            child: Text(
                               _selectedCategoryName ??
                                   'transaction.select_category'.tr(),
                               style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    _selectedCategoryId != null
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
                                 color:
-                                    _selectedCategoryName != null
+                                    _selectedCategoryId != null
                                         ? cs.onSurface
                                         : cs.onSurface.withValues(alpha: 0.4),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.3),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -767,6 +765,118 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Animated grid card (used in 2-column layouts)
+// ---------------------------------------------------------------------------
+class _GridCard extends StatefulWidget {
+  const _GridCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.child,
+    this.onTap,
+    this.trailing,
+    this.isSelected = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool isSelected;
+
+  @override
+  State<_GridCard> createState() => _GridCardState();
+}
+
+class _GridCardState extends State<_GridCard>
+    with SingleTickerProviderStateMixin {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.diagonal3Values(
+          _pressed ? 0.96 : 1.0,
+          _pressed ? 0.96 : 1.0,
+          1.0,
+        ),
+        transformAlignment: Alignment.center,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color:
+              widget.isSelected
+                  ? widget.iconColor.withValues(alpha: 0.07)
+                  : (_pressed
+                      ? cs.surfaceContainerHighest
+                      : cs.surfaceContainerLow),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color:
+                widget.isSelected
+                    ? widget.iconColor.withValues(alpha: 0.35)
+                    : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (widget.isSelected ? widget.iconColor : Colors.black)
+                  .withValues(alpha: _pressed ? 0.04 : 0.06),
+              blurRadius: _pressed ? 4 : 10,
+              offset: Offset(0, _pressed ? 1 : 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.iconColor,
+                    size: 16,
+                  ),
+                ),
+                const Spacer(),
+                if (widget.trailing != null) widget.trailing!,
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface.withValues(alpha: 0.45),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            widget.child,
+          ],
+        ),
       ),
     );
   }
@@ -1055,20 +1165,20 @@ class _FrequencyChip extends StatelessWidget {
           color:
               isSelected
                   ? cs.primary
-                  : cs.surfaceContainerHighest.withOpacity(0.35),
+                  : cs.surfaceContainerHighest.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(16),
           boxShadow:
               isSelected
                   ? [
                     BoxShadow(
-                      color: cs.primary.withOpacity(0.3),
+                      color: cs.primary.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ]
                   : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -1077,7 +1187,7 @@ class _FrequencyChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : cs.onSurface.withOpacity(0.8),
+            color: isSelected ? Colors.white : cs.onSurface.withValues(alpha: 0.8),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 13,
           ),

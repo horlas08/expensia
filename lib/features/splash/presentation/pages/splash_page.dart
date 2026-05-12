@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/shared_preferences_service.dart';
 import '../../../../core/services/app_lock_service.dart';
 import '../../../../core/services/subscription_service.dart';
@@ -30,25 +29,27 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     try {
       // 1. Initialize core services
       prefs = await SharedPreferencesService.getInstance();
-      await ref.read(subscriptionServiceProvider).init();
-      final isPro =
-          await ref.read(subscriptionServiceProvider).checkEntitlements();
-      ref.read(isProProvider.notifier).state = isPro;
+      final subscriptionService = ref.read(subscriptionServiceProvider);
       final appLock = ref.read(appLockServiceProvider);
-      await NotificationService().init();
 
-      // 2. Wait for animation
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.wait([
+        subscriptionService.init(),
+        NotificationService().init(),
+        Future<void>.delayed(const Duration(milliseconds: 350)),
+      ]);
+
+      final isPro = await subscriptionService.checkEntitlements();
+      ref.read(isProProvider.notifier).state = isPro;
 
       if (!mounted) return;
 
-      // 3. Check for setup status
+      // 2. Check for setup status
       if (!prefs.isFirstPageCompleted()) {
         context.go('/onboarding');
         return;
       }
 
-      // 4. Check for App Lock
+      // 3. Check for App Lock
       final isLockEnabled = await appLock.isLockEnabled();
       if (!mounted) return;
 
@@ -100,15 +101,15 @@ class _SplashPageState extends ConsumerState<SplashPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       blurRadius: 30,
                       spreadRadius: 10,
                     ),
