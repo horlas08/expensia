@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../providers/transactions_provider.dart';
 import '../widgets/calculator_dialog.dart';
 
 class AddTransferPage extends ConsumerStatefulWidget {
@@ -74,6 +75,7 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
       ref.invalidate(dashboardMetricsProvider);
       ref.invalidate(recentTransactionsProvider);
       ref.invalidate(allTransactionsProvider);
+      ref.invalidate(filteredTransactionsProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

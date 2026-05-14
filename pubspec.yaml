@@ -59,6 +59,7 @@ dependencies:
   flutter_native_contact_picker: ^0.0.11
   google_mobile_ads: ^8.0.0
   flutter_widget_from_html: ^0.17.2
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:

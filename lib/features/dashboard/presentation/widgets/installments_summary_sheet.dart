@@ -63,6 +63,7 @@ class _InstallmentsSummarySheetState
       child: SheetContentScaffold(
         backgroundColor: cs.surface,
         topBar: AppBar(
+          toolbarHeight: 60,
           backgroundColor: cs.primary,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -153,7 +154,12 @@ class _InstallmentListView extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            20,
+            16,
+            32 + MediaQuery.of(context).padding.bottom,
+          ),
           itemCount: data.length,
           itemBuilder: (context, i) {
             final item = data[i];
@@ -164,7 +170,7 @@ class _InstallmentListView extends StatelessWidget {
             final remainingPriceText = CurrencyFormatter.format(remainingPrice);
             final remainingMonths = item['remaining_months'];
             final personName = item['person_name'] ?? 'common.unknown'.tr();
-            final amountColor = isForYou ? Colors.red : Colors.green;
+            final amountColor = isForYou ? Colors.green : Colors.red;
 
             return FadeInUp(
               delay: Duration(milliseconds: 50 * i),
@@ -227,7 +233,10 @@ class _InstallmentListView extends StatelessWidget {
                       Expanded(
                         child: AutoSizeText(
                           '${isForYou ? 'dashboard.for_you'.tr() : 'dashboard.on_you'.tr()} • $remainingMonths mos left',
-                          style: TextStyle(color: cs.onSurfaceVariant),
+                          style: TextStyle(
+                            color: amountColor.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w500,
+                          ),
                           maxLines: 1,
                           minFontSize: 10,
                           overflow: TextOverflow.ellipsis,

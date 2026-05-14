@@ -28,7 +28,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return Container(
       clipBehavior: Clip.antiAlias,
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            20,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,

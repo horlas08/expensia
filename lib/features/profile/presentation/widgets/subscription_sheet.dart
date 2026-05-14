@@ -163,6 +163,12 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                     subtitle: 'profile.premium.dark_mode_desc'.tr(),
                     delay: 450,
                   ),
+                  _FeatureItem(
+                    icon: Icons.block_rounded,
+                    title: 'profile.premium.ad_free'.tr(),
+                    subtitle: 'profile.premium.ad_free_desc'.tr(),
+                    delay: 500,
+                  ),
 
                   const SizedBox(height: 40),
                 ],

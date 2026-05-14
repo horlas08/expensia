@@ -101,6 +101,7 @@ class _DebtsSummarySheetState extends ConsumerState<DebtsSummarySheet>
       child: SheetContentScaffold(
         backgroundColor: cs.surface,
         topBar: AppBar(
+          toolbarHeight: 60,
           backgroundColor: cs.primary,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -191,7 +192,12 @@ class _DebtListView extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            20,
+            16,
+            32 + MediaQuery.of(context).padding.bottom,
+          ),
           itemCount: data.length,
           itemBuilder: (context, i) {
             final item = data[i];
@@ -259,10 +265,11 @@ class _DebtListView extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: AutoSizeText(
-                    isOnYou
-                        ? 'dashboard.on_you'.tr()
-                        : 'dashboard.for_you'.tr(),
-                    style: TextStyle(color: cs.onSurfaceVariant),
+                    isOnYou ? 'dashboard.on_you'.tr() : 'dashboard.for_you'.tr(),
+                    style: TextStyle(
+                      color: amountColor.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     minFontSize: 10,
                     overflow: TextOverflow.ellipsis,

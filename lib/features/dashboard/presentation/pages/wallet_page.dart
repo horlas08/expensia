@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 
@@ -395,33 +395,48 @@ class _WalletAmountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showCurrency) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 4, right: 4),
-            child: Text(
-              currencySymbol,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+    final isAr = context.locale.languageCode == 'ar';
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isAr && showCurrency)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 4),
+              child: Text(
+                currencySymbol,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
+          Flexible(
+            child: AutoSizeText(
+              amount,
+              maxLines: 1,
+              minFontSize: 10,
+              overflow: TextOverflow.ellipsis,
+              style: amountStyle,
+            ),
           ),
+          if (!isAr && showCurrency)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4),
+              child: Text(
+                currencySymbol,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
         ],
-        Flexible(
-          child: AutoSizeText(
-            amount,
-            maxLines: 1,
-            minFontSize: 10,
-            overflow: TextOverflow.ellipsis,
-            style: amountStyle,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

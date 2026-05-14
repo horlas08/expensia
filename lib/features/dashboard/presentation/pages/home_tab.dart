@@ -4,7 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:animated_emoji/animated_emoji.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:animations/animations.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import '../../../../core/services/database_service.dart';
 import '../../../../features/transactions/presentation/widgets/add_transaction_sheet.dart';
 import '../../../../core/services/shared_preferences_service.dart';
@@ -13,6 +13,7 @@ import '../../../../core/providers/currency_provider.dart';
 import '../../../transactions/presentation/widgets/transaction_type_sheet.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../../../../core/services/subscription_service.dart';
 import '../../../../core/constants/category_icons.dart';
 import '../../../../features/transactions/presentation/pages/transactions_page.dart';
 import '../../../../features/profile/presentation/pages/notification_settings_page.dart';
@@ -126,7 +127,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.only(
+          bottom: 100 + MediaQuery.of(context).padding.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -781,6 +788,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
       onTap: widget.onDetails ?? _toggle,
       child: Container(
         width: double.infinity,
+        height: 130,
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
         decoration: BoxDecoration(
           gradient:
@@ -842,7 +850,7 @@ class _FlipMetricCardState extends State<_FlipMetricCard>
                     icon: Icon(
                       Icons.swap_horiz_rounded,
                       color: contentColor,
-                      size: 32,
+                      size: 24,
                     ),
                   ),
                 ),
@@ -938,26 +946,34 @@ class _BalanceAmountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showCurrency) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 4, right: 4),
-            child: Text(currencySymbol, style: currencyStyle),
+    final isAr = context.locale.languageCode == 'ar';
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isAr && showCurrency)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 4),
+              child: Text(currencySymbol, style: currencyStyle),
+            ),
+          Flexible(
+            child: AutoSizeText(
+              amount,
+              maxLines: 1,
+              minFontSize: 10,
+              overflow: TextOverflow.ellipsis,
+              style: amountStyle,
+            ),
           ),
+          if (!isAr && showCurrency)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4),
+              child: Text(currencySymbol, style: currencyStyle),
+            ),
         ],
-        Flexible(
-          child: AutoSizeText(
-            amount,
-            maxLines: 1,
-            minFontSize: 10,
-            overflow: TextOverflow.ellipsis,
-            style: amountStyle,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

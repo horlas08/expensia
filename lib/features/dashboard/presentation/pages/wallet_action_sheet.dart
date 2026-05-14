@@ -9,6 +9,8 @@ import '../../../../features/wallet/presentation/providers/wallet_provider.dart'
 import '../../../../features/wallet/presentation/utils/wallet_localization.dart';
 import '../../../../features/wallet/presentation/widgets/wallet_type_sheet.dart';
 import '../../../../core/providers/currency_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../../../../core/services/subscription_service.dart';
 
 // ---------------------------------------------------------------------------
 // Router keys — dedicated nested navigator key for the wallet sheet
@@ -537,15 +539,21 @@ class _TransferBalancePageState extends ConsumerState<_TransferBalancePage> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     final amount = double.tryParse(_amountCtrl.text.trim());
     if (amount == null || _toWallet == null) return;
 
-    ref.read(walletProvider.notifier).transferBalance(
+    await ref.read(walletProvider.notifier).transferBalance(
           fromId: widget.wallet.id,
           toId: _toWallet!.id,
           amount: amount,
         );
+    
+    // Invalidate transaction providers to show the new transfer
+    ref.invalidate(recentTransactionsProvider);
+    ref.invalidate(allTransactionsProvider);
+    ref.invalidate(dashboardMetricsProvider);
+
     _walletSheetNavigatorKey.currentState?.popUntil((r) => r.isFirst);
   }
 

@@ -93,7 +93,7 @@ class TransactionTypeSheet extends ConsumerWidget {
         color: cs.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 32 + MediaQuery.of(context).padding.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

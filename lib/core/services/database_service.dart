@@ -561,7 +561,41 @@ class DatabaseService {
         'date': DateTime.now().toIso8601String(),
         'notes': 'Wallet Transfer',
       });
+
+      // Get settings for currency
+      final settings = await txn.query('settings', limit: 1);
+      final currencyId =
+          settings.isNotEmpty
+              ? (settings.first['default_currency_id'] as int? ?? 1)
+              : 1;
+
+      // Add transaction for source wallet (Expense-like)
+      await txn.insert('transactions', {
+        'wallet_id': fromId,
+        'category_id': 2, // Transfer Balance category
+        'currency_id': currencyId,
+        'type': 'expense',
+        'direction': 'min',
+        'amount': amount,
+        'date': DateTime.now().toIso8601String(),
+        'is_paid': 1,
+        'notes': 'Transfer to another wallet',
+      });
+
+      // Add transaction for destination wallet (Income-like)
+      await txn.insert('transactions', {
+        'wallet_id': toId,
+        'category_id': 2, // Transfer Balance category
+        'currency_id': currencyId,
+        'type': 'income',
+        'direction': 'plus',
+        'amount': amount,
+        'date': DateTime.now().toIso8601String(),
+        'is_paid': 1,
+        'notes': 'Transfer from another wallet',
+      });
     });
+
   }
 
   Future<void> transferTransactions({

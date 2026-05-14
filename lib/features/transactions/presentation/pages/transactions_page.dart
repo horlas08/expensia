@@ -575,12 +575,6 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       appBar: AppBar(
         title: Text(_titleForType(type)),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            onPressed: () => _handleEdit(context, type),
-          ),
-        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -590,18 +584,38 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             children: [
               if (type == 'debt') _buildDebtActions(context),
               if (type == 'debt') const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _confirmDelete(context),
-                  icon: const Icon(Icons.delete_rounded),
-                  label: Text('history.delete_transaction_title'.tr()),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _handleEdit(context, type),
+                      icon: const Icon(Icons.edit_rounded, size: 20),
+                      label: Text('common.edit'.tr()),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _confirmDelete(context),
+                      icon: const Icon(Icons.delete_rounded, size: 20),
+                      label: Text('common.delete'.tr()),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
