@@ -40,14 +40,14 @@ final appRouter = GoRouter(
       path: '/privacy-policy',
       builder: (context, state) => HtmlContentPage(
         title: 'profile.privacy_policy'.tr(),
-        assetPath: 'assets/privacy-policy.html',
+        url: 'https://alrsaam.com/expensia-app/privacy-policy.html',
       ),
     ),
     GoRoute(
       path: '/terms-of-use',
       builder: (context, state) => HtmlContentPage(
         title: 'profile.terms'.tr(),
-        assetPath: 'assets/terms-use.html',
+        url: 'https://alrsaam.com/expensia-app/terms-use.html',
       ),
     ),
   ],

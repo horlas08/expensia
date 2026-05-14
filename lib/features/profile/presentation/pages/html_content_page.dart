@@ -4,12 +4,12 @@ import 'package:animate_do/animate_do.dart';
 
 class HtmlContentPage extends StatefulWidget {
   final String title;
-  final String assetPath;
+  final String url;
 
   const HtmlContentPage({
     super.key,
     required this.title,
-    required this.assetPath,
+    required this.url,
   });
 
   @override
@@ -43,7 +43,7 @@ class _HtmlContentPageState extends State<HtmlContentPage> {
           },
         ),
       )
-      ..loadFlutterAsset(widget.assetPath);
+      ..loadRequest(Uri.parse(widget.url));
   }
 
   @override
