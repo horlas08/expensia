@@ -214,22 +214,6 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                           child: Center(
                             child: Text('profile.premium.no_packages'.tr()),
                           ),
-                        )
-                      else
-                        Column(
-                          children:
-                              _packages!
-                                  .map(
-                                    (pkg) => _PackageCard(
-                                      package: pkg,
-                                      isSelected: _selectedPackage == pkg,
-                                      onTap:
-                                          () => setState(
-                                            () => _selectedPackage = pkg,
-                                          ),
-                                    ),
-                                  )
-                                  .toList(),
                         ),
                       const SizedBox(height: 16),
 
@@ -239,9 +223,24 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
                           onPressed:
                               (_isPurchasing ||
                                       _isRestoring ||
-                                      _selectedPackage == null)
+                                      _isLoadingPackages ||
+                                      _packages == null ||
+                                      _packages!.isEmpty)
                                   ? null
-                                  : () => _handlePurchase(context, ref),
+                                  : () async {
+                                      final pkg = await Navigator.push<SubscriptionPackage>(
+                                        context,
+                                        ModalSheetRoute(
+                                          builder: (_) => _PackagesSheet(
+                                            packages: _packages!,
+                                            selectedPackage: _selectedPackage,
+                                          ),
+                                        ),
+                                      );
+                                      if (pkg != null && context.mounted) {
+                                        _handlePurchase(context, ref, pkg);
+                                      }
+                                    },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange,
                             foregroundColor: Colors.white,
@@ -330,17 +329,16 @@ class _SubscriptionSheetState extends ConsumerState<SubscriptionSheet> {
     );
   }
 
-  Future<void> _handlePurchase(BuildContext context, WidgetRef ref) async {
-    if (_selectedPackage == null) return;
-
+  Future<void> _handlePurchase(BuildContext context, WidgetRef ref, SubscriptionPackage pkg) async {
     setState(() {
+      _selectedPackage = pkg;
       _isPurchasing = true;
       _errorMessage = null;
     });
 
     final success = await ref
         .read(subscriptionServiceProvider)
-        .purchasePackage(_selectedPackage!);
+        .purchasePackage(pkg);
     if (success) {
       ref.read(isProProvider.notifier).state = true;
       if (context.mounted) {
@@ -451,16 +449,162 @@ class _FeatureItem extends StatelessWidget {
   }
 }
 
-class _PackageCard extends StatelessWidget {
-  final SubscriptionPackage package;
-  final bool isSelected;
-  final VoidCallback onTap;
+class _PackagesSheet extends StatefulWidget {
+  final List<SubscriptionPackage> packages;
+  final SubscriptionPackage? selectedPackage;
 
-  const _PackageCard({
+  const _PackagesSheet({required this.packages, this.selectedPackage});
+
+  @override
+  State<_PackagesSheet> createState() => _PackagesSheetState();
+}
+
+class _PackagesSheetState extends State<_PackagesSheet> {
+  SubscriptionPackage? _currentSelected;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSelected = widget.selectedPackage ??
+        (widget.packages.isNotEmpty ? widget.packages.first : null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Sheet(
+      initialOffset: const SheetOffset(1),
+      snapGrid: const SheetSnapGrid.stepless(
+        minOffset: SheetOffset(0.4),
+      ),
+      child: SheetContentScaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              SafeArea(
+                bottom: true,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FadeInDown(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Colors.orange, Colors.deepOrange],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.workspace_premium_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Text(
+                              'profile.premium.upgrade_now'.tr(),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ...List.generate(widget.packages.length, (i) {
+                        final pkg = widget.packages[i];
+                        final isSelected = _currentSelected == pkg;
+                        return FadeInUp(
+                          delay: Duration(milliseconds: 80 * i),
+                          child: _PackageTile(
+                            package: pkg,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _currentSelected = pkg;
+                              });
+                            },
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      FadeInUp(
+                        delay: Duration(
+                          milliseconds: 80 * widget.packages.length,
+                        ),
+                        child: ElevatedButton(
+                          onPressed:
+                              _currentSelected == null
+                                  ? null
+                                  : () {
+                                    Navigator.of(context).pop(_currentSelected);
+                                  },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            elevation: 0,
+                            minimumSize: const Size.fromHeight(56),
+                          ),
+                          child: Text(
+                            'profile.premium.upgrade_now'.tr(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageTile extends StatelessWidget {
+  const _PackageTile({
     required this.package,
     required this.isSelected,
     required this.onTap,
   });
+
+  final SubscriptionPackage package;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -470,30 +614,25 @@ class _PackageCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 250),
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? Colors.orange.withValues(alpha: 0.1)
-                  : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: isSelected
+              ? Colors.orange.withValues(alpha: 0.1)
+              : cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-                isSelected
-                    ? Colors.orange
-                    : cs.outlineVariant.withValues(alpha: 0.3),
+            color: isSelected ? Colors.orange : Colors.transparent,
             width: 2,
           ),
-          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
             Icon(
-              isLifetime
-                  ? Icons.all_inclusive_rounded
-                  : Icons.calendar_month_rounded,
+              isLifetime ? Icons.all_inclusive_rounded : Icons.calendar_month_rounded,
               color: isSelected ? Colors.orange : cs.onSurfaceVariant,
+              size: 28,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -503,27 +642,28 @@ class _PackageCard extends StatelessWidget {
                   Text(
                     package.title.replaceAll(RegExp(r'\(.*\)'), '').trim(),
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: isSelected ? Colors.orange : cs.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: cs.onSurface,
                     ),
                   ),
                   if (package.description.isNotEmpty)
                     Text(
                       package.description,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
+                        color: cs.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               package.priceString,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 16,
                 color: isSelected ? Colors.orange : cs.onSurface,
               ),
             ),
