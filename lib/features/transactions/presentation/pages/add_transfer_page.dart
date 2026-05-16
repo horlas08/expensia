@@ -113,7 +113,8 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           24,
           24,
@@ -292,8 +293,9 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWalletSelector({
     required String label,

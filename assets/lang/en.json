@@ -296,7 +296,7 @@
     "installment_plan_preview": "Preview of your monthly payments",
     "payment_number": "Payment {}",
     "deposit_initial_paid": "Initial Paid",
-    "last_paid": "Last Payed",
+    "last_paid": "Last Paid",
     "invalid_last_paid_amount": "Please enter a valid last payment amount",
     "invalid_last_paid_months": "Last payment needs at least 2 months",
     "months": "Months",

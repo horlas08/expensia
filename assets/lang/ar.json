@@ -299,7 +299,7 @@
     "last_paid": "آخر دفعة",
     "invalid_last_paid_amount": "يرجى إدخال قيمة صحيحة لآخر دفعة",
     "invalid_last_paid_months": "آخر دفعة تحتاج إلى شهرين على الأقل",
-    "months": "الأشهر",
+    "months": "عدد الأشهر",
     "preview_plan": "معاينة",
     "pay_debts_installments": "سداد الديون والأقساط",
     "receive_debts_installments": "تحصيل الديون والأقساط",

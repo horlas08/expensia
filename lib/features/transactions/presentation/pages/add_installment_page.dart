@@ -619,7 +619,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                 isDense: true,
                 hintStyle: TextStyle(
                   color: cs.onSurface.withValues(alpha: 0.35),
-                  fontSize: 12,
+                  fontSize: 9.5,
                 ),
               ),
             ),
@@ -801,7 +801,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
 
           // ── Form fields ──────────────────────────────────────────────────
           Expanded(
-            child: SingleChildScrollView(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
@@ -920,9 +922,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 2),
-
-                      // Last paid
+                      const SizedBox(width: 6),
                       Expanded(
                         child: FadeInUp(
                           delay: const Duration(milliseconds: 60),
@@ -942,10 +942,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                           ),
                         ),
                       ),
-                      // const SizedBox(height: 12),
                     ],
                   ),
-                  // Deposit
+                  const SizedBox(height: 12),
 
                   // Months
                   FadeInUp(
@@ -958,7 +957,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                         decimal: false,
                       ),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      hintText: 'عدد الأشهر',
+                      hintText: 'transaction.months'.tr(),
                       trailingAction: _showPlanPreview,
                       trailingLabel: 'transaction.preview_plan'.tr(),
                       trailingIcon: Icons.visibility_rounded,
@@ -1133,7 +1132,8 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
               ),
             ),
           ),
-        ],
+        ),
+      ],
       ),
     );
   }
