@@ -349,6 +349,7 @@
     "title": "Transfer Funds",
     "from_wallet": "From Wallet",
     "to_wallet": "To Wallet",
+    "select_wallet": "Select Wallet",
     "notes_optional": "Notes (Optional)",
     "notes_hint": "What is this for?",
     "transfer_now": "Transfer Now",

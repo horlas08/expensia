@@ -65,11 +65,13 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(walletProvider.notifier).transferBalance(
-        fromId: _fromWalletId!,
-        toId: _toWalletId!,
-        amount: amount,
-      );
+      await ref
+          .read(walletProvider.notifier)
+          .transferBalance(
+            fromId: _fromWalletId!,
+            toId: _toWalletId!,
+            amount: amount,
+          );
 
       if (!mounted) return;
       ref.invalidate(dashboardMetricsProvider);
@@ -86,12 +88,13 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().contains('insufficient_balance')
-          ? 'transaction.insufficient_balance'.tr()
-          : e.toString();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
-      );
+      final msg =
+          e.toString().contains('insufficient_balance')
+              ? 'transaction.insufficient_balance'.tr()
+              : e.toString();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -111,7 +114,12 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          24 + MediaQuery.of(context).padding.bottom,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -125,9 +133,9 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 iconColor: Colors.redAccent,
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Center(
               child: FadeIn(
                 delay: const Duration(milliseconds: 200),
@@ -137,13 +145,16 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                     color: cs.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.keyboard_double_arrow_down_rounded, color: cs.primary),
+                  child: Icon(
+                    Icons.keyboard_double_arrow_down_rounded,
+                    color: cs.primary,
+                  ),
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             FadeInDown(
               delay: const Duration(milliseconds: 100),
               child: _buildWalletSelector(
@@ -155,17 +166,21 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 iconColor: const Color(0xFF00C48C),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             FadeInUp(
               delay: const Duration(milliseconds: 150),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text(
+                  Text(
                     'transaction.amount'.tr(),
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -179,7 +194,9 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                         Expanded(
                           child: TextField(
                             controller: _amountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: const InputDecoration(
                               hintText: '0.00',
                               border: InputBorder.none,
@@ -189,7 +206,10 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                         ),
                         IconButton(
                           onPressed: _openCalculator,
-                          icon: Icon(Icons.calculate_rounded, color: cs.primary),
+                          icon: Icon(
+                            Icons.calculate_rounded,
+                            color: cs.primary,
+                          ),
                         ),
                       ],
                     ),
@@ -197,17 +217,21 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             FadeInUp(
               delay: const Duration(milliseconds: 200),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text(
+                  Text(
                     'transfer.notes_optional'.tr(),
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -229,9 +253,9 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 48),
-            
+
             FadeInUp(
               delay: const Duration(milliseconds: 250),
               child: SizedBox(
@@ -241,14 +265,27 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
                   onPressed: _saving ? null : _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: _saving 
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(
-                      'transfer.transfer_now'.tr(),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                  ),
+                  child:
+                      _saving
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Text(
+                            'transfer.transfer_now'.tr(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                 ),
               ),
             ),
@@ -267,13 +304,17 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
     required Color iconColor,
   }) {
     final cs = Theme.of(context).colorScheme;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: cs.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 8),
         Container(
@@ -286,23 +327,24 @@ class _AddTransferPageState extends ConsumerState<AddTransferPage> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: selectedId,
-              hint: const Text('Select Wallet'),
+              hint: Text('transfer.select_wallet'.tr()),
               isExpanded: true,
-              items: wallets.map<DropdownMenuItem<int>>((wallet) {
-                return DropdownMenuItem<int>(
-                  value: wallet.id,
-                  child: Row(
-                    children: [
-                      Icon(icon, color: iconColor, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        localizedWalletDisplayName(context, wallet.name),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+              items:
+                  wallets.map<DropdownMenuItem<int>>((wallet) {
+                    return DropdownMenuItem<int>(
+                      value: wallet.id,
+                      child: Row(
+                        children: [
+                          Icon(icon, color: iconColor, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            localizedWalletDisplayName(context, wallet.name),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
               onChanged: onChanged,
             ),
           ),

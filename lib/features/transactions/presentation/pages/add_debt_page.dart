@@ -811,9 +811,9 @@ class _GridCardState extends State<_GridCard>
           boxShadow: [
             BoxShadow(
               color: (widget.isSelected ? widget.iconColor : Colors.black)
-                  .withValues(alpha: _pressed ? 0.04 : 0.06),
-              blurRadius: _pressed ? 4 : 10,
-              offset: Offset(0, _pressed ? 1 : 3),
+                  .withValues(alpha: _pressed ? 0.06 : 0.12),
+              blurRadius: _pressed ? 5 : 15,
+              offset: Offset(0, _pressed ? 2 : 5),
             ),
           ],
         ),

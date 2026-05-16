@@ -755,7 +755,6 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-
                       Flexible(
                         child: IntrinsicWidth(
                           child: TextField(
@@ -913,7 +912,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                               decimal: true,
                             ),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
                             ],
                             hintText: 'transaction.deposit_initial_paid'.tr(),
                           ),
@@ -933,7 +934,9 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                               decimal: true,
                             ),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
                             ],
                             hintText: 'transaction.last_paid'.tr(),
                           ),
@@ -943,7 +946,6 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                     ],
                   ),
                   // Deposit
-
 
                   // Months
                   FadeInUp(
@@ -956,7 +958,7 @@ class _AddInstallmentPageState extends ConsumerState<AddInstallmentPage> {
                         decimal: false,
                       ),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      hintText: 'transaction.months'.tr(),
+                      hintText: 'عدد الأشهر',
                       trailingAction: _showPlanPreview,
                       trailingLabel: 'transaction.preview_plan'.tr(),
                       trailingIcon: Icons.visibility_rounded,
@@ -1172,9 +1174,12 @@ class _GridCardState extends State<_GridCard>
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: widget.onTap,
-      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      onTapDown:
+          widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp:
+          widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel:
+          widget.onTap != null ? () => setState(() => _pressed = false) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -1203,9 +1208,9 @@ class _GridCardState extends State<_GridCard>
           boxShadow: [
             BoxShadow(
               color: (widget.isSelected ? widget.iconColor : Colors.black)
-                  .withValues(alpha: _pressed ? 0.04 : 0.06),
-              blurRadius: _pressed ? 4 : 10,
-              offset: Offset(0, _pressed ? 1 : 3),
+                  .withValues(alpha: _pressed ? 0.06 : 0.12),
+              blurRadius: _pressed ? 5 : 15,
+              offset: Offset(0, _pressed ? 2 : 5),
             ),
           ],
         ),
@@ -1220,11 +1225,7 @@ class _GridCardState extends State<_GridCard>
                     color: widget.iconColor.withValues(alpha: 0.13),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    widget.icon,
-                    color: widget.iconColor,
-                    size: 16,
-                  ),
+                  child: Icon(widget.icon, color: widget.iconColor, size: 16),
                 ),
                 const Spacer(),
                 if (widget.trailing != null) widget.trailing!,

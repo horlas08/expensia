@@ -24,6 +24,7 @@ class SharedPreferencesService {
   static const String _userName = "user_name";
   static const String _userSetup = "user_setup";
   static const String _isDarkMode = "is_dark_mode";
+  static const String _isPro = "is_pro";
 
   // String operations
   Future<void> setString(String key, String value) async {
@@ -135,6 +136,14 @@ class SharedPreferencesService {
 
   bool isDarkMode() {
     return getBoolean(_isDarkMode) ?? false;
+  }
+
+  Future<void> setIsPro(bool isPro) async {
+    await setBoolean(_isPro, isPro);
+  }
+
+  bool isPro() {
+    return getBoolean(_isPro) ?? false;
   }
 
   Future<void> clearAppSetup() async {

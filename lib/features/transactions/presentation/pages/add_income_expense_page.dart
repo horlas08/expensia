@@ -51,9 +51,9 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
 
   // New fields
   int _selectedPriority = 1; // 1: Basic, 2: Normal, 3: Ent
-  bool _isRepeat = false;
-  String _repeatType = 'monthly'; // daily, weekly, monthly, yearly
-  bool _autoAdd = false;
+  // bool _isRepeat = false;
+  // String _repeatType = 'monthly'; // daily, weekly, monthly, yearly
+  // bool _autoAdd = false;
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
       }
       _imageUrl = tx['image_url'] as String?;
       _selectedPriority = tx['priority'] as int? ?? 1;
-      _isRepeat = (tx['is_repeat'] as int? ?? 0) == 1;
+      // _isRepeat = (tx['is_repeat'] as int? ?? 0) == 1;
     }
   }
 
@@ -149,7 +149,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         'notes': _noteCtrl.text.trim(),
         'image_url': _imageUrl,
         'priority': _selectedPriority,
-        'is_repeat': _isRepeat ? 1 : 0,
+        // 'is_repeat': _isRepeat ? 1 : 0,
       };
 
       if (widget.initialTransaction != null) {
@@ -188,42 +188,42 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         );
 
         // Handle recurring transaction
-        if (_isRepeat) {
-          DateTime nextDate;
-          switch (_repeatType) {
-            case 'daily':
-              nextDate = _selectedDate.add(const Duration(days: 1));
-              break;
-            case 'weekly':
-              nextDate = _selectedDate.add(const Duration(days: 7));
-              break;
-            case 'monthly':
-              nextDate = DateTime(
-                _selectedDate.year,
-                _selectedDate.month + 1,
-                _selectedDate.day,
-              );
-              break;
-            case 'yearly':
-              nextDate = DateTime(
-                _selectedDate.year + 1,
-                _selectedDate.month,
-                _selectedDate.day,
-              );
-              break;
-            default:
-              nextDate = _selectedDate.add(const Duration(days: 30));
-          }
-
-          await dbRaw.insert('recurring_transactions', {
-            'transaction_id': transactionId,
-            'start_date': _selectedDate.toIso8601String(),
-            'next_execution_date': nextDate.toIso8601String(),
-            'repeat_type': _repeatType,
-            'is_active': 1,
-            'auto_add': _autoAdd ? 1 : 0,
-          });
-        }
+        // if (_isRepeat) {
+        //   DateTime nextDate;
+        //   switch (_repeatType) {
+        //     case 'daily':
+        //       nextDate = _selectedDate.add(const Duration(days: 1));
+        //       break;
+        //     case 'weekly':
+        //       nextDate = _selectedDate.add(const Duration(days: 7));
+        //       break;
+        //     case 'monthly':
+        //       nextDate = DateTime(
+        //         _selectedDate.year,
+        //         _selectedDate.month + 1,
+        //         _selectedDate.day,
+        //       );
+        //       break;
+        //     case 'yearly':
+        //       nextDate = DateTime(
+        //         _selectedDate.year + 1,
+        //         _selectedDate.month,
+        //         _selectedDate.day,
+        //       );
+        //       break;
+        //     default:
+        //       nextDate = _selectedDate.add(const Duration(days: 30));
+        //   }
+        //
+        //   await dbRaw.insert('recurring_transactions', {
+        //     'transaction_id': transactionId,
+        //     'start_date': _selectedDate.toIso8601String(),
+        //     'next_execution_date': nextDate.toIso8601String(),
+        //     'repeat_type': _repeatType,
+        //     'is_active': 1,
+        //     'auto_add': _autoAdd ? 1 : 0,
+        //   });
+        // }
 
         // Update wallet balance
         if (_isIncome) {
@@ -710,19 +710,23 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
                   const SizedBox(height: 16),
                   */
 
-                  // Repeat
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 220),
-                    child: _ModernRepeatSection(
-                      isRepeat: _isRepeat,
-                      repeatType: _repeatType,
-                      autoAdd: _autoAdd,
-                      onRepeatChanged: (v) => setState(() => _isRepeat = v),
-                      onTypeChanged: (v) => setState(() => _repeatType = v),
-                      onAutoAddChanged: (v) => setState(() => _autoAdd = v),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // Repeat (Commented out)
+                  /*
+                  /*
+                  // FadeInUp(
+                  //   delay: const Duration(milliseconds: 220),
+                  // child: _ModernRepeatSection(
+                  //     isRepeat: _isRepeat,
+                  //     repeatType: _repeatType,
+                  //     autoAdd: _autoAdd,
+                  //     onRepeatChanged: (v) => setState(() => _isRepeat = v),
+                  //     onTypeChanged: (v) => setState(() => _repeatType = v),
+                  //     onAutoAddChanged: (v) => setState(() => _autoAdd = v),
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 24),
+                  */
+                  */
 
                   // Save button
                   FadeInUp(
@@ -836,9 +840,9 @@ class _GridCardState extends State<_GridCard>
           boxShadow: [
             BoxShadow(
               color: (widget.isSelected ? widget.iconColor : Colors.black)
-                  .withValues(alpha: _pressed ? 0.04 : 0.06),
-              blurRadius: _pressed ? 4 : 10,
-              offset: Offset(0, _pressed ? 1 : 3),
+                  .withValues(alpha: _pressed ? 0.06 : 0.12),
+              blurRadius: _pressed ? 5 : 15,
+              offset: Offset(0, _pressed ? 2 : 5),
             ),
           ],
         ),
@@ -941,6 +945,7 @@ class _FormCard extends StatelessWidget {
   }
 }
 
+/*
 class _ModernRepeatSection extends StatelessWidget {
   final bool isRepeat;
   final String repeatType;
@@ -1196,3 +1201,4 @@ class _FrequencyChip extends StatelessWidget {
     );
   }
 }
+*/

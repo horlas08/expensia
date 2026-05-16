@@ -349,6 +349,7 @@
     "title": "تحويل الأموال",
     "from_wallet": "من المحفظة",
     "to_wallet": "إلى المحفظة",
+    "select_wallet": "اختر محفظة",
     "notes_optional": "ملاحظات (اختياري)",
     "notes_hint": "ما الغرض من هذا التحويل؟",
     "transfer_now": "حوّل الآن",
