@@ -197,10 +197,6 @@ class BackupRestoreService {
         return false;
       }
 
-      final driveFile = drive.File();
-      driveFile.name = _backupFileName;
-      driveFile.parents = ['appDataFolder'];
-
       final existingFiles = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = '$_backupFileName'",
@@ -214,11 +210,13 @@ class BackupRestoreService {
       final response =
           existingId == null
               ? await driveApi.files.create(
-                driveFile,
+                drive.File()
+                  ..name = _backupFileName
+                  ..parents = ['appDataFolder'],
                 uploadMedia: drive.Media(file.openRead(), file.lengthSync()),
               )
               : await driveApi.files.update(
-                driveFile,
+                drive.File()..name = _backupFileName,
                 existingId,
                 uploadMedia: drive.Media(file.openRead(), file.lengthSync()),
               );
