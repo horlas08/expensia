@@ -66,6 +66,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "938301732033-cvjevkeei5k3do92ibi471q6gkeubtlc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.expensia.pro",
+            "certificate_hash": "5d3b17de11bf527bc298ae82a72fc7c9a94341ef"
+          }
+        },
+        {
+          "client_id": "938301732033-jbueiehl9oebp3gskrmju02jjplmb6sc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.expensia.pro",
+            "certificate_hash": "db215ab37bb4ff6e36807b2812d458639181228c"
+          }
+        },
+        {
           "client_id": "938301732033-82d4eebg0kua5md1qe9277l5vk5j9fbj.apps.googleusercontent.com",
           "client_type": 3
         }

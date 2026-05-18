@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -333,8 +334,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     ).createShader(bounds),
                 child: Text(
                   'setup.personal_title'.tr(),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w900,
+
                     color: Colors.white,
                     letterSpacing: -1,
                   ),
@@ -831,13 +833,14 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ).createShader(bounds),
-                child: Text(
+                child: AutoSizeText(
                   'setup.salary_title'.tr(),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                     letterSpacing: -1,
                   ),
+                  maxLines: 1,
                 ),
               ),
             ),
