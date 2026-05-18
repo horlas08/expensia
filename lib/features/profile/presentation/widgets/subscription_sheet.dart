@@ -639,34 +639,43 @@ class _PackageTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    package.title.replaceAll(RegExp(r'\(.*\)'), '').trim(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: cs.onSurface,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AutoSizeText(
+                          package.title.replaceAll(RegExp(r'\(.*\)'), '').trim(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: cs.onSurface,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                      Text(
+                        package.priceString,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isSelected ? Colors.orange : cs.onSurface,
+                        ),
+                      ),
+                    ],
                   ),
                   if (package.description.isNotEmpty)
-                    Text(
+                    AutoSizeText(
                       package.description,
                       style: TextStyle(
                         fontSize: 13,
                         color: cs.onSurface.withValues(alpha: 0.5),
                       ),
+                      maxLines: 3,
                     ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              package.priceString,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: isSelected ? Colors.orange : cs.onSurface,
-              ),
-            ),
+
+
           ],
         ),
       ),
