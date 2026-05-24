@@ -531,9 +531,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     if (scheduledDate != null) ...[
                       Icon(Icons.schedule_rounded, size: 13, color: cs.onSurfaceVariant),
                       const SizedBox(width: 4),
-                      Text(
-                        DateFormat('MMM d, yyyy  •  h:mm a').format(scheduledDate),
-                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                      Flexible(
+                        child: Text(
+                          DateFormat('MMM d, yyyy  •  h:mm a').format(scheduledDate),
+                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 10),
                     ],
