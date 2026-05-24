@@ -265,23 +265,34 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           );
                           return;
                         }
-                        await DatabaseService().addReminder(
-                          title: title,
-                          body: bodyCtrl.text.trim().isEmpty ? null : bodyCtrl.text.trim(),
-                          repeatType: selectedRepeat,
-                          scheduledDate: selectedDate.toIso8601String(),
-                        );
-                        // Schedule local notification
-                        final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-                        await NotificationService().scheduleReminder(
-                          id: id,
-                          title: title,
-                          body: bodyCtrl.text.trim().isEmpty ? 'notifications.reminder_body_default'.tr() : bodyCtrl.text.trim(),
-                          scheduledDate: selectedDate,
-                          repeatType: selectedRepeat,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        await _reloadReminders();
+                        try {
+                          await DatabaseService().addReminder(
+                            title: title,
+                            body: bodyCtrl.text.trim().isEmpty ? null : bodyCtrl.text.trim(),
+                            repeatType: selectedRepeat,
+                            scheduledDate: selectedDate.toIso8601String(),
+                          );
+                          // Schedule local notification
+                          final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+                          await NotificationService().scheduleReminder(
+                            id: id,
+                            title: title,
+                            body: bodyCtrl.text.trim().isEmpty ? 'notifications.reminder_body_default'.tr() : bodyCtrl.text.trim(),
+                            scheduledDate: selectedDate,
+                            repeatType: selectedRepeat,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          await _reloadReminders();
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${'common.error'.tr()}: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -498,88 +509,159 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final repeatColor = repeatColors[repeatType] ?? cs.primary;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: repeatColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(Icons.alarm_rounded, color: repeatColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                if (body.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(body, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
-                ],
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    if (scheduledDate != null) ...[
-                      Icon(Icons.schedule_rounded, size: 13, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          DateFormat('MMM d, yyyy  •  h:mm a').format(scheduledDate),
-                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: repeatColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        repeatLabels[repeatType] ?? repeatType,
-                        style: TextStyle(color: repeatColor, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('notifications.delete_title'.tr()),
-                  content: Text('notifications.delete_confirm'.tr(args: [title])),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                await DatabaseService().deleteReminder(r['id'] as int);
-                await _reloadReminders();
-              }
-            },
-            icon: Icon(Icons.delete_outline_rounded, size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showAddReminderDialog(existing: r),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: repeatColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.notifications_active_rounded, color: repeatColor, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: repeatColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: repeatColor.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Text(
+                                    repeatLabels[repeatType] ?? repeatType,
+                                    style: TextStyle(
+                                      color: repeatColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (body.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                body,
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (scheduledDate != null)
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 14, color: cs.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              DateFormat('MMM d, yyyy • h:mm a').format(scheduledDate),
+                              style: TextStyle(
+                                color: cs.onSurface.withValues(alpha: 0.7),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      SizedBox(
+                        height: 32,
+                        width: 32,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          iconSize: 18,
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text('notifications.delete_title'.tr()),
+                                content: Text('notifications.delete_confirm'.tr(args: [title])),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: Text('common.delete'.tr(), style: const TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await DatabaseService().deleteReminder(r['id'] as int);
+                              await _reloadReminders();
+                            }
+                          },
+                          icon: Icon(Icons.delete_outline_rounded, color: cs.error),
+                          style: IconButton.styleFrom(
+                            backgroundColor: cs.error.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
