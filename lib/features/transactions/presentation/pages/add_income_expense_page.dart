@@ -198,10 +198,7 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
               .withdrawBalance(_selectedWalletId!, amount);
         }
       } else {
-        final transactionId = await dbRaw.insert(
-          'transactions',
-          transactionData,
-        );
+        await dbRaw.insert('transactions', transactionData);
 
         // Handle recurring transaction
         // if (_isRepeat) {
