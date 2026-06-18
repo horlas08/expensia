@@ -137,6 +137,12 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
           .read(walletProvider)
           .firstWhere((w) => w.id == _selectedWalletId);
 
+      if (!_isIncome && widget.initialTransaction == null) {
+        if (wallet.balance < amount) {
+          throw Exception('insufficient_balance');
+        }
+      }
+
       final transactionData = {
         'wallet_id': _selectedWalletId,
         'category_id': _selectedCategoryId,
@@ -157,6 +163,16 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
         final oldAmount =
             (widget.initialTransaction!['amount'] as num).toDouble();
         final oldWalletId = widget.initialTransaction!['wallet_id'] as int;
+
+        if (!_isIncome) {
+          final availableBalance =
+              oldWalletId == _selectedWalletId
+                  ? wallet.balance + oldAmount
+                  : wallet.balance;
+          if (availableBalance < amount) {
+            throw Exception('insufficient_balance');
+          }
+        }
 
         // Revert old wallet balance
         if (_isIncome) {
@@ -388,7 +404,6 @@ class _AddIncomeExpensePageState extends ConsumerState<AddIncomeExpensePage> {
               ),
               child: Column(
                 children: [
-
                   Text(
                     'transaction.amount'.tr(),
                     style: const TextStyle(
@@ -809,9 +824,12 @@ class _GridCardState extends State<_GridCard>
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: widget.onTap,
-      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      onTapDown:
+          widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp:
+          widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel:
+          widget.onTap != null ? () => setState(() => _pressed = false) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -857,11 +875,7 @@ class _GridCardState extends State<_GridCard>
                     color: widget.iconColor.withValues(alpha: 0.13),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    widget.icon,
-                    color: widget.iconColor,
-                    size: 16,
-                  ),
+                  child: Icon(widget.icon, color: widget.iconColor, size: 16),
                 ),
                 const Spacer(),
                 if (widget.trailing != null) widget.trailing!,
