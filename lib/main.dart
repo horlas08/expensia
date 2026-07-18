@@ -18,6 +18,14 @@ void main() async {
 
   await EasyLocalization.ensureInitialized();
 
+  // Initialize AdMob before runApp so the SDK is ready
+  // before any ad requests can be triggered by the user.
+  try {
+    await MobileAds.instance.initialize();
+  } catch (e) {
+    debugPrint('AdMob initialization failed: $e');
+  }
+
   // Load persisted theme before first frame
   final prefs = await SharedPreferencesService.getInstance();
   final savedDark = prefs.isDarkMode();
@@ -38,15 +46,14 @@ void main() async {
     ),
   );
 
-  unawaited(_warmUpServices());
+  unawaited(_warmUpRecurringTransactions());
 }
 
-Future<void> _warmUpServices() async {
+Future<void> _warmUpRecurringTransactions() async {
   try {
-    await MobileAds.instance.initialize();
     await RecurringTransactionService().processDueTransactions();
   } catch (e) {
-    debugPrint('Non-blocking startup task failed: $e');
+    debugPrint('Recurring transactions warm-up failed: $e');
   }
 }
 

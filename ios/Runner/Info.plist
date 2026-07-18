@@ -23,7 +23,7 @@
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>GADApplicationIdentifier</key>
-		<string>ca-app-pub-3866321434695827~6054341877</string>
+		<string>ca-app-pub-3866321434695827~7357944942</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UILaunchStoryboardName</key>
