@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/config/premium_config.dart';
 import '../../../../../core/services/backup_restore_service.dart';
 import '../../../../../core/services/subscription_service.dart';
+import '../../../../../core/providers/app_data_provider.dart';
 import 'subscription_sheet.dart';
 
 class BackupRestoreSheet extends ConsumerWidget {
@@ -127,6 +128,7 @@ class BackupRestoreSheet extends ConsumerWidget {
                   if (!hostContext.mounted) return;
                   navigator.pop();
                   if (!isBackup && restored) {
+                    invalidateAppData(ref);
                     hostContext.go('/splash');
                   }
                 },
@@ -147,6 +149,7 @@ class BackupRestoreSheet extends ConsumerWidget {
                   if (!hostContext.mounted) return;
                   navigator.pop();
                   if (!isBackup && restored) {
+                    invalidateAppData(ref);
                     hostContext.go('/splash');
                   }
                 },

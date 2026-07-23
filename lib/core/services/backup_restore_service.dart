@@ -103,6 +103,9 @@ class BackupRestoreService {
         // Close existing connection before overwriting
         await DatabaseService().closeConnection();
 
+        // Delete existing database file and any associated WAL/SHM sidecar files (critical for iOS)
+        await deleteDatabase(dbFile.path);
+
         await pickedFile.copy(dbFile.path);
 
         // Reset singleton to pick up new file
@@ -161,6 +164,9 @@ class BackupRestoreService {
 
       // Close existing connection before overwriting
       await DatabaseService().closeConnection();
+
+      // Delete existing database file and any associated WAL/SHM sidecar files (critical for iOS)
+      await deleteDatabase(dbFile.path);
 
       await dbFile.writeAsBytes(dataBuffer);
 

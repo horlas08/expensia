@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/services/backup_restore_service.dart';
 import '../../../../core/services/subscription_service.dart';
+import '../../../../core/providers/app_data_provider.dart';
 import '../../../profile/presentation/widgets/language_sheet.dart';
 import '../../../profile/presentation/widgets/subscription_sheet.dart';
 
@@ -68,6 +69,7 @@ class GetStartedPage extends ConsumerWidget {
                                     context,
                                   );
                               if (success && context.mounted) {
+                                invalidateAppData(ref);
                                 context.go('/splash');
                               }
                             },
@@ -90,6 +92,7 @@ class GetStartedPage extends ConsumerWidget {
                                     context,
                                   );
                               if (success && context.mounted) {
+                                invalidateAppData(ref);
                                 context.go('/splash');
                               }
                             },
