@@ -9,6 +9,7 @@ import '../../../../core/services/shared_preferences_service.dart';
 import '../../../../core/services/app_lock_service.dart';
 import '../../../../core/services/subscription_service.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../features/wallet/presentation/providers/wallet_provider.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -56,12 +57,21 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       if (isLockEnabled && isPro) {
         final authenticated = await appLock.authenticate();
         if (authenticated && mounted) {
+          // Reload wallets to guarantee the balance card reflects the current
+          // (possibly just-restored) database before the dashboard renders.
+          await ref.read(walletProvider.notifier).loadWallets();
           context.go('/dashboard');
         } else {
           // If auth fails or is cancelled, fallback to dashboard
-          if (mounted) context.go('/dashboard');
+          if (mounted) {
+            await ref.read(walletProvider.notifier).loadWallets();
+            context.go('/dashboard');
+          }
         }
       } else {
+        // Reload wallets to guarantee the balance card reflects the current
+        // (possibly just-restored) database before the dashboard renders.
+        await ref.read(walletProvider.notifier).loadWallets();
         context.go('/dashboard');
       }
     } catch (e) {
